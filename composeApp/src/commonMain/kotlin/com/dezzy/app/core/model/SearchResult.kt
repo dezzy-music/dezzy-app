@@ -13,7 +13,8 @@ enum class MusicItemType {
     VIDEO,
     ALBUM,
     PLAYLIST,
-    ARTIST
+    ARTIST,
+    OTHER
 }
 
 @Serializable
