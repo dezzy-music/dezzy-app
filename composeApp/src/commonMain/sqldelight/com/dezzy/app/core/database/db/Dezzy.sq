@@ -49,6 +49,15 @@ CREATE TABLE playlist_entry (
     PRIMARY KEY (playlist_id, position)
 );
 
+-- Listas traídas de otro servicio (Spotify): qué lista remota corresponde a qué lista local.
+CREATE TABLE imported_playlist (
+    playlist_id TEXT NOT NULL PRIMARY KEY REFERENCES playlist(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    remote_id TEXT NOT NULL,
+    synced_at INTEGER NOT NULL,
+    UNIQUE(source, remote_id)
+);
+
 -- Caché del catálogo: el objeto entero en JSON (kotlinx.serialization).
 CREATE TABLE catalog_cache (
     kind TEXT NOT NULL,
@@ -105,6 +114,9 @@ WHERE video_id = :videoId;
 
 trackById:
 SELECT * FROM track WHERE video_id = ?;
+
+trackBySpotifyId:
+SELECT * FROM track WHERE spotify_id = ? LIMIT 1;
 
 -- favorite -------------------------------------------------------------
 
@@ -190,6 +202,32 @@ DELETE FROM playlist_entry WHERE playlist_id = ?;
 
 deletePlaylist:
 DELETE FROM playlist WHERE id = ?;
+
+clearEntries:
+DELETE FROM playlist_entry WHERE playlist_id = ?;
+
+updatePlaylistMeta:
+UPDATE playlist SET title = :title, thumbnail = :thumbnail WHERE id = :id;
+
+-- listas importadas ----------------------------------------------------
+
+-- Sólo cuenta si la lista local sigue existiendo (por si se borró sin cascada).
+importedPlaylistId:
+SELECT imported_playlist.playlist_id FROM imported_playlist
+JOIN playlist ON playlist.id = imported_playlist.playlist_id
+WHERE imported_playlist.source = ? AND imported_playlist.remote_id = ?;
+
+-- REPLACE: si quedaba una fila huérfana con el mismo (source, remote_id), la sustituye.
+insertImported:
+INSERT OR REPLACE INTO imported_playlist(playlist_id, source, remote_id, synced_at) VALUES (?, ?, ?, ?);
+
+touchImported:
+UPDATE imported_playlist SET synced_at = :syncedAt WHERE playlist_id = :playlistId;
+
+importedRemoteIds:
+SELECT imported_playlist.remote_id FROM imported_playlist
+JOIN playlist ON playlist.id = imported_playlist.playlist_id
+WHERE imported_playlist.source = ?;
 
 -- caché de catálogo ----------------------------------------------------
 

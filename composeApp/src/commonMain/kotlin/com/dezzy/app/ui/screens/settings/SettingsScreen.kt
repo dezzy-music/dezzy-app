@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,9 +50,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.core.model.SessionProvider
+import com.dezzy.app.core.model.UserSession
+import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.screens.ScreenContext
+import org.koin.compose.koinInject
 
 /** Una fila buscable de Ajustes: o de la página principal o de una subpágina. */
 private class SettingsEntry(
@@ -110,6 +116,12 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.PRIVACY -> "Privacidad"
     SettingsPage.STORAGE -> "Descargas y almacenamiento"
     SettingsPage.ABOUT -> "Acerca de Dezzy"
+    SettingsPage.ACCOUNTS -> "Cuentas y servicios"
+    SettingsPage.CONTENT -> "Contenido"
+    SettingsPage.YOUTUBE_LOGIN -> "Iniciar sesión"
+    SettingsPage.SPOTIFY -> "Integración de Spotify"
+    SettingsPage.SPOTIFY_LOGIN -> "Iniciar sesión en Spotify"
+    SettingsPage.SPOTIFY_IMPORT -> "Importar de Spotify"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */
@@ -132,15 +144,20 @@ private fun normalize(text: String): String = buildString {
 internal fun SettingsScreen(ctx: ScreenContext) {
     var query by rememberSaveable { mutableStateOf("") }
     fun open(page: SettingsPage) = ctx.navigator.push(Screen.Settings(page))
+    val accounts: AccountStore = koinInject()
+    val sessions by accounts.sessions.collectAsState()
+    val youtube = sessions[SessionProvider.YOUTUBE]
+    val language by ctx.prefs.contentLanguage.collectAsState("es")
+    val country by ctx.prefs.contentCountry.collectAsState("US")
 
     val group1 = listOf(
         SettingsEntry("Apariencia", "Tema del sistema, color dinámico", Icons.Rounded.Palette) { open(SettingsPage.APPEARANCE) },
         SettingsEntry("Reproductor y audio", "Calidad alta, normalizar volumen", Icons.Rounded.PlayCircle) { open(SettingsPage.PLAYER) },
         SettingsEntry("Letras e IA", "Traducción automática activada", Icons.Rounded.Lyrics) { ctx.pending("Letras e IA", "7") },
-        SettingsEntry("Contenido", "Español, México", Icons.Rounded.Language) { ctx.pending("Contenido", "6") },
+        SettingsEntry("Contenido", "${languageName(language)}, ${countryName(country)}", Icons.Rounded.Language) { open(SettingsPage.CONTENT) },
     )
     val group2 = listOf(
-        SettingsEntry("Cuentas y servicios", "Spotify, Discord, Last.fm", Icons.Rounded.Hub) { ctx.pending("Cuentas y servicios", "6") },
+        SettingsEntry("Cuentas y servicios", "YouTube, Spotify", Icons.Rounded.Hub) { open(SettingsPage.ACCOUNTS) },
         SettingsEntry("Descargas y almacenamiento", "Caché 1,2 GB, lossless", Icons.Rounded.Download) { open(SettingsPage.STORAGE) },
         SettingsEntry("Privacidad", "Historial activado", Icons.Rounded.Lock) { open(SettingsPage.PRIVACY) },
     )
@@ -154,7 +171,7 @@ internal fun SettingsScreen(ctx: ScreenContext) {
         val q = normalize(query.trim())
         if (q.isEmpty()) {
             item(key = "account") {
-                SettingsAccountCard { ctx.pending("Cuenta", "6") }
+                SettingsAccountCard(youtube) { open(SettingsPage.ACCOUNTS) }
             }
             item(key = "g1") { SettingsEntryGroup(group1) }
             item(key = "g2") { SettingsEntryGroup(group2) }
@@ -223,7 +240,7 @@ private fun SettingsSearchField(query: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-private fun SettingsAccountCard(onClick: () -> Unit) {
+private fun SettingsAccountCard(session: UserSession?, onClick: () -> Unit) {
     Row(
         Modifier
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
@@ -235,21 +252,34 @@ private fun SettingsAccountCard(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(
-            Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.inversePrimary)),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("D", fontSize = 24.sp, fontWeight = FontWeight.Medium, color = Color.White)
+        if (session?.avatarUrl != null) {
+            CoverImage(session.avatarUrl, Modifier.size(56.dp), CircleShape, sizePx = 168)
+        } else {
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.inversePrimary)),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("D", fontSize = 24.sp, fontWeight = FontWeight.Medium, color = Color.White)
+            }
         }
         Column(Modifier.weight(1f)) {
-            Text("Dezzy", fontSize = 18.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(
-                "Cuenta de YouTube Music conectada",
+                if (session != null) session.name ?: "Cuenta de YouTube Music" else "Inicia sesión",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
+                when {
+                    session == null -> "Conecta tu cuenta de YouTube Music"
+                    !session.isValid -> "Vuelve a iniciar sesión"
+                    else -> "Cuenta de YouTube Music conectada"
+                },
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
             )

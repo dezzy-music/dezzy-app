@@ -48,9 +48,14 @@ sealed interface Screen {
     data class Pending(val title: String, val phase: String) : Screen
     /** Ajustes (página principal o una subpágina). */
     data class Settings(val page: SettingsPage = SettingsPage.MAIN) : Screen
+    /** Listas de YouTube Music de la cuenta con sesión. */
+    data object AccountPlaylists : Screen
 }
 
-enum class SettingsPage { MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT }
+enum class SettingsPage {
+    MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT,
+    ACCOUNTS, CONTENT, YOUTUBE_LOGIN, SPOTIFY, SPOTIFY_LOGIN, SPOTIFY_IMPORT,
+}
 
 /**
  * Navegación propia y sencilla: cada pestaña guarda su pila, volver a tocar la pestaña activa

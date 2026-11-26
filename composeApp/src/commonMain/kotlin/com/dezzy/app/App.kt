@@ -6,6 +6,7 @@
 package com.dezzy.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import coil3.ImageLoader
@@ -13,6 +14,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.source.spotify.SpotifyImporter
+import com.dezzy.app.source.youtube.YouTubeLibrarySync
 import com.dezzy.app.ui.AppShell
 import com.dezzy.app.ui.theme.AppInterfaceTheme
 import com.dezzy.app.ui.theme.DarkMode
@@ -34,6 +37,12 @@ fun App() {
     val dynamicColor by prefs.dynamicColor.collectAsState(false)
     val interfaceTheme by prefs.interfaceTheme.collectAsState("NORMAL")
     val glass by prefs.glassIntensity.collectAsState("PURE")
+    val importer: SpotifyImporter = koinInject()
+    val librarySync: YouTubeLibrarySync = koinInject()
+    LaunchedEffect(Unit) {
+        importer.startAutoSync()
+        runCatching { librarySync.syncLikesIfDue() }
+    }
 
     DezzyTheme(
         darkMode = when (themeMode) {

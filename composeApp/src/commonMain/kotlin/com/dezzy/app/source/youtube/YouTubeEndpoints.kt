@@ -11,6 +11,9 @@ object YouTubeEndpoints {
     const val SEARCH_URL = "${BASE_URL}search?prettyPrint=false"
     const val NEXT_URL = "${BASE_URL}next?prettyPrint=false"
     const val SUGGESTIONS_URL = "${BASE_URL}music/get_search_suggestions?prettyPrint=false"
+    const val ACCOUNT_MENU_URL = "${BASE_URL}account/account_menu?prettyPrint=false"
+    const val LIKE_URL = "${BASE_URL}like/like?prettyPrint=false"
+    const val REMOVE_LIKE_URL = "${BASE_URL}like/removelike?prettyPrint=false"
     const val PLAYER_URL = "${BASE_URL}player?prettyPrint=false"
     const val YT_PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false"
 
@@ -29,6 +32,7 @@ object YouTubeEndpoints {
     const val FILTER_PLAYLISTS = "EgWKAQIoAWoQEAMQBBAJEAoQBRAREBAQFQ=="
 
     const val BROWSE_ID_HOME = "FEmusic_home"
+    const val BROWSE_ID_LIBRARY_PLAYLISTS = "FEmusic_liked_playlists"
     const val BROWSE_ID_CHARTS = "FEmusic_charts"
     const val CHARTS_PARAMS = "ggMGCgQIgAQ="
 }

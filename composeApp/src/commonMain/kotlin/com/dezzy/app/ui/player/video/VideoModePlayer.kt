@@ -633,8 +633,8 @@ private fun VideoModeScreen(
                     VideoActionChip(
                         icon = Icons.Rounded.ChatBubble,
                         label = "Comentarios",
-                        // Los comentarios llegan en la fase 6.
-                        onClick = { playerConnection.pending("Comentarios", "6") },
+                        // Los comentarios llegan en la fase 7.
+                        onClick = { playerConnection.pending("Comentarios", "7") },
                     )
                     VideoActionChip(
                         icon = Icons.Rounded.Download,

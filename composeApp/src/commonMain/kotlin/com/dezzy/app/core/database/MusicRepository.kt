@@ -46,4 +46,10 @@ interface MusicRepository {
     suspend fun getAlbum(id: String): Album?
     suspend fun saveArtist(artist: Artist)
     suspend fun getArtist(id: String): Artist?
+
+    // Importación desde otros servicios (Spotify)
+    suspend fun findTrackBySpotifyId(spotifyId: String): Track?
+    /** Crea o actualiza la lista local de una lista remota (`source` + `remoteId`) y devuelve su id local. */
+    suspend fun replaceImportedPlaylist(source: String, remoteId: String, title: String, thumbnail: String?, tracks: List<Track>): String
+    suspend fun importedRemoteIds(source: String): List<String>
 }

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -32,6 +33,61 @@ class DezzyPreferences(
         val KEY_PINNED_PLAYLIST_2 = stringPreferencesKey("pinnedPlaylist2")
         val KEY_DJ_NAME = stringPreferencesKey("djName")
         val KEY_PAUSE_HISTORY = booleanPreferencesKey("pause_history")
+        val KEY_CONTENT_LANGUAGE = stringPreferencesKey("content_language")
+        val KEY_CONTENT_COUNTRY = stringPreferencesKey("content_country")
+        val KEY_SPOTIFY_LIKED_AS_PLAYLIST = booleanPreferencesKey("spotify_liked_as_playlist")
+        val KEY_SPOTIFY_AUTO_SYNC = booleanPreferencesKey("spotify_auto_sync")
+        val KEY_SPOTIFY_LAST_SYNC = longPreferencesKey("spotify_last_sync")
+        val KEY_YOUTUBE_LAST_LIKES_SYNC = longPreferencesKey("youtube_last_likes_sync")
+        val KEY_WELCOME_LOGIN_SHOWN = booleanPreferencesKey("welcome_login_shown")
+    }
+
+    /** Idioma del contenido de YouTube Music (código `hl`). */
+    val contentLanguage: Flow<String> = dataStore.data.map { prefs -> prefs[KEY_CONTENT_LANGUAGE] ?: "es" }
+
+    suspend fun setContentLanguage(value: String) {
+        dataStore.edit { prefs -> prefs[KEY_CONTENT_LANGUAGE] = value }
+    }
+
+    /** País del contenido de YouTube Music (código `gl`). */
+    val contentCountry: Flow<String> = dataStore.data.map { prefs -> prefs[KEY_CONTENT_COUNTRY] ?: "US" }
+
+    suspend fun setContentCountry(value: String) {
+        dataStore.edit { prefs -> prefs[KEY_CONTENT_COUNTRY] = value }
+    }
+
+    /** Importar «Canciones que te gustan» de Spotify como una lista (en vez de como favoritos). */
+    val spotifyLikedAsPlaylist: Flow<Boolean> = dataStore.data.map { prefs -> prefs[KEY_SPOTIFY_LIKED_AS_PLAYLIST] ?: true }
+
+    suspend fun setSpotifyLikedAsPlaylist(value: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_SPOTIFY_LIKED_AS_PLAYLIST] = value }
+    }
+
+    val spotifyAutoSync: Flow<Boolean> = dataStore.data.map { prefs -> prefs[KEY_SPOTIFY_AUTO_SYNC] ?: true }
+
+    suspend fun setSpotifyAutoSync(value: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_SPOTIFY_AUTO_SYNC] = value }
+    }
+
+    /** Última sincronización de Spotify (epoch ms; 0 = nunca). */
+    val spotifyLastSync: Flow<Long> = dataStore.data.map { prefs -> prefs[KEY_SPOTIFY_LAST_SYNC] ?: 0L }
+
+    suspend fun setSpotifyLastSync(value: Long) {
+        dataStore.edit { prefs -> prefs[KEY_SPOTIFY_LAST_SYNC] = value }
+    }
+
+    /** Última sincronización de los «me gusta» de YouTube (epoch ms; 0 = nunca). */
+    val youtubeLastLikesSync: Flow<Long> = dataStore.data.map { prefs -> prefs[KEY_YOUTUBE_LAST_LIKES_SYNC] ?: 0L }
+
+    suspend fun setYoutubeLastLikesSync(value: Long) {
+        dataStore.edit { prefs -> prefs[KEY_YOUTUBE_LAST_LIKES_SYNC] = value }
+    }
+
+    /** Si ya se mostró la invitación a iniciar sesión de la primera vez. */
+    val welcomeLoginShown: Flow<Boolean> = dataStore.data.map { prefs -> prefs[KEY_WELCOME_LOGIN_SHOWN] ?: false }
+
+    suspend fun setWelcomeLoginShown(value: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_WELCOME_LOGIN_SHOWN] = value }
     }
 
     /** Si está activo, lo que se escucha no se guarda en el historial. */

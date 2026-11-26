@@ -180,6 +180,48 @@ class SqlMusicRepository(
             ?.let { runCatching { json.decodeFromString(Artist.serializer(), it) }.getOrNull() }
     }
 
+    // Importación ----------------------------------------------------------
+
+    override suspend fun findTrackBySpotifyId(spotifyId: String): Track? = withContext(io) {
+        q.trackBySpotifyId(spotifyId, ::trackOf).executeAsOneOrNull()
+    }
+
+    override suspend fun replaceImportedPlaylist(
+        source: String,
+        remoteId: String,
+        title: String,
+        thumbnail: String?,
+        tracks: List<Track>,
+    ): String = withContext(io) {
+        val t = now()
+        var localId = ""
+        db.transaction {
+            val existing = q.importedPlaylistId(source, remoteId).executeAsOneOrNull()
+            if (existing != null) {
+                localId = existing
+                q.updatePlaylistMeta(title = title, thumbnail = thumbnail, id = existing)
+                q.clearEntries(existing)
+            } else {
+                localId = "pl_${t}_${Random.nextInt(1000, 9999)}"
+                q.insertPlaylist(localId, title, "Spotify", thumbnail, t)
+                q.insertImported(localId, source, remoteId, t)
+            }
+            var position = 0L
+            for (track in tracks) {
+                val id = track.videoId ?: continue
+                upsert(track)
+                q.addEntry(localId, position, id)
+                position++
+            }
+            q.touchImported(syncedAt = t, playlistId = localId)
+        }
+        localId
+    }
+
+    override suspend fun importedRemoteIds(source: String): List<String> = withContext(io) {
+        q.importedRemoteIds(source).executeAsList()
+    }
+
     // ---------------------------------------------------------------------
 
     /** Inserta o actualiza sin borrar datos que la versión nueva no trae. Llamar dentro de una transacción. */

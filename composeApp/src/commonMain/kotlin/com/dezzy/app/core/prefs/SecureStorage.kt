@@ -11,6 +11,8 @@ interface SecureStorage {
     suspend fun set(key: String, value: String)
     suspend fun remove(key: String)
     suspend fun clear()
+    /** Si hay algo guardado con esa clave, aunque ahora no se pueda descifrar. */
+    suspend fun contains(key: String): Boolean
 }
 
 /** Sólo para pruebas y para el objetivo JVM de escritorio, que no se distribuye. */
@@ -20,4 +22,5 @@ class InMemorySecureStorage : SecureStorage {
     override suspend fun set(key: String, value: String) { map[key] = value }
     override suspend fun remove(key: String) { map.remove(key) }
     override suspend fun clear() { map.clear() }
+    override suspend fun contains(key: String): Boolean = map.containsKey(key)
 }

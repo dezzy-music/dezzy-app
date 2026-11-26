@@ -15,6 +15,8 @@ import com.dezzy.app.core.prefs.KeystoreSecureStorage
 import com.dezzy.app.core.storage.AndroidCacheCleaner
 import com.dezzy.app.core.storage.CacheCleaner
 import com.dezzy.app.core.prefs.SecureStorage
+import com.dezzy.app.source.spotify.AndroidSpotifyTokenSource
+import com.dezzy.app.source.spotify.SpotifyTokenSource
 import com.dezzy.app.source.stream.StreamEngine
 import com.dezzy.app.source.stream.WebViewStreamEngine
 import com.dezzy.app.feature.player.DezzyPlayer
@@ -27,6 +29,7 @@ actual val platformModule = module {
     single<SqlDriver> { AndroidSqliteDriver(DezzyDatabase.Schema, androidContext(), "dezzy.db") }
     single<SecureStorage> { KeystoreSecureStorage(androidContext()) }
     single<StreamEngine> { WebViewStreamEngine(androidContext()) }
+    single<SpotifyTokenSource> { AndroidSpotifyTokenSource(androidContext()) }
     single<CacheCleaner> { AndroidCacheCleaner(androidContext()) }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create { androidContext().filesDir.resolve("datastore/dezzy.preferences_pb") }

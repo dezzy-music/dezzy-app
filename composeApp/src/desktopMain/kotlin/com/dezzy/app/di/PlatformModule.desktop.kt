@@ -15,6 +15,8 @@ import com.dezzy.app.core.prefs.InMemorySecureStorage
 import com.dezzy.app.core.storage.CacheCleaner
 import com.dezzy.app.core.storage.DesktopCacheCleaner
 import com.dezzy.app.core.prefs.SecureStorage
+import com.dezzy.app.source.spotify.SpotifyTokenSource
+import com.dezzy.app.source.spotify.UnavailableSpotifyTokenSource
 import com.dezzy.app.source.stream.StreamEngine
 import com.dezzy.app.source.stream.UnavailableStreamEngine
 import org.koin.dsl.module
@@ -28,6 +30,7 @@ actual val platformModule = module {
     }
     single<SecureStorage> { InMemorySecureStorage() }
     single<StreamEngine> { UnavailableStreamEngine() }
+    single<SpotifyTokenSource> { UnavailableSpotifyTokenSource() }
     single<CacheCleaner> { DesktopCacheCleaner() }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create { File(System.getProperty("user.home"), ".dezzy-app/dezzy.preferences_pb") }

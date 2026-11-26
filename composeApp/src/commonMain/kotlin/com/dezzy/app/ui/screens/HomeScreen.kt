@@ -99,9 +99,13 @@ import com.dezzy.app.feature.player.PlaybackState
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.SectionHeader
 import com.dezzy.app.ui.components.TrackRow
+import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.navigation.Tab
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.offsetAt
 import kotlinx.datetime.toLocalDateTime
@@ -131,6 +135,9 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
     val pinned1 by remember { ctx.prefs.pinnedPlaylist(1) }.collectAsState(null)
     val pinned2 by remember { ctx.prefs.pinnedPlaylist(2) }.collectAsState(null)
     val djName by ctx.prefs.djName.collectAsState("")
+    val accounts: AccountStore = koinInject()
+    val sessions by accounts.sessions.collectAsState()
+    val avatarUrl = sessions[SessionProvider.YOUTUBE]?.avatarUrl
 
     val streak by produceState(0, history.size) { value = ctx.repository.listenStreakDays(offsetMs) }
     val todaySeconds by produceState(0L, history.size) { value = ctx.repository.todayListenSeconds(offsetMs) }
@@ -157,7 +164,8 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                 streakDays = streak,
                 todayMinutes = (todaySeconds / 60).toInt(),
                 onNotifications = { ctx.pending("Novedades y lanzamientos", "10") },
-                onAccount = { ctx.pending("Tu cuenta", "6") },
+                avatarUrl = avatarUrl,
+                onAccount = { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) },
                 onSettings = { ctx.navigator.push(Screen.Settings()) },
             )
         }
@@ -253,7 +261,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
 // ── Cabecera ────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, onNotifications: () -> Unit, onAccount: () -> Unit, onSettings: () -> Unit) {
+private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avatarUrl: String?, onNotifications: () -> Unit, onAccount: () -> Unit, onSettings: () -> Unit) {
     val greeting = when {
         hour < 12 -> "Buenos días"
         hour < 19 -> "Buenas tardes"
@@ -268,10 +276,14 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, onNot
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = onNotifications) { Icon(Icons.Rounded.Notifications, "Novedades") }
-        Box(
-            Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer).clickable(onClick = onAccount),
-            contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Rounded.Person, "Cuenta", tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+        if (avatarUrl != null) {
+            CoverImage(avatarUrl, Modifier.size(36.dp).clickable(onClick = onAccount), CircleShape, sizePx = 108, contentDescription = "Cuenta")
+        } else {
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer).clickable(onClick = onAccount),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.Person, "Cuenta", tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+        }
         IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Ajustes") }
     }
 }
@@ -524,7 +536,7 @@ private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
     }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
-            MenuRow(Icons.Rounded.Person, "Tu Cuenta y Espacio") { go { ctx.pending("Tu cuenta", "6") } }
+            MenuRow(Icons.Rounded.Person, "Tu Cuenta y Espacio") { go { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) } }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             MenuGroup("Tu Actividad")
             MenuRow(Icons.Rounded.NewReleases, "Novedades y Lanzamientos") { go { ctx.pending("Novedades y lanzamientos", "10") } }

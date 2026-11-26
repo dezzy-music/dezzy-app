@@ -71,8 +71,12 @@ import androidx.compose.ui.window.DialogProperties
 import com.dezzy.app.core.model.Playlist
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.TrackRow
+import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 private enum class LibraryTab(val label: String) {
     PLAYLISTS("Listas"),
@@ -98,6 +102,10 @@ fun LibraryScreen(ctx: ScreenContext) {
     val favorites by ctx.repository.getFavorites().collectAsState(null)
     var tab by remember { mutableStateOf(LibraryTab.PLAYLISTS) }
     var creating by remember { mutableStateOf(false) }
+    val accounts: AccountStore = koinInject()
+    val sessions by accounts.sessions.collectAsState()
+    val hasYouTube = SessionProvider.YOUTUBE in sessions
+    val hasSpotify = SessionProvider.SPOTIFY in sessions
 
     val colors = MaterialTheme.colorScheme
     val pills = listOf(
@@ -176,7 +184,11 @@ fun LibraryScreen(ctx: ScreenContext) {
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.fillMaxWidth()
-                            .clickable { ctx.pending("Listas de YouTube Music de tu cuenta", "6") }
+                            .clickable {
+                                ctx.navigator.push(
+                                    if (hasYouTube) Screen.AccountPlaylists else Screen.Settings(SettingsPage.YOUTUBE_LOGIN),
+                                )
+                            }
                             .padding(16.dp),
                     )
                 }
@@ -186,7 +198,11 @@ fun LibraryScreen(ctx: ScreenContext) {
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.fillMaxWidth()
-                            .clickable { ctx.pending("Listas de Spotify", "6") }
+                            .clickable {
+                                ctx.navigator.push(
+                                    Screen.Settings(if (hasSpotify) SettingsPage.SPOTIFY_IMPORT else SettingsPage.SPOTIFY_LOGIN),
+                                )
+                            }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
@@ -202,7 +218,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                 }
             }
             LibraryTab.ALBUMS, LibraryTab.ARTISTS, LibraryTab.GENRES ->
-                emptyRow("Llega en la fase 6 con la sincronización de la cuenta")
+                emptyRow("Llega en la fase 6b con la sincronización de la cuenta")
         }
         item { Spacer(Modifier.size(24.dp)) }
     }

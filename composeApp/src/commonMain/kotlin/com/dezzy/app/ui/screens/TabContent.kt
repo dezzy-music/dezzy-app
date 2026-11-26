@@ -25,11 +25,17 @@ import com.dezzy.app.ui.navigation.Navigator
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.screens.settings.AboutScreen
+import com.dezzy.app.ui.screens.settings.AccountsSettingsScreen
 import com.dezzy.app.ui.screens.settings.AppearanceSettingsScreen
+import com.dezzy.app.ui.screens.settings.ContentSettingsScreen
 import com.dezzy.app.ui.screens.settings.PlayerSettingsScreen
 import com.dezzy.app.ui.screens.settings.PrivacySettingsScreen
 import com.dezzy.app.ui.screens.settings.SettingsScreen
+import com.dezzy.app.ui.screens.settings.SpotifyImportScreen
+import com.dezzy.app.ui.screens.settings.SpotifyLoginScreen
+import com.dezzy.app.ui.screens.settings.SpotifySettingsScreen
 import com.dezzy.app.ui.screens.settings.StorageSettingsScreen
+import com.dezzy.app.ui.screens.settings.YouTubeLoginScreen
 import com.dezzy.app.ui.navigation.Tab
 import org.koin.compose.koinInject
 
@@ -70,7 +76,14 @@ fun TabContent(
             SettingsPage.PRIVACY -> PrivacySettingsScreen(ctx)
             SettingsPage.STORAGE -> StorageSettingsScreen(ctx)
             SettingsPage.ABOUT -> AboutScreen(ctx)
+            SettingsPage.ACCOUNTS -> AccountsSettingsScreen(ctx)
+            SettingsPage.CONTENT -> ContentSettingsScreen(ctx)
+            SettingsPage.YOUTUBE_LOGIN -> YouTubeLoginScreen(ctx)
+            SettingsPage.SPOTIFY -> SpotifySettingsScreen(ctx)
+            SettingsPage.SPOTIFY_LOGIN -> SpotifyLoginScreen(ctx)
+            SettingsPage.SPOTIFY_IMPORT -> SpotifyImportScreen(ctx)
         }
+        Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")

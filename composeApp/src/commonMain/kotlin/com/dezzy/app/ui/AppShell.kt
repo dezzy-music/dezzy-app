@@ -47,6 +47,11 @@ import com.dezzy.app.ui.navigation.PlatformBackHandler
 import com.dezzy.app.ui.navigation.Tab
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
+import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.core.model.SessionProvider
+import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.ui.screens.WelcomeLoginDialog
 import com.dezzy.app.feature.video.VideoPipState
 import com.dezzy.app.ui.player.video.VideoPipLayer
 import com.dezzy.app.ui.player.PlayerRouter
@@ -74,6 +79,11 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
     val snackbar = remember { SnackbarHostState() }
     val repository: MusicRepository = koinInject()
     val scope = rememberCoroutineScope()
+    val prefs: DezzyPreferences = koinInject()
+    val accounts: AccountStore = koinInject()
+    val sessions by accounts.sessions.collectAsState()
+    // Mientras no se sabe, se asume «ya mostrada» para que no parpadee.
+    val welcomeShown by prefs.welcomeLoginShown.collectAsState(true)
     val toast: (String) -> Unit = remember(snackbar, scope) {
         { message ->
             scope.launch {
@@ -144,6 +154,20 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
         if (expanded) SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
         // Ventana flotante (PiP) del modo vídeo: encima de todo.
         VideoPipLayer(connection, onEligibleChange = { VideoPipState.eligible.value = it })
+        // Bienvenida de la primera vez: sólo si nunca se mostró y no hay sesión de YouTube.
+        if (!welcomeShown && SessionProvider.YOUTUBE !in sessions) {
+            WelcomeLoginDialog(
+                onDismiss = { scope.launch { prefs.setWelcomeLoginShown(true) } },
+                onYoutubeMusicLogin = {
+                    scope.launch { prefs.setWelcomeLoginShown(true) }
+                    navigator.push(Screen.Settings(SettingsPage.YOUTUBE_LOGIN))
+                },
+                onSpotifyLogin = {
+                    scope.launch { prefs.setWelcomeLoginShown(true) }
+                    navigator.push(Screen.Settings(SettingsPage.SPOTIFY_LOGIN))
+                },
+            )
+        }
     }
     }
 }

@@ -5,7 +5,18 @@
 
 package com.dezzy.app.di
 
+import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.core.accounts.SessionHealth
+import com.dezzy.app.core.database.AccountAwareMusicRepository
 import com.dezzy.app.core.database.SqlMusicRepository
+import com.dezzy.app.source.spotify.SpotifyClient
+import com.dezzy.app.source.spotify.SpotifyImporter
+import com.dezzy.app.source.spotify.SpotifyMatcher
+import com.dezzy.app.source.youtube.ContentLocale
+import com.dezzy.app.source.youtube.YouTubeAuth
+import com.dezzy.app.source.youtube.YouTubeLibrarySync
+import com.dezzy.app.source.youtube.YouTubeLogin
+import kotlin.time.Clock
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.net.HttpClientFactory
@@ -21,9 +32,20 @@ import org.koin.dsl.module
 val coreModule: Module = module {
     single { HttpClientFactory.create() }
     single { DezzyDatabase(get()) }
-    single<MusicRepository> { SqlMusicRepository(get()) }
-    single { YouTubeMusicClient(get()) }
     single { DezzyPreferences(get()) }
+    single { SessionHealth(now = { Clock.System.now().toEpochMilliseconds() }) }
+    single { AccountStore(get(), get()) }
+    single { YouTubeAuth(get()) }
+    single { ContentLocale(get()) }
+    // El cliente de catálogo lleva la sesión; MusicVideoResolver y StreamUrlResolver reciben el HttpClient sin cookies.
+    single { YouTubeMusicClient(get(), get(), get()) }
+    single { SqlMusicRepository(get()) }
+    single<MusicRepository> { AccountAwareMusicRepository(get<SqlMusicRepository>(), get(), get()) }
+    single { YouTubeLibrarySync(get(), get<SqlMusicRepository>(), get(), get()) }
+    single { YouTubeLogin(get(), get(), get()) }
+    single { SpotifyClient(get(), get(), get()) }
+    single { SpotifyMatcher(get(), get<SqlMusicRepository>()) }
+    single { SpotifyImporter(get(), get(), get<SqlMusicRepository>(), get()) }
     single { MusicVideoResolver(get(), get(), get()) }
     single { StreamUrlResolver(engine = get(), probe = HttpStreamProbe(get()), cache = SqlStreamCache(get())) }
 }
