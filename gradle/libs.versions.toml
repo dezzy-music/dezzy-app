@@ -1,20 +1,24 @@
 [versions]
-agp = "8.7.3"
-android-compileSdk = "35"
+agp = "8.11.0"
+android-compileSdk = "36"
 android-minSdk = "23"
 android-targetSdk = "35"
 androidx-activityCompose = "1.9.3"
-androidx-lifecycle = "2.8.4"
-compose-multiplatform = "1.7.1"
-kotlin = "2.1.0"
-kotlinx-coroutines = "1.9.0"
-kotlinx-serialization = "1.7.3"
+androidx-lifecycle = "2.9.4"
+compose-multiplatform = "1.9.3"
+kotlin = "2.2.10"
+kotlinx-coroutines = "1.10.2"
+kotlinx-serialization = "1.9.0"
 kotlinx-datetime = "0.6.1"
 ktor = "3.0.1"
-koin = "4.0.0"
+koin = "4.1.1"
 datastore = "1.1.1"
 sqldelight = "2.0.2"
 media3 = "1.5.1"
+coil = "3.3.0"
+haze = "1.7.0"
+backdrop = "1.0.6"
+material-icons = "1.7.3"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -46,6 +50,12 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3" }
+# Interfaz (todas Apache-2.0)
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
+material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "material-icons" }
 
 [plugins]
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

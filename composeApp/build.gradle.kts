@@ -22,6 +22,8 @@ kotlin {
         }
     }
 
+    sourceSets.all { languageSettings.optIn("kotlin.time.ExperimentalTime") }
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -52,6 +54,12 @@ kotlin {
 
                 // Base de datos (SQLDelight, Apache-2.0)
                 implementation(libs.sqldelight.coroutines)
+
+                // Interfaz: carátulas, desenfoque e iconos (Apache-2.0)
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network.ktor3)
+                implementation(libs.haze)
+                implementation(libs.material.icons.extended)
             }
         }
         val commonTest by getting {
@@ -71,6 +79,8 @@ kotlin {
                 implementation(libs.media3.exoplayer)
                 implementation(libs.media3.session)
                 implementation(libs.media3.datasource.okhttp)
+                // Cristal líquido (lente y refracción), Apache-2.0
+                implementation(libs.backdrop)
             }
         }
         val desktopTest by getting {
@@ -128,4 +138,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.dezzy.app.resources"
+    publicResClass = false
 }

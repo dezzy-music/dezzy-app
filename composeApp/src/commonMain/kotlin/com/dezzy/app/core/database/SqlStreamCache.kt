@@ -12,7 +12,7 @@ import com.dezzy.app.source.stream.StreamCache
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.serialization.json.Json
 
 /** Caché de streams en la tabla `stream_cache`: sobrevive a reinicios de la app. */

@@ -23,7 +23,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.math.roundToInt
 
 /**
