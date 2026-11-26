@@ -158,6 +158,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                 todayMinutes = (todaySeconds / 60).toInt(),
                 onNotifications = { ctx.pending("Novedades y lanzamientos", "10") },
                 onAccount = { ctx.pending("Tu cuenta", "6") },
+                onSettings = { ctx.navigator.push(Screen.Settings()) },
             )
         }
         item(key = "chips") {
@@ -252,7 +253,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
 // ── Cabecera ────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, onNotifications: () -> Unit, onAccount: () -> Unit) {
+private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, onNotifications: () -> Unit, onAccount: () -> Unit, onSettings: () -> Unit) {
     val greeting = when {
         hour < 12 -> "Buenos días"
         hour < 19 -> "Buenas tardes"
@@ -271,6 +272,7 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, onNot
             Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer).clickable(onClick = onAccount),
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Rounded.Person, "Cuenta", tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+        IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Ajustes") }
     }
 }
 
@@ -537,7 +539,7 @@ private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
             MenuRow(Icons.Rounded.Today, "Resumen del Año") { go { ctx.pending("Tu año en música", "10") } }
             MenuRow(Icons.Rounded.GraphicEq, "Reconocer Música") { go { ctx.pending("Reconocer música", "10") } }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            MenuRow(Icons.Rounded.Settings, "Ajustes") { go { ctx.pending("Ajustes", "5 (ajustes)") } }
+            MenuRow(Icons.Rounded.Settings, "Ajustes") { go { ctx.navigator.push(Screen.Settings()) } }
         }
     }
 }

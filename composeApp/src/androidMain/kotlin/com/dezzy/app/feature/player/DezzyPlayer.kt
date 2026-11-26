@@ -84,6 +84,7 @@ class DezzyPlayer(
     private var crossfadeMs = 0L
     private var normalize = false
     private var autoSkip = true
+    private var pauseHistory = false
     private var persistentQueue = true
 
     // Volumen -----------------------------------------------------------------
@@ -190,6 +191,7 @@ class DezzyPlayer(
         scope.launch { prefs.crossfadeSeconds.collect { crossfadeMs = it.coerceIn(0, 12) * 1000L; updateFade() } }
         scope.launch { prefs.normalizeVolume.collect { normalize = it; applyVolume() } }
         scope.launch { prefs.autoSkip.collect { autoSkip = it } }
+        scope.launch { prefs.pauseHistory.collect { pauseHistory = it } }
         scope.launch { queue.state.collect { q -> _state.update { it.copy(queue = q) } } }
         scope.launch {
             restoreQueue()
@@ -495,7 +497,7 @@ class DezzyPlayer(
         _state.update { it.copy(error = null) }
         val track = queue.state.value.current?.track ?: return
         listenVideoId = track.videoId
-        scope.launch { runCatching { repository.addToHistory(track) } }
+        if (!pauseHistory) scope.launch { runCatching { repository.addToHistory(track) } }
     }
 
     private fun startTicker() {

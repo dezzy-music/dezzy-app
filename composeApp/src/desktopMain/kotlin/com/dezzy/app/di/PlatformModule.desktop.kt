@@ -12,6 +12,8 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.prefs.InMemorySecureStorage
+import com.dezzy.app.core.storage.CacheCleaner
+import com.dezzy.app.core.storage.DesktopCacheCleaner
 import com.dezzy.app.core.prefs.SecureStorage
 import com.dezzy.app.source.stream.StreamEngine
 import com.dezzy.app.source.stream.UnavailableStreamEngine
@@ -26,6 +28,7 @@ actual val platformModule = module {
     }
     single<SecureStorage> { InMemorySecureStorage() }
     single<StreamEngine> { UnavailableStreamEngine() }
+    single<CacheCleaner> { DesktopCacheCleaner() }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create { File(System.getProperty("user.home"), ".dezzy-app/dezzy.preferences_pb") }
     }

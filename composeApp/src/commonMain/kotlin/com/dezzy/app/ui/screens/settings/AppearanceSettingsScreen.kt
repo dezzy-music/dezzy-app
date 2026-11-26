@@ -1,0 +1,448 @@
+/*
+ * Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+ * Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+ */
+
+package com.dezzy.app.ui.screens.settings
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Gradient
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.LinearScale
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Swipe
+import androidx.compose.material.icons.rounded.TextFields
+import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.dezzy.app.ui.player.kit.BlurRadiusKey
+import com.dezzy.app.ui.player.kit.DisableBlurKey
+import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
+import com.dezzy.app.ui.player.kit.PlayerBackgroundStyleKey
+import com.dezzy.app.ui.player.kit.PlayerDesignStyle
+import com.dezzy.app.ui.player.kit.PlayerDesignStyleKey
+import com.dezzy.app.ui.player.kit.ShowCodecOnPlayerKey
+import com.dezzy.app.ui.player.kit.SliderStyle
+import com.dezzy.app.ui.player.kit.SliderStyleKey
+import com.dezzy.app.ui.player.kit.StyledPlaybackSlider
+import com.dezzy.app.ui.player.kit.VisualizerStyleKey
+import com.dezzy.app.ui.player.kit.VisualizerSwipeKey
+import com.dezzy.app.ui.player.kit.label
+import com.dezzy.app.ui.player.kit.rememberEnumPreference
+import com.dezzy.app.ui.player.kit.rememberPreference
+import com.dezzy.app.ui.player.styles.PlayerStyleCoverflowSelector
+import com.dezzy.app.ui.player.styles.VisualizerCarousel
+import com.dezzy.app.ui.player.styles.VisualizerStyle
+import com.dezzy.app.ui.screens.ScreenContext
+import com.dezzy.app.ui.theme.AppInterfaceTheme
+import com.dezzy.app.ui.theme.LiquidGlassIntensity
+import kotlinx.coroutines.launch
+
+/** Estilos del reproductor que dibujan su propio fondo fijo: no admiten «Fondo del reproductor». */
+private val StandaloneBackgroundStyles = setOf(
+    PlayerDesignStyle.V7,
+    PlayerDesignStyle.IPOD,
+    PlayerDesignStyle.SPOTIFY,
+    PlayerDesignStyle.CAR,
+    PlayerDesignStyle.APPLE_MUSIC,
+    PlayerDesignStyle.LIVE_MESH,
+    PlayerDesignStyle.AURORA,
+    PlayerDesignStyle.V1,
+)
+
+@Composable
+internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
+    val prefs = ctx.prefs
+    val scope = ctx.scope
+
+    val themeMode by prefs.themeMode.collectAsState("dark")
+    val pureBlack by prefs.pureBlack.collectAsState(false)
+    val dynamicColor by prefs.dynamicColor.collectAsState(false)
+    val interfaceThemeName by prefs.interfaceTheme.collectAsState("NORMAL")
+    val glassIntensityName by prefs.glassIntensity.collectAsState("PURE")
+    val interfaceTheme = AppInterfaceTheme.entries.firstOrNull { it.name == interfaceThemeName } ?: AppInterfaceTheme.NORMAL
+    val glassIntensity = LiquidGlassIntensity.entries.firstOrNull { it.name == glassIntensityName } ?: LiquidGlassIntensity.PURE
+
+    var playerStyle by rememberEnumPreference(PlayerDesignStyleKey, PlayerDesignStyle.V1)
+    var playerBackground by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
+    var sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.Standard)
+    var disableBlur by rememberPreference(DisableBlurKey, false)
+    var blurRadius by rememberPreference(BlurRadiusKey, 36f)
+    var showCodec by rememberPreference(ShowCodecOnPlayerKey, true)
+    var visualizerName by rememberPreference(VisualizerStyleKey, VisualizerStyle.ESFERA.name)
+    var visualizerSwipe by rememberPreference(VisualizerSwipeKey, true)
+
+    var showStyleSelector by remember { mutableStateOf(false) }
+
+    SettingsPage(title = "Apariencia", onBack = { ctx.navigator.back() }) {
+        item(key = "theme_card") {
+            AppThemeSelectorCard(
+                selectedTheme = interfaceTheme,
+                onSelectTheme = { scope.launch { prefs.setInterfaceTheme(it.name) } },
+                intensity = glassIntensity,
+                onSelectIntensity = { scope.launch { prefs.setGlassIntensity(it.name) } },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+        }
+
+        item(key = "colors") {
+            SettingsGroup(label = "Colores") {
+                SettingsChoiceRow(
+                    title = "Tema",
+                    icon = Icons.Rounded.DarkMode,
+                    options = listOf("system", "light", "dark"),
+                    selected = themeMode,
+                    label = {
+                        when (it) {
+                            "system" -> "Tema del sistema"
+                            "light" -> "Tema claro"
+                            else -> "Tema oscuro"
+                        }
+                    },
+                    onSelect = { scope.launch { prefs.setThemeMode(it) } },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Fondo negro puro",
+                    subtitle = "Ahorra batería en pantallas OLED",
+                    icon = Icons.Rounded.Contrast,
+                    checked = pureBlack,
+                    onCheckedChange = { scope.launch { prefs.setPureBlack(it) } },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Color dinámico",
+                    subtitle = "Usa los colores de tu fondo de pantalla",
+                    icon = Icons.Rounded.Palette,
+                    checked = dynamicColor,
+                    onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
+                )
+                SettingsDivider()
+                SettingsPendingRow(
+                    title = "Icono de la app",
+                    phase = "10",
+                    ctx = ctx,
+                    subtitle = "Forma y colores del icono, en la app y en el launcher",
+                    icon = Icons.Rounded.Apps,
+                )
+                SettingsDivider()
+                SettingsPendingRow(title = "Fuente de la app", phase = "10", ctx = ctx, icon = Icons.Rounded.TextFields)
+            }
+        }
+
+        item(key = "player") {
+            SettingsGroup(label = "Reproductor") {
+                SettingsRow(
+                    title = "Estilo del reproductor",
+                    subtitle = playerStyle.label(),
+                    icon = Icons.Rounded.PlayCircle,
+                    onClick = { showStyleSelector = true },
+                )
+                if (playerStyle !in StandaloneBackgroundStyles) {
+                    SettingsDivider()
+                    SettingsChoiceRow(
+                        title = "Fondo del reproductor",
+                        icon = Icons.Rounded.Gradient,
+                        options = PlayerBackgroundStyle.entries.toList(),
+                        selected = playerBackground,
+                        label = {
+                            when (it) {
+                                PlayerBackgroundStyle.DEFAULT -> "Seguir el tema"
+                                PlayerBackgroundStyle.GRADIENT -> "Degradado"
+                                PlayerBackgroundStyle.GLOW -> "Resplandor"
+                                PlayerBackgroundStyle.COLORING -> "Coloreado"
+                                PlayerBackgroundStyle.CUSTOM -> "Personalizado"
+                            }
+                        },
+                        onSelect = { playerBackground = it },
+                    )
+                    if (playerBackground == PlayerBackgroundStyle.CUSTOM) {
+                        SettingsDivider()
+                        SettingsPendingRow(title = "Fondo personalizado", phase = "10", ctx = ctx, icon = Icons.Rounded.Image)
+                    }
+                }
+                SettingsDivider()
+                SettingsPendingRow(title = "Fondo del minirreproductor", phase = "10", ctx = ctx, icon = Icons.Rounded.Gradient)
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Desactivar el desenfoque",
+                    subtitle = "Quita los desenfoques de fondo para ir más fluido",
+                    icon = Icons.Rounded.BlurOn,
+                    checked = disableBlur,
+                    onCheckedChange = { disableBlur = it },
+                )
+                SettingsDivider()
+                SettingsSliderRow(
+                    title = "Radio del desenfoque",
+                    icon = Icons.Rounded.BlurOn,
+                    value = blurRadius,
+                    valueRange = 0f..100f,
+                    steps = 19,
+                    valueLabel = { it.toInt().toString() },
+                    onValueChangeFinished = { blurRadius = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Mostrar el códec en el reproductor",
+                    subtitle = "Formato y calidad de la canción que suena",
+                    icon = Icons.Rounded.GraphicEq,
+                    checked = showCodec,
+                    onCheckedChange = { showCodec = it },
+                )
+                SettingsDivider()
+                SettingsPendingRow(title = "Canvas de la canción", phase = "7", ctx = ctx, icon = Icons.Rounded.Videocam)
+                SettingsDivider()
+                SettingsPendingRow(title = "Canvas del artista", phase = "7", ctx = ctx, icon = Icons.Rounded.Videocam)
+            }
+        }
+
+        item(key = "slider") {
+            SettingsGroup(label = "Estilo de la barra de progreso") {
+                SettingsRow(
+                    title = "Estilo de la barra de progreso",
+                    subtitle = sliderStyleLabel(sliderStyle),
+                    icon = Icons.Rounded.LinearScale,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
+                ) {
+                    SliderStyle.entries.forEach { style ->
+                        SliderStyleCard(
+                            sliderStyle = style,
+                            selected = style == sliderStyle,
+                            onClick = { sliderStyle = style },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "visualizer") {
+            SettingsGroup(label = "Visualizador") {
+                VisualizerCarousel(
+                    selected = VisualizerStyle.entries.firstOrNull { it.name == visualizerName } ?: VisualizerStyle.ESFERA,
+                    onSelect = { visualizerName = it.name },
+                    modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Deslizar para cambiar",
+                    subtitle = "En la pantalla del visualizador",
+                    icon = Icons.Rounded.Swipe,
+                    checked = visualizerSwipe,
+                    onCheckedChange = { visualizerSwipe = it },
+                )
+            }
+        }
+
+        item(key = "wallpapers") {
+            SettingsGroup(label = "Fondos de pantalla") {
+                SettingsPendingRow(title = "Fondo de imagen", phase = "10", ctx = ctx, icon = Icons.Rounded.Image)
+                SettingsDivider()
+                SettingsPendingRow(title = "Fondo de vídeo", phase = "10", ctx = ctx, icon = Icons.Rounded.Videocam)
+            }
+        }
+    }
+
+    if (showStyleSelector) {
+        Dialog(
+            onDismissRequest = { showStyleSelector = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showStyleSelector = false }) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver")
+                        }
+                        Text(
+                            "Estilo del reproductor",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    PlayerStyleCoverflowSelector(
+                        selectedStyle = playerStyle,
+                        onApplyStyle = {
+                            playerStyle = it
+                            showStyleSelector = false
+                        },
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun sliderStyleLabel(style: SliderStyle): String = when (style) {
+    SliderStyle.Standard -> "Estándar"
+    SliderStyle.Wavy -> "Ondulado"
+    SliderStyle.Slim -> "Fino"
+}
+
+/** Tarjeta de un estilo de barra de progreso con vista previa animada. */
+@Composable
+private fun SliderStyleCard(
+    sliderStyle: SliderStyle,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Vista previa que se mueve sola para que cada estilo se vea «vivo».
+    val infiniteTransition = rememberInfiniteTransition(label = "sliderPreview")
+    val animatedValue by infiniteTransition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.88f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "sliderPreviewValue",
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.03f else 1f,
+        animationSpec = tween(220),
+        label = "cardScale",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+        animationSpec = tween(220),
+        label = "cardBorder",
+    )
+    val borderWidth = if (selected) 2.dp else 1.dp
+
+    val containerBrush = if (selected) {
+        Brush.verticalGradient(
+            listOf(
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
+        )
+    } else {
+        Brush.verticalGradient(
+            listOf(
+                MaterialTheme.colorScheme.surfaceContainerHigh,
+                MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .height(96.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(20.dp))
+            .background(containerBrush)
+            .border(borderWidth, borderColor, RoundedCornerShape(20.dp))
+            .padding(14.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            StyledPlaybackSlider(
+                sliderStyle = sliderStyle,
+                value = animatedValue,
+                valueRange = 0f..1f,
+                onValueChange = {},
+                onValueChangeFinished = {},
+                activeColor = MaterialTheme.colorScheme.primary,
+                isPlaying = true,
+                songKey = "slider-preview",
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
+
+            Text(
+                text = sliderStyleLabel(sliderStyle),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // Capa transparente: un toque en cualquier punto elige la tarjeta, aunque la vista previa
+        // (no interactiva) se lo tragaría.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick),
+        )
+
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}

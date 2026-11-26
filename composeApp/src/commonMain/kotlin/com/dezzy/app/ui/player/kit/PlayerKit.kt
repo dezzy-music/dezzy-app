@@ -16,6 +16,7 @@ import com.dezzy.app.feature.player.RepeatMode
 import com.dezzy.app.source.youtube.YouTubeMusicClient
 import com.dezzy.app.ui.navigation.Navigator
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.navigation.Tab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -283,6 +284,12 @@ class NavController(
             route.startsWith("online_playlist/") || route.startsWith("playlist/") -> go(Screen.Playlist(id))
             route.startsWith("search/") -> go(Screen.Search(id))
             route == "settings/music_together" -> { sheet.collapseSoft(); navigator.select(Tab.TOGETHER) }
+            route == "settings" -> go(Screen.Settings(SettingsPage.MAIN))
+            route == "settings/appearance" -> go(Screen.Settings(SettingsPage.APPEARANCE))
+            route == "settings/player" -> go(Screen.Settings(SettingsPage.PLAYER))
+            route == "settings/privacy" -> go(Screen.Settings(SettingsPage.PRIVACY))
+            route == "settings/storage" -> go(Screen.Settings(SettingsPage.STORAGE))
+            route == "settings/about" -> go(Screen.Settings(SettingsPage.ABOUT))
             route == "dj_dezzy" -> go(Screen.Pending("DJ Dezzy", "10"))
             route.startsWith("songdna/") -> go(Screen.Pending("Song DNA", "10"))
             else -> go(Screen.Pending(route, "posterior"))

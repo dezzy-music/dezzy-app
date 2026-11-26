@@ -12,6 +12,8 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.prefs.KeystoreSecureStorage
+import com.dezzy.app.core.storage.AndroidCacheCleaner
+import com.dezzy.app.core.storage.CacheCleaner
 import com.dezzy.app.core.prefs.SecureStorage
 import com.dezzy.app.source.stream.StreamEngine
 import com.dezzy.app.source.stream.WebViewStreamEngine
@@ -25,6 +27,7 @@ actual val platformModule = module {
     single<SqlDriver> { AndroidSqliteDriver(DezzyDatabase.Schema, androidContext(), "dezzy.db") }
     single<SecureStorage> { KeystoreSecureStorage(androidContext()) }
     single<StreamEngine> { WebViewStreamEngine(androidContext()) }
+    single<CacheCleaner> { AndroidCacheCleaner(androidContext()) }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create { androidContext().filesDir.resolve("datastore/dezzy.preferences_pb") }
     }

@@ -65,6 +65,24 @@ object MusicVideoCache {
         }
     }
 
+    private fun directory(context: Context) = context.applicationContext.filesDir.resolve(DIRECTORY)
+
+    /** Tamaño ocupado por la caché de vídeo, esté abierta o no. */
+    fun sizeBytes(context: Context): Long =
+        cache?.cacheSpace ?: directory(context).walkTopDown().filter { it.isFile }.sumOf { it.length() }
+
+    /** Vacía la caché de vídeo (si está abierta, por su API; si no, borrando la carpeta). */
+    fun clear(context: Context) {
+        val open = cache
+        if (open != null) {
+            runCatching {
+                open.keys.toList().forEach { key -> runCatching { open.removeResource(key) } }
+            }
+        } else {
+            directory(context).deleteRecursively()
+        }
+    }
+
     /** Fuente de datos del reproductor de vídeo: red (cliente propio) + caché de vídeo. */
     fun dataSourceFactory(context: Context): DataSource.Factory {
         val upstream = DefaultDataSource.Factory(

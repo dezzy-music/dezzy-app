@@ -23,6 +23,13 @@ import com.dezzy.app.feature.player.PlayerController
 import com.dezzy.app.source.youtube.YouTubeMusicClient
 import com.dezzy.app.ui.navigation.Navigator
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
+import com.dezzy.app.ui.screens.settings.AboutScreen
+import com.dezzy.app.ui.screens.settings.AppearanceSettingsScreen
+import com.dezzy.app.ui.screens.settings.PlayerSettingsScreen
+import com.dezzy.app.ui.screens.settings.PrivacySettingsScreen
+import com.dezzy.app.ui.screens.settings.SettingsScreen
+import com.dezzy.app.ui.screens.settings.StorageSettingsScreen
 import com.dezzy.app.ui.navigation.Tab
 import org.koin.compose.koinInject
 
@@ -56,6 +63,14 @@ fun TabContent(
         Screen.MoodsAndGenres -> MoodsAndGenresScreen(ctx)
         is Screen.Browse -> BrowseScreen(top, ctx)
         is Screen.Pending -> PendingScreen(top, ctx)
+        is Screen.Settings -> when (top.page) {
+            SettingsPage.MAIN -> SettingsScreen(ctx)
+            SettingsPage.APPEARANCE -> AppearanceSettingsScreen(ctx)
+            SettingsPage.PLAYER -> PlayerSettingsScreen(ctx)
+            SettingsPage.PRIVACY -> PrivacySettingsScreen(ctx)
+            SettingsPage.STORAGE -> StorageSettingsScreen(ctx)
+            SettingsPage.ABOUT -> AboutScreen(ctx)
+        }
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")

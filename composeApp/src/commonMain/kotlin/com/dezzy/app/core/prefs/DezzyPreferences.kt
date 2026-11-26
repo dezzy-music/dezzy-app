@@ -31,6 +31,16 @@ class DezzyPreferences(
         val KEY_PINNED_PLAYLIST_1 = stringPreferencesKey("pinnedPlaylist1")
         val KEY_PINNED_PLAYLIST_2 = stringPreferencesKey("pinnedPlaylist2")
         val KEY_DJ_NAME = stringPreferencesKey("djName")
+        val KEY_PAUSE_HISTORY = booleanPreferencesKey("pause_history")
+    }
+
+    /** Si está activo, lo que se escucha no se guarda en el historial. */
+    val pauseHistory: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_PAUSE_HISTORY] ?: false
+    }
+
+    suspend fun setPauseHistory(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_PAUSE_HISTORY] = enabled }
     }
 
     /** Estilo de interfaz: NORMAL, LIQUID_GLASS o NOTHING. */

@@ -46,7 +46,11 @@ sealed interface Screen {
     data class Browse(val title: String, val browseId: String, val params: String?) : Screen
     /** Función que llega en una fase posterior de la migración. */
     data class Pending(val title: String, val phase: String) : Screen
+    /** Ajustes (página principal o una subpágina). */
+    data class Settings(val page: SettingsPage = SettingsPage.MAIN) : Screen
 }
+
+enum class SettingsPage { MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT }
 
 /**
  * Navegación propia y sencilla: cada pestaña guarda su pila, volver a tocar la pestaña activa
