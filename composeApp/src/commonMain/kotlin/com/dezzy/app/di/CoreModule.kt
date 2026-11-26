@@ -10,6 +10,7 @@ import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.net.HttpClientFactory
 import com.dezzy.app.core.database.SqlStreamCache
+import com.dezzy.app.core.prefs.DezzyPreferences
 import com.dezzy.app.source.stream.HttpStreamProbe
 import com.dezzy.app.source.stream.StreamUrlResolver
 import com.dezzy.app.source.youtube.YouTubeMusicClient
@@ -21,5 +22,6 @@ val coreModule: Module = module {
     single { DezzyDatabase(get()) }
     single<MusicRepository> { SqlMusicRepository(get()) }
     single { YouTubeMusicClient(get()) }
+    single { DezzyPreferences(get()) }
     single { StreamUrlResolver(engine = get(), probe = HttpStreamProbe(get()), cache = SqlStreamCache(get())) }
 }

@@ -67,6 +67,23 @@ CREATE TABLE stream_cache (
     PRIMARY KEY (video_id, quality)
 );
 
+-- Tiempo escuchado (fase 4): tramos de al menos 5 s, como mucho 3600 por fila.
+-- Sin clave foránea a track: una fila huérfana no debe tumbar las estadísticas.
+CREATE TABLE listen_event (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    seconds INTEGER NOT NULL
+);
+
+CREATE INDEX listen_event_started_at ON listen_event(started_at);
+
+-- Valores sueltos (p. ej. la cola guardada del reproductor, en JSON).
+CREATE TABLE kv (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 -- track ----------------------------------------------------------------
 
 -- Android 6.0 trae SQLite 3.8: sin «ON CONFLICT DO UPDATE». Se hace en dos
@@ -181,3 +198,22 @@ DELETE FROM stream_cache WHERE expires_at < ?;
 
 clearStreams:
 DELETE FROM stream_cache;
+
+-- tiempo escuchado -----------------------------------------------------
+
+addListen:
+INSERT INTO listen_event(video_id, started_at, seconds) VALUES (?, ?, ?);
+
+listenSecondsBetween:
+SELECT coalesce(sum(seconds), 0) FROM listen_event WHERE started_at >= ? AND started_at < ?;
+
+-- kv -------------------------------------------------------------------
+
+putKv:
+INSERT OR REPLACE INTO kv(key, value) VALUES (?, ?);
+
+getKv:
+SELECT value FROM kv WHERE key = ?;
+
+deleteKv:
+DELETE FROM kv WHERE key = ?;

@@ -68,6 +68,9 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqldelight.android.driver)
                 implementation(libs.koin.android)
+                implementation(libs.media3.exoplayer)
+                implementation(libs.media3.session)
+                implementation(libs.media3.datasource.okhttp)
             }
         }
         val desktopTest by getting {

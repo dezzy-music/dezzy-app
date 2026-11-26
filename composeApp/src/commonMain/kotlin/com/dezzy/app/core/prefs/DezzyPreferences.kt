@@ -23,6 +23,25 @@ class DezzyPreferences(
         val KEY_CROSSFADE_SECONDS = intPreferencesKey("crossfade_seconds")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_PERSISTENT_QUEUE = booleanPreferencesKey("persistent_queue")
+        val KEY_AUTO_SKIP = booleanPreferencesKey("auto_skip")
+    }
+
+    /** Guardar la cola al cerrar y recuperarla al abrir (activado por defecto). */
+    val persistentQueue: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_PERSISTENT_QUEUE] ?: true
+    }
+
+    suspend fun setPersistentQueue(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_PERSISTENT_QUEUE] = enabled }
+    }
+
+    /** Si una canción no se puede reproducir, pasar a la siguiente (activado por defecto). */
+    val autoSkip: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_AUTO_SKIP] ?: true
+    }
+
+    suspend fun setAutoSkip(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_AUTO_SKIP] = enabled }
     }
 
     val audioQuality: Flow<String> = dataStore.data.map { prefs ->

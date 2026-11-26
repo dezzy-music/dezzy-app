@@ -5,6 +5,9 @@
 
 package com.dezzy.app.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.dezzy.app.core.database.db.DezzyDatabase
@@ -23,4 +26,7 @@ actual val platformModule = module {
     }
     single<SecureStorage> { InMemorySecureStorage() }
     single<StreamEngine> { UnavailableStreamEngine() }
+    single<DataStore<Preferences>> {
+        PreferenceDataStoreFactory.create { File(System.getProperty("user.home"), ".dezzy-app/dezzy.preferences_pb") }
+    }
 }
