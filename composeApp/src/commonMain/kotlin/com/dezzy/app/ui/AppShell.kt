@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
@@ -44,7 +45,17 @@ import com.dezzy.app.source.youtube.YouTubeMusicClient
 import com.dezzy.app.ui.navigation.Navigator
 import com.dezzy.app.ui.navigation.PlatformBackHandler
 import com.dezzy.app.ui.navigation.Tab
-import com.dezzy.app.ui.player.ExpandedPlayer
+import com.dezzy.app.core.database.MusicRepository
+import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.player.PlayerRouter
+import com.dezzy.app.ui.player.kit.BottomSheetState
+import com.dezzy.app.ui.player.kit.LocalPlayerConnection
+import com.dezzy.app.ui.player.kit.NavController
+import com.dezzy.app.ui.player.kit.PlayerConnection
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import com.dezzy.app.ui.player.MiniPlayer
 import com.dezzy.app.ui.screens.TabContent
 
@@ -59,10 +70,29 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val snackbar = remember { SnackbarHostState() }
+    val repository: MusicRepository = koinInject()
+    val scope = rememberCoroutineScope()
+    val toast: (String) -> Unit = remember(snackbar, scope) {
+        { message ->
+            scope.launch {
+                snackbar.currentSnackbarData?.dismiss()
+                snackbar.showSnackbar(message)
+            }
+        }
+    }
+    val connection = remember(player, client, repository) {
+        PlayerConnection(player, repository, client, scope, toast) { title, phase ->
+            expanded = false
+            navigator.push(Screen.Pending(title, phase))
+        }
+    }
+    val sheet = remember { BottomSheetState { expanded = false } }
+    val navController = remember(navigator, client) { NavController(navigator, client, scope, sheet, toast) }
 
     PlatformBackHandler(enabled = expanded) { expanded = false }
     PlatformBackHandler(enabled = !expanded && navigator.canGoBack) { navigator.back() }
 
+    CompositionLocalProvider(LocalPlayerConnection provides connection) {
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.surface)) {
         val wide = maxWidth >= 600.dp
         Row(Modifier.fillMaxSize()) {
@@ -107,7 +137,9 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
         ) {
-            ExpandedPlayer(state, player, onCollapse = { expanded = false })
+            PlayerRouter(connection, state, sheet, navController)
         }
+        if (expanded) SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+    }
     }
 }

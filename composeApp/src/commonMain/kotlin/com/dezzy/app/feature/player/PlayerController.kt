@@ -23,6 +23,8 @@ data class PlaybackState(
     val sleepAtMillis: Long? = null,
     /** Pausar al acabar la canción actual. */
     val sleepAtEndOfSong: Boolean = false,
+    /** Volumen elegido por quien escucha (0–1), aparte de la normalización y el fundido. */
+    val volume: Float = 1f,
 )
 
 /** Mando del reproductor. Todas las llamadas desde el hilo principal. */
@@ -50,6 +52,12 @@ interface PlayerController {
     /** Pausa dentro de [minutes] minutos; null lo quita. */
     fun setSleepTimer(minutes: Int?)
     fun setSleepAtEndOfSong(enabled: Boolean)
+
+    /** Volumen de la app entre 0 y 1. */
+    fun setVolume(volume: Float)
+
+    /** Sesión de audio del motor (para el espectro de los visualizadores); 0 si no hay. */
+    val audioSessionId: Int get() = 0
 }
 
 /** Cuentas del reproductor, aparte para poder probarlas. Iguales que en Dezzy Desktop. */

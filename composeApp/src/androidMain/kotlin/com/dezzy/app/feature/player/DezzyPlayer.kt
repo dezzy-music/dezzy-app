@@ -85,6 +85,15 @@ class DezzyPlayer(
     private var normGain = 1f
     private var fadeGain = 1f
     private var appliedVolume = -1f
+    private var userVolume = 1f
+
+    override val audioSessionId: Int get() = exo?.audioSessionId ?: 0
+
+    override fun setVolume(volume: Float) {
+        userVolume = volume.coerceIn(0f, 1f)
+        _state.update { it.copy(volume = userVolume) }
+        applyVolume()
+    }
 
     // Carga en curso ------------------------------------------------------------
     private var loadToken = 0
@@ -434,7 +443,7 @@ class DezzyPlayer(
 
     private fun applyVolume() {
         val player = exo ?: return
-        val level = min(1f, if (normalize) normGain else 1f) * fadeGain
+        val level = min(1f, if (normalize) normGain else 1f) * fadeGain * userVolume
         if (abs(level - appliedVolume) > 0.001f) {
             appliedVolume = level
             player.volume = level

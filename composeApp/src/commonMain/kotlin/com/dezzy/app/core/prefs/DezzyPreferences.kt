@@ -139,4 +139,11 @@ class DezzyPreferences(
 
     /** Nombre propio del DJ («DJ <nombre>»); vacío = «DJ Dezzy». */
     val djName: Flow<String> = dataStore.data.map { prefs -> prefs[KEY_DJ_NAME] ?: "" }
+
+    /** Lectura genérica para los ajustes de cada estilo de reproductor. */
+    fun <T> value(key: Preferences.Key<T>, default: T): Flow<T> = dataStore.data.map { prefs -> prefs[key] ?: default }
+
+    suspend fun <T> set(key: Preferences.Key<T>, value: T) {
+        dataStore.edit { prefs -> prefs[key] = value }
+    }
 }
