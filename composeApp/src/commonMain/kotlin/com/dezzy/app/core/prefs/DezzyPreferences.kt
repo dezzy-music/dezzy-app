@@ -24,6 +24,46 @@ class DezzyPreferences(
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_PERSISTENT_QUEUE = booleanPreferencesKey("persistent_queue")
         val KEY_AUTO_SKIP = booleanPreferencesKey("auto_skip")
+        val KEY_INTERFACE_THEME = stringPreferencesKey("appInterfaceTheme")
+        val KEY_GLASS_INTENSITY = stringPreferencesKey("liquidGlassIntensity")
+        val KEY_PURE_BLACK = booleanPreferencesKey("pure_black")
+        val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+    }
+
+    /** Estilo de interfaz: NORMAL, LIQUID_GLASS o NOTHING. */
+    val interfaceTheme: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_INTERFACE_THEME] ?: "NORMAL"
+    }
+
+    suspend fun setInterfaceTheme(value: String) {
+        dataStore.edit { prefs -> prefs[KEY_INTERFACE_THEME] = value }
+    }
+
+    /** Intensidad del cristal líquido: SUBTLE, PURE o INTENSE. */
+    val glassIntensity: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEY_GLASS_INTENSITY] ?: "PURE"
+    }
+
+    suspend fun setGlassIntensity(value: String) {
+        dataStore.edit { prefs -> prefs[KEY_GLASS_INTENSITY] = value }
+    }
+
+    /** Negro puro (OLED) en modo oscuro. */
+    val pureBlack: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_PURE_BLACK] ?: false
+    }
+
+    suspend fun setPureBlack(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_PURE_BLACK] = enabled }
+    }
+
+    /** Colores dinámicos del sistema (Material You). */
+    val dynamicColor: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_DYNAMIC_COLOR] ?: false
+    }
+
+    suspend fun setDynamicColor(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_DYNAMIC_COLOR] = enabled }
     }
 
     /** Guardar la cola al cerrar y recuperarla al abrir (activado por defecto). */
