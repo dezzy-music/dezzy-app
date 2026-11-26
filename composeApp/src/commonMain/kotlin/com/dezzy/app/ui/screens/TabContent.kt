@@ -41,6 +41,10 @@ import com.dezzy.app.ui.screens.settings.StorageSettingsScreen
 import com.dezzy.app.ui.screens.settings.YouTubeLoginScreen
 import com.dezzy.app.ui.navigation.Tab
 import org.koin.compose.koinInject
+import com.dezzy.app.ui.screens.downloads.DownloadsScreen
+import com.dezzy.app.ui.screens.lossless.LosslessScreen
+import com.dezzy.app.ui.screens.lossless.LosslessDownloadsScreen
+import com.dezzy.app.ui.screens.settings.LosslessSettingsScreen
 
 /** Contenido de la pestaña activa o de la pantalla apilada encima. */
 @Composable
@@ -88,8 +92,12 @@ fun TabContent(
             SettingsPage.SCROBBLING -> ScrobbleSettingsScreen(ctx)
             SettingsPage.DISCORD -> DiscordSettingsScreen(ctx)
             SettingsPage.LYRICS -> LyricsSettingsScreen(ctx)
+            SettingsPage.LOSSLESS -> LosslessSettingsScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
+        Screen.Downloads -> DownloadsScreen(ctx)
+        Screen.Lossless -> LosslessScreen(ctx)
+        Screen.LosslessDownloads -> LosslessDownloadsScreen(ctx)
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")

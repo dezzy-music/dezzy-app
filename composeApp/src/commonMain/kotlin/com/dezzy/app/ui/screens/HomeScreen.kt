@@ -577,7 +577,7 @@ private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
             MenuRow(Icons.Rounded.NewReleases, "Novedades y Lanzamientos") { go { ctx.pending("Novedades y lanzamientos", "10") } }
             MenuRow(Icons.Rounded.History, "Historial de Reproducción") { go { ctx.navigator.push(Screen.History) } }
             MenuRow(Icons.Rounded.BarChart, "Estadísticas de Escucha") { go { ctx.pending("Estadísticas", "10") } }
-            MenuRow(Icons.Rounded.Download, "Mis Descargas") { go { ctx.pending("Descargas", "8") } }
+            MenuRow(Icons.Rounded.Download, "Mis Descargas") { go { ctx.navigator.push(Screen.Downloads) } }
             MenuGroup("Descubrimiento y Más")
             MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy AI") { go { ctx.pending("DJ Dezzy", "10") } }
             MenuRow(Icons.Rounded.Groups, "Escuchar Juntos") { go { ctx.navigator.select(Tab.TOGETHER) } }

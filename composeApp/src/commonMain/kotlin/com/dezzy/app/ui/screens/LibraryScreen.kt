@@ -74,6 +74,7 @@ import com.dezzy.app.ui.components.TrackRow
 import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.screens.downloads.DownloadAllButton
 import com.dezzy.app.ui.navigation.SettingsPage
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -111,7 +112,7 @@ fun LibraryScreen(ctx: ScreenContext) {
     val pills = listOf(
         LibraryPill("Me gusta", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
         LibraryPill("Historial", Icons.Rounded.History, colors.secondaryContainer, colors.onSecondaryContainer) { ctx.navigator.push(Screen.History) },
-        LibraryPill("Descargas", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.pending("Descargas", "8") },
+        LibraryPill("Descargas", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
         LibraryPill("Estadísticas", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.pending("Estadísticas", "10") },
     )
 
@@ -363,6 +364,7 @@ fun LikedScreen(ctx: ScreenContext) {
                 onBack = { ctx.navigator.back() },
                 onPlay = list?.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l, 0, "liked") } },
                 onShuffle = list?.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l.shuffled(), 0, "liked") } },
+                extraActions = list?.takeIf { it.isNotEmpty() }?.let { l -> { DownloadAllButton(l, ctx) } },
                 thumbnailContent = {
                     Box(
                         Modifier.size(200.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.primaryContainer),
@@ -449,6 +451,7 @@ fun LocalPlaylistScreen(id: String, ctx: ScreenContext) {
                         onBack = { ctx.navigator.back() },
                         onPlay = tracks.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l, 0, "playlist:${p.id}") } },
                         onShuffle = tracks.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l.shuffled(), 0, "playlist:${p.id}") } },
+                        extraActions = tracks.takeIf { it.isNotEmpty() }?.let { l -> { DownloadAllButton(l, ctx) } },
                     )
                 }
                 if (tracks.isEmpty()) {

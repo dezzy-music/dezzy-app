@@ -50,12 +50,17 @@ sealed interface Screen {
     data class Settings(val page: SettingsPage = SettingsPage.MAIN) : Screen
     /** Listas de YouTube Music de la cuenta con sesión. */
     data object AccountPlaylists : Screen
+    /** Descargas (fase 8). */
+    data object Downloads : Screen
+    /** Buscador lossless (Deezer vía el resolver del usuario). */
+    data object Lossless : Screen
+    data object LosslessDownloads : Screen
 }
 
 enum class SettingsPage {
     MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT,
     ACCOUNTS, CONTENT, YOUTUBE_LOGIN, SPOTIFY, SPOTIFY_LOGIN, SPOTIFY_IMPORT,
-    SCROBBLING, DISCORD, LYRICS,
+    SCROBBLING, DISCORD, LYRICS, LOSSLESS,
 }
 
 /**

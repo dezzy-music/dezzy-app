@@ -49,6 +49,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.dezzy.app.feature.downloads.DownloadManager
+import com.dezzy.app.ui.screens.downloads.enqueueSpotifyImports
 import com.dezzy.app.source.spotify.SpotifyClient
 import com.dezzy.app.source.spotify.SpotifyImportState
 import com.dezzy.app.source.spotify.SpotifyImporter
@@ -250,15 +252,19 @@ private fun ColumnScope.ChoosingContent(ctx: ScreenContext, importer: SpotifyImp
     }
 }
 
-/** Lo de descargar sin conexión llega en la fase 8: aviso en lugar de un interruptor que no hace nada. */
+/** Encola para descargar las canciones de las listas de Spotify ya importadas. */
 @Composable
 private fun SettingsPendingRowPlain(ctx: ScreenContext) {
-    Text(
-        "Descargar para escuchar sin conexión: llega en la fase 8.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().clickable { ctx.pending("Descargar para escuchar sin conexión", "8") },
-    )
+    val downloads: DownloadManager = koinInject()
+    TextButton(
+        onClick = {
+            ctx.scope.launch {
+                val n = enqueueSpotifyImports(ctx, downloads)
+                ctx.toast(if (n == 0) "No hay canciones importadas que descargar" else "$n canciones a descargas")
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("Descargar para escuchar sin conexión") }
 }
 
 @Composable

@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.setValue
 import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.model.SessionProvider
+import com.dezzy.app.feature.downloads.DownloadManager
+import com.dezzy.app.ui.screens.downloads.enqueueSpotifyImports
 import com.dezzy.app.source.spotify.SpotifyHomeOnlyKey
 import com.dezzy.app.source.spotify.SpotifyLiveLikeSyncKey
 import com.dezzy.app.source.spotify.SpotifyUseHomeKey
@@ -42,6 +44,7 @@ import org.koin.compose.koinInject
 @Composable
 internal fun SpotifySettingsScreen(ctx: ScreenContext) {
     val accounts: AccountStore = koinInject()
+    val downloads: DownloadManager = koinInject()
     val sessions by accounts.sessions.collectAsState()
     val session = sessions[SessionProvider.SPOTIFY]
     val autoSync by ctx.prefs.spotifyAutoSync.collectAsState(true)
@@ -155,10 +158,16 @@ internal fun SpotifySettingsScreen(ctx: ScreenContext) {
                         onCheckedChange = { liveLikes = it },
                     )
                     SettingsDivider()
-                    SettingsPendingRow(
-                        "Descargar para escuchar sin conexión", "8", ctx,
-                        subtitle = "Descarga el audio de las listas importadas. Llega en la fase 8",
+                    SettingsRow(
+                        title = "Descargar para escuchar sin conexión",
+                        subtitle = "Descarga el audio de las listas importadas",
                         icon = Icons.Rounded.Download,
+                        onClick = {
+                            ctx.scope.launch {
+                                val n = enqueueSpotifyImports(ctx, downloads)
+                                ctx.toast(if (n == 0) "No hay canciones importadas que descargar" else "$n canciones a descargas")
+                            }
+                        },
                     )
                 }
             }

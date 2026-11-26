@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.CastConnected
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Info
@@ -99,6 +100,7 @@ import com.dezzy.app.feature.canvas.CANVAS_SONG_DEFAULT
 import com.dezzy.app.feature.canvas.CanvasLoop
 import com.dezzy.app.feature.canvas.CanvasResolver
 import com.dezzy.app.feature.canvas.CanvasSongEnabledKey
+import com.dezzy.app.feature.downloads.DownloadManager
 import com.dezzy.app.ui.player.canvas.CanvasVideo
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.glass.DezzyIconButton
@@ -592,6 +594,21 @@ fun ColumnScope.PlayerMenu(
     Column(Modifier.padding(horizontal = 20.dp)) {
         SheetRow(Icons.Rounded.Radio, "Iniciar radio", null, onClick = { connection.playQueue(mediaMetadata.track); onDismiss() })
         SheetRow(Icons.AutoMirrored.Rounded.PlaylistAdd, "Añadir a una lista", null, onClick = { addToPlaylist = true })
+        val downloads = koinInject<DownloadManager>()
+        val dlStatus by downloads.status(mediaMetadata.id).collectAsState(null)
+        if (dlStatus != null) {
+            SheetRow(Icons.Rounded.Download, "Quitar descarga", null, onClick = {
+                downloads.remove(mediaMetadata.id)
+                connection.toast("Descarga quitada")
+                onDismiss()
+            })
+        } else {
+            SheetRow(Icons.Rounded.Download, "Descargar", null, onClick = {
+                downloads.enqueue(listOf(mediaMetadata.track))
+                connection.toast("“${mediaMetadata.title}” a descargas")
+                onDismiss()
+            })
+        }
         mediaMetadata.artists.firstOrNull()?.let { artist ->
             SheetRow(Icons.Rounded.Person, "Ir al artista", artist.name, onClick = { onDismiss(); navController.openArtist(artist) })
         }

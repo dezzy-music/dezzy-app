@@ -366,8 +366,11 @@ private fun SearchResults(ctx: ScreenContext, query: String) {
         SearchSourceChips(
             current = source,
             onSelect = {
-                if (it == SearchSourceOption.YOUTUBE) source = it
-                else ctx.toast("Llega en la fase 6")
+                when (it) {
+                    SearchSourceOption.YOUTUBE -> source = it
+                    SearchSourceOption.LOSSLESS -> ctx.navigator.push(Screen.Lossless)
+                    else -> ctx.toast("Llega en la fase 6")
+                }
             },
         )
         LazyColumn(Modifier.fillMaxSize()) {

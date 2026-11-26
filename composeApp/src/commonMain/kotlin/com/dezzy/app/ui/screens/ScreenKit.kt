@@ -199,6 +199,7 @@ fun CollectionHeader(
     onPlay: (() -> Unit)?,
     onShuffle: (() -> Unit)? = null,
     thumbnailContent: (@Composable () -> Unit)? = null,
+    extraActions: (@Composable () -> Unit)? = null,
 ) {
     Column {
         TopSpacer()
@@ -227,6 +228,10 @@ fun CollectionHeader(
                         }
                     }
                 }
+            }
+            if (extraActions != null) {
+                Spacer(Modifier.height(8.dp))
+                extraActions()
             }
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
@@ -28,6 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +41,9 @@ import androidx.compose.ui.unit.dp
 import com.dezzy.app.core.model.MusicItem
 import com.dezzy.app.core.model.MusicItemType
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.feature.downloads.DownloadManager
+import com.dezzy.app.feature.downloads.DownloadStatus
+import org.koin.compose.koinInject
 
 /** «m:ss» o «h:mm:ss». */
 fun formatClock(totalSeconds: Long): String {
@@ -115,8 +122,19 @@ fun TrackRow(
                 track.artists.ifBlank { null },
                 track.durationSeconds?.takeIf { it > 0 }?.let(::formatClock),
             ).joinToString(" · ")
-            if (meta.isNotEmpty()) {
-                Text(meta, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val downloaded = track.videoId?.let { id ->
+                val manager = koinInject<DownloadManager>()
+                val status by remember(id) { manager.status(id) }.collectAsState(null)
+                status == DownloadStatus.DONE
+            } == true
+            if (meta.isNotEmpty() || downloaded) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (downloaded) {
+                        Icon(Icons.Rounded.DownloadDone, "Descargada", Modifier.size(14.dp), tint = colors.primary)
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(meta, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
         if (onMore != null) {

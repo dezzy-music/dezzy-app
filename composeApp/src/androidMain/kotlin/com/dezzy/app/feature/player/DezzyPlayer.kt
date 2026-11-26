@@ -28,6 +28,12 @@ import com.dezzy.app.core.model.QueueItem
 import com.dezzy.app.core.model.Track
 import com.dezzy.app.core.net.HttpClientFactory
 import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.feature.downloads.DownloadManager
+import com.dezzy.app.feature.downloads.MOBILE_DATA_QUALITY_DEFAULT
+import com.dezzy.app.feature.downloads.MobileDataQualityKey
+import com.dezzy.app.feature.downloads.audioQualityOf
+import com.dezzy.app.feature.downloads.isMeteredNetwork
+import com.dezzy.app.feature.lossless.LosslessClient
 import com.dezzy.app.feature.video.AndroidVideoMode
 import com.dezzy.app.feature.video.MusicVideoDownloader
 import com.dezzy.app.feature.video.MusicVideoResolver
@@ -51,6 +57,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import org.koin.mp.KoinPlatform
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -80,7 +87,12 @@ class DezzyPlayer(
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     // Ajustes ------------------------------------------------------------------
-    @Volatile private var quality = AudioQuality.AUTO
+    @Volatile private var normalQuality = AudioQuality.AUTO
+    @Volatile private var mobileQuality = AudioQuality.AUTO
+
+    /** Con datos móviles (red medida) manda la calidad de «datos móviles»; si no, la normal. */
+    private val quality: AudioQuality
+        get() = if (isMeteredNetwork() && mobileQuality != AudioQuality.AUTO) mobileQuality else normalQuality
     private var crossfadeMs = 0L
     private var normalize = false
     private var autoSkip = true
@@ -187,7 +199,10 @@ class DezzyPlayer(
     val sessionPlayer: Player by lazy { QueuePlayer(exoPlayer) }
 
     init {
-        scope.launch { prefs.audioQuality.collect { quality = parseQuality(it) } }
+        scope.launch { prefs.audioQuality.collect { normalQuality = parseQuality(it) } }
+        scope.launch {
+            prefs.value(MobileDataQualityKey, MOBILE_DATA_QUALITY_DEFAULT).collect { mobileQuality = audioQualityOf(it) }
+        }
         scope.launch { prefs.crossfadeSeconds.collect { crossfadeMs = it.coerceIn(0, 12) * 1000L; updateFade() } }
         scope.launch { prefs.normalizeVolume.collect { normalize = it; applyVolume() } }
         scope.launch { prefs.autoSkip.collect { autoSkip = it } }
@@ -675,7 +690,14 @@ class DezzyPlayer(
 
     private fun buildPlayer(): ExoPlayer {
         val http = OkHttpDataSource.Factory(OkHttpClient()).setUserAgent(HttpClientFactory.DEFAULT_USER_AGENT)
-        val source = StreamDataSource.Factory(resolver, http) { quality }
+        val koin = KoinPlatform.getKoin()
+        val source = StreamDataSource.Factory(
+            resolver = resolver,
+            upstream = http,
+            quality = { quality },
+            localFile = { id -> koin.getOrNull<DownloadManager>()?.localFile(id) },
+            losslessUrl = { id -> losslessStreamUrl(koin.getOrNull<LosslessClient>(), id) },
+        )
         val attributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -690,6 +712,15 @@ class DezzyPlayer(
                 it.addListener(listener)
                 appliedVolume = -1f
             }
+    }
+
+    /** URL del `/stream` del resolver para un `dzr:` no descargado. La Track sale de la cola o del repositorio. */
+    private suspend fun losslessStreamUrl(client: LosslessClient?, videoId: String): String? {
+        client ?: return null
+        val track = queue.state.value.items.firstOrNull { it.track.videoId == videoId }?.track
+            ?: runCatching { repository.getTrack(videoId) }.getOrNull()
+            ?: Track(videoId = videoId, title = "", artists = "")
+        return runCatching { client.streamUrl(track) }.getOrNull()
     }
 
     private fun mediaItemFor(item: QueueItem, videoId: String): MediaItem {

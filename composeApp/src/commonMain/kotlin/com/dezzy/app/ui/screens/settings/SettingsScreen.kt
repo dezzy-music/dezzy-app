@@ -125,6 +125,7 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.SCROBBLING -> "Scrobbling"
     SettingsPage.DISCORD -> "Discord"
     SettingsPage.LYRICS -> "Letras e IA"
+    SettingsPage.LOSSLESS -> "Descargas lossless"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */

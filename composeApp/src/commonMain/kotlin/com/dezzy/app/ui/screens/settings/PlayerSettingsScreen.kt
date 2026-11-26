@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.dezzy.app.feature.downloads.MobileDataQualityKey
 import com.dezzy.app.feature.video.VideoKeepModeOnSongChangeKey
 import com.dezzy.app.feature.video.VideoMaxQualityKey
 import com.dezzy.app.feature.video.VideoPipEnabledKey
@@ -37,6 +38,13 @@ private fun audioQualityLabel(q: AudioQuality): String = when (q) {
     AudioQuality.LOW -> "Baja"
 }
 
+/** Calidad guardada como «auto» / «high» / «low». */
+internal fun qualityLabel(key: String): String = when (key) {
+    "high" -> "Alta"
+    "low" -> "Baja"
+    else -> "Automática"
+}
+
 @Composable
 internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     val prefs = ctx.prefs
@@ -47,6 +55,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     val persistentQueue by prefs.persistentQueue.collectAsState(true)
     val autoSkip by prefs.autoSkip.collectAsState(true)
 
+    var mobileQuality by rememberPreference(MobileDataQualityKey, "auto")
     var videoQuality by rememberEnumPreference(VideoMaxQualityKey, VideoQuality.P720)
     var resizeMode by rememberEnumPreference(VideoResizeModeKey, VideoResizeMode.FIT)
     var keepMode by rememberPreference(VideoKeepModeOnSongChangeKey, true)
@@ -64,9 +73,15 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                     onSelect = { scope.launch { prefs.setAudioQuality(it.name) } },
                 )
                 SettingsDivider()
-                SettingsPendingRow("Motor Hi-Res", "8", ctx)
+                SettingsPendingRow("Motor Hi-Res", "8b", ctx)
                 SettingsDivider()
-                SettingsPendingRow("Calidad con datos móviles", "8", ctx)
+                SettingsChoiceRow(
+                    title = "Calidad con datos móviles",
+                    options = listOf("auto", "high", "low"),
+                    selected = mobileQuality,
+                    label = { qualityLabel(it) },
+                    onSelect = { mobileQuality = it },
+                )
             }
         }
         item(key = "sound") {

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.SectionHeader
 import com.dezzy.app.ui.components.TrackRow
+import com.dezzy.app.ui.screens.downloads.DownloadAllButton
 
 /** Ficha de álbum (boceto fase 4 A): cabecera, Reproducir / Aleatorio y pistas numeradas. */
 @Composable
@@ -55,6 +56,7 @@ fun AlbumScreen(id: String, ctx: ScreenContext) {
                         onBack = { ctx.navigator.back() },
                         onPlay = if (tracks.isEmpty()) null else ({ ctx.player.playTracks(tracks, 0, "album:${a.title}") }),
                         onShuffle = { ctx.player.playTracks(tracks.shuffled(), 0, "album:${a.title}") },
+                        extraActions = { DownloadAllButton(tracks, ctx) },
                     )
                 }
                 trackList(tracks, ctx, "album:${a.title}", numbered = true)
@@ -88,6 +90,7 @@ fun PlaylistScreen(id: String, ctx: ScreenContext) {
                         onBack = { ctx.navigator.back() },
                         onPlay = if (p.tracks.isEmpty()) null else ({ ctx.player.playTracks(p.tracks, 0, "playlist:${p.title}") }),
                         onShuffle = { ctx.player.playTracks(p.tracks.shuffled(), 0, "playlist:${p.title}") },
+                        extraActions = { DownloadAllButton(p.tracks, ctx) },
                     )
                 }
                 trackList(p.tracks, ctx, "playlist:${p.title}", numbered = false)

@@ -13,6 +13,7 @@ import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import com.dezzy.app.feature.discord.DiscordPresence
 import com.dezzy.app.feature.scrobble.Scrobbler
+import com.dezzy.app.feature.downloads.DownloadManager
 
 class DezzyApplication : Application() {
     override fun onCreate() {
@@ -25,5 +26,6 @@ class DezzyApplication : Application() {
         val koin = GlobalContext.get()
         koin.get<Scrobbler>().start()
         koin.get<DiscordPresence>().start()
+        koin.get<DownloadManager>().start()
     }
 }
