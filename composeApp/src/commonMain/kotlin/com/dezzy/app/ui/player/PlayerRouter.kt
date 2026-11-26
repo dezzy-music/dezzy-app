@@ -64,6 +64,7 @@ import com.dezzy.app.ui.player.styles.PlayerStyleCoverflowSelector
 import com.dezzy.app.ui.player.styles.RedesignedStylePlayer
 import com.dezzy.app.ui.player.styles.SpotifyPlayer
 import com.dezzy.app.ui.player.styles.VinylPlayer
+import com.dezzy.app.ui.player.video.VideoModeOverlay
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
@@ -203,6 +204,13 @@ fun PlayerRouter(
                     onMenuClick = onMenu, onVisualizerClick = onVisualizer,
                 )
             }
+
+            VideoModeOverlay(
+                playerConnection = connection,
+                showFloatingToggle = style == PlayerDesignStyle.V5 && !showQueue,
+                onCollapse = { sheet.collapseSoft() },
+                onQueueClick = { showQueue = true },
+            )
 
             AnimatedVisibility(showVisualizer && mediaMetadata != null, enter = fadeIn(), exit = fadeOut()) {
                 mediaMetadata?.let { meta ->

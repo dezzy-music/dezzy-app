@@ -15,5 +15,6 @@ data class Track(
     val album: String? = null,
     val thumbnail: String? = null,
     val durationSeconds: Long? = null,
-    val spotifyId: String? = null
+    val spotifyId: String? = null,
+    val musicVideoType: String? = null
 )

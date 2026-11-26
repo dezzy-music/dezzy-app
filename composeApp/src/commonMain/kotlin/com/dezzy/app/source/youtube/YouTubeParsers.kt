@@ -22,6 +22,13 @@ import kotlinx.serialization.json.jsonPrimitive
 
 object YouTubeParsers {
 
+    /** `musicVideoType` (OMV, UGC, ATV…) de un endpoint de navegación con `watchEndpoint`. */
+    internal fun musicVideoTypeOf(endpoint: JsonObject?): String? =
+        endpoint?.get("watchEndpoint")?.let { it as? JsonObject }
+            ?.get("watchEndpointMusicSupportedConfigs")?.let { it as? JsonObject }
+            ?.get("watchEndpointMusicConfig")?.let { it as? JsonObject }
+            ?.get("musicVideoType")?.let { runCatching { it.jsonPrimitive.content }.getOrNull() }
+
     fun parseTrack(
         node: JsonObject,
         fallbackThumb: String? = null,
@@ -123,13 +130,22 @@ object YouTubeParsers {
 
         val thumbnail = YouTubeJsonHelper.pickThumb(renderer["thumbnail"]) ?: fallbackThumb
 
+        val musicVideoType = musicVideoTypeOf(
+            renderer["overlay"]?.jsonObject
+                ?.get("musicItemThumbnailOverlayRenderer")?.jsonObject
+                ?.get("content")?.jsonObject
+                ?.get("musicPlayButtonRenderer")?.jsonObject
+                ?.get("playNavigationEndpoint")?.jsonObject
+        ) ?: musicVideoTypeOf(renderer["navigationEndpoint"]?.jsonObject)
+
         return Track(
             videoId = videoId,
             title = title,
             artists = artists,
             album = album,
             thumbnail = thumbnail,
-            durationSeconds = duration
+            durationSeconds = duration,
+            musicVideoType = musicVideoType
         )
     }
 

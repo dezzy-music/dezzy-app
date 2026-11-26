@@ -9,6 +9,7 @@ import com.dezzy.app.core.model.Artist
 import com.dezzy.app.core.model.MusicItem
 import com.dezzy.app.core.model.MusicSection
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.core.model.TrackPage
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -76,11 +77,16 @@ object YouTubeCatalogParsers {
             album = album,
             thumbnail = YouTubeJsonHelper.pickThumb(renderer["thumbnail"]),
             durationSeconds = YouTubeJsonHelper.parseDurationSeconds(YouTubeJsonHelper.runsText(renderer["lengthText"])),
+            musicVideoType = YouTubeParsers.musicVideoTypeOf(renderer.obj("navigationEndpoint")),
         )
     }
 
     /** La radio que sigue a una canción, sin la propia canción. */
-    fun parseUpNext(json: JsonObject, seedVideoId: String): List<Track> {
+    fun parseUpNext(json: JsonObject, seedVideoId: String): List<Track> =
+        parseUpNext(json, seedVideoId, dropSeed = true)
+
+    /** Igual que [parseUpNext]; con `dropSeed = false` deja la canción semilla si viene. */
+    fun parseUpNext(json: JsonObject, seedVideoId: String, dropSeed: Boolean): List<Track> {
         val tabs = json.obj("contents").obj("singleColumnMusicWatchNextResultsRenderer").obj("tabbedRenderer")
             .obj("watchNextTabbedResultsRenderer").arr("tabs")
         val panel = (tabs?.firstOrNull()).obj("tabRenderer").obj("content").obj("musicQueueRenderer")
@@ -90,7 +96,39 @@ object YouTubeCatalogParsers {
             ?: return emptyList()
         val seen = HashSet<String>()
         return panel.arr("contents").orEmpty().mapNotNull { (it as? JsonObject)?.let(::parsePanelVideo) }
-            .filter { it.videoId != seedVideoId && seen.add(it.videoId!!) }
+            .filter { (!dropSeed || it.videoId != seedVideoId) && seen.add(it.videoId!!) }
+    }
+
+    /** Pie de página (token de continuación) de un `playlistPanelRenderer`/`playlistPanelContinuation`. */
+    fun parseWatchNextContinuation(json: JsonObject): String? {
+        val tabs = json.obj("contents").obj("singleColumnMusicWatchNextResultsRenderer").obj("tabbedRenderer")
+            .obj("watchNextTabbedResultsRenderer").arr("tabs")
+        val panel = (tabs?.firstOrNull()).obj("tabRenderer").obj("content").obj("musicQueueRenderer")
+            .obj("content").obj("playlistPanelRenderer")
+            ?: json.obj("continuationContents").obj("playlistPanelContinuation")
+            ?: return null
+        return panel.arr("continuations")?.firstOrNull().obj("nextRadioContinuationData").str("continuation")
+    }
+
+    /** Token para pedir la siguiente página de una búsqueda: el primer `musicShelfRenderer` que lo traiga. */
+    fun parseSearchContinuationToken(json: JsonObject): String? {
+        val sections = json.obj("contents").obj("tabbedSearchResultsRenderer").arr("tabs")?.firstOrNull()
+            .obj("tabRenderer").obj("content").obj("sectionListRenderer").arr("contents").orEmpty()
+        for (section in sections) {
+            val token = section.obj("musicShelfRenderer").arr("continuations")?.firstOrNull()
+                .obj("nextContinuationData").str("continuation")
+            if (token != null) return token
+        }
+        return null
+    }
+
+    /** Respuesta de una continuación de búsqueda: pistas y token de la página siguiente. */
+    fun parseSearchContinuation(json: JsonObject): TrackPage {
+        val shelf = json.obj("continuationContents").obj("musicShelfContinuation")
+        val tracks = shelf.arr("contents").orEmpty()
+            .mapNotNull { (it as? JsonObject)?.let { n -> YouTubeParsers.parseTrack(n) } }
+        val token = shelf.arr("continuations")?.firstOrNull().obj("nextContinuationData").str("continuation")
+        return TrackPage(tracks, token)
     }
 
     /** Página de artista: cabecera, canciones populares y estanterías (álbumes, sencillos, parecidos…). */

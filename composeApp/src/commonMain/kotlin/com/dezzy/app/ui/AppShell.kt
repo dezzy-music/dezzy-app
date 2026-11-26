@@ -47,6 +47,8 @@ import com.dezzy.app.ui.navigation.PlatformBackHandler
 import com.dezzy.app.ui.navigation.Tab
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.feature.video.VideoPipState
+import com.dezzy.app.ui.player.video.VideoPipLayer
 import com.dezzy.app.ui.player.PlayerRouter
 import com.dezzy.app.ui.player.kit.BottomSheetState
 import com.dezzy.app.ui.player.kit.LocalPlayerConnection
@@ -140,6 +142,8 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             PlayerRouter(connection, state, sheet, navController)
         }
         if (expanded) SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding())
+        // Ventana flotante (PiP) del modo vídeo: encima de todo.
+        VideoPipLayer(connection, onEligibleChange = { VideoPipState.eligible.value = it })
     }
     }
 }

@@ -58,6 +58,9 @@ interface PlayerController {
 
     /** Sesión de audio del motor (para el espectro de los visualizadores); 0 si no hay. */
     val audioSessionId: Int get() = 0
+
+    /** Modo vídeo (videoclip de la canción); null donde no lo hay. */
+    val video: com.dezzy.app.feature.video.VideoModeController? get() = null
 }
 
 /** Cuentas del reproductor, aparte para poder probarlas. Iguales que en Dezzy Desktop. */

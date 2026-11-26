@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import com.dezzy.app.ui.player.kit.VideoSurface
 import com.dezzy.app.ui.player.kit.SongVideoToggle
 import com.dezzy.app.ui.player.kit.BottomSheetState
 import com.dezzy.app.ui.player.kit.BlurRadiusKey
@@ -283,8 +284,7 @@ fun DezzyPlayer(
                         }
                 ) {
                     if (videoModeActive && videoPlayer != null) {
-                        // Vídeo: llega en la fase 5d (aquí iba el PlayerView de Media3).
-                        Box(modifier = Modifier.fillMaxSize())
+                        VideoSurface(player = videoPlayer, active = true, modifier = Modifier.fillMaxSize())
                     } else {
                         AsyncImage(
                             model = ImageRequest.Builder(platformContext)
@@ -722,8 +722,9 @@ fun DezzyPlayer(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (videoModeActive && videoPlayer != null) {
-                            // Vídeo: llega en la fase 5d (aquí iba el PlayerView de Media3).
-                            Box(
+                            VideoSurface(
+                                player = videoPlayer,
+                                active = true,
                                 modifier = Modifier
                                     .fillMaxHeight(0.85f)
                                     .aspectRatio(1f)

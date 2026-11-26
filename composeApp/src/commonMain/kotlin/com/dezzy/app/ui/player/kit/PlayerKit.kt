@@ -8,6 +8,9 @@ package com.dezzy.app.ui.player.kit
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.feature.video.VideoDownloadState
+import com.dezzy.app.feature.video.VideoModeController
+import com.dezzy.app.feature.video.VideoPlayerHandle
 import com.dezzy.app.feature.player.PlayerController
 import com.dezzy.app.feature.player.RepeatMode
 import com.dezzy.app.source.youtube.YouTubeMusicClient
@@ -207,12 +210,25 @@ class PlayerConnection(
     /** Códec y bitrate: el motor aún no los publica. */
     val currentFormat: StateFlow<AudioFormat?> = MutableStateFlow<AudioFormat?>(null).asStateFlow()
 
-    // Modo vídeo (fase 5d).
-    val videoModeActive: StateFlow<Boolean> = MutableStateFlow(false).asStateFlow()
-    val videoModeLoading: StateFlow<Boolean> = MutableStateFlow(false).asStateFlow()
-    val videoPlayerInstance: StateFlow<Any?> = MutableStateFlow<Any?>(null).asStateFlow()
-    fun enableVideoMode() = toast("El modo vídeo llega en la fase 5d")
-    fun disableVideoMode() = Unit
+    // Modo vídeo: lo lleva el motor; donde no hay (escritorio), todo queda apagado.
+    private val video: VideoModeController? = controller.video
+    val videoModeActive: StateFlow<Boolean> = video?.active ?: MutableStateFlow(false).asStateFlow()
+    val videoModeLoading: StateFlow<Boolean> = video?.loading ?: MutableStateFlow(false).asStateFlow()
+    val videoModeError: StateFlow<String?> = video?.error ?: MutableStateFlow<String?>(null).asStateFlow()
+    val videoPlayerInstance: StateFlow<VideoPlayerHandle?> = video?.player ?: MutableStateFlow<VideoPlayerHandle?>(null).asStateFlow()
+    val videoQualityOptions: StateFlow<List<Int>> = video?.qualityOptions ?: MutableStateFlow(emptyList<Int>()).asStateFlow()
+    val videoSelectedHeight: StateFlow<Int?> = video?.selectedHeight ?: MutableStateFlow<Int?>(null).asStateFlow()
+    val videoPlayingHeight: StateFlow<Int?> = video?.playingHeight ?: MutableStateFlow<Int?>(null).asStateFlow()
+    val videoDownloadState: StateFlow<VideoDownloadState> = video?.download ?: MutableStateFlow<VideoDownloadState>(VideoDownloadState.Idle).asStateFlow()
+    fun enableVideoMode() { video?.enable() ?: toast("El modo vídeo no está disponible aquí") }
+    fun disableVideoMode() { video?.disable() }
+    fun retryVideoMode() { video?.retry() }
+    fun clearVideoModeError() { video?.clearError() }
+    fun setVideoQuality(height: Int?) { video?.setQuality(height) }
+    fun downloadCurrentVideo() { video?.downloadCurrent() }
+    fun clearVideoDownloadResult() { video?.clearDownloadResult() }
+    /** Pide reactivar el modo vídeo al llegar a la canción [videoId] («vídeos similares»). */
+    fun setPendingVideoMode(videoId: String?) { video?.pendingVideoId = videoId }
 
     fun seekToNext() = controller.next()
     fun seekToPrevious() = controller.previous()

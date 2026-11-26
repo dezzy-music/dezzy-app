@@ -14,6 +14,7 @@ import com.dezzy.app.core.prefs.DezzyPreferences
 import com.dezzy.app.source.stream.HttpStreamProbe
 import com.dezzy.app.source.stream.StreamUrlResolver
 import com.dezzy.app.source.youtube.YouTubeMusicClient
+import com.dezzy.app.feature.video.MusicVideoResolver
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -23,5 +24,6 @@ val coreModule: Module = module {
     single<MusicRepository> { SqlMusicRepository(get()) }
     single { YouTubeMusicClient(get()) }
     single { DezzyPreferences(get()) }
+    single { MusicVideoResolver(get(), get(), get()) }
     single { StreamUrlResolver(engine = get(), probe = HttpStreamProbe(get()), cache = SqlStreamCache(get())) }
 }

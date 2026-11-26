@@ -11,6 +11,7 @@ import com.dezzy.app.core.model.MusicSection
 import com.dezzy.app.core.model.Playlist
 import com.dezzy.app.core.model.SearchResult
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.core.model.TrackPage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.header
@@ -19,6 +20,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonObject
@@ -64,6 +66,57 @@ class YouTubeMusicClient(
             put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
         })
         YouTubeCatalogParsers.parseUpNext(response, videoId)
+    }
+
+    /** Búsqueda de vídeos (filtro «Vídeos»): primera página. */
+    suspend fun searchVideos(query: String, gl: String = "US"): Result<TrackPage> = runCatching {
+        val response = post(YouTubeEndpoints.SEARCH_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("query", query)
+            put("params", YouTubeEndpoints.FILTER_VIDEOS)
+        })
+        TrackPage(
+            items = YouTubeParsers.parseSearchResults(response).songs,
+            continuation = YouTubeCatalogParsers.parseSearchContinuationToken(response),
+        )
+    }
+
+    /** Siguiente página de una búsqueda de vídeos. */
+    suspend fun searchContinuation(continuation: String, gl: String = "US"): Result<TrackPage> = runCatching {
+        val c = continuation.encodeURLParameter()
+        val response = post("${YouTubeEndpoints.SEARCH_URL}&continuation=$c&ctoken=$c&type=next", buildJsonObject {
+            put("context", buildContext(gl = gl))
+        })
+        YouTubeCatalogParsers.parseSearchContinuation(response)
+    }
+
+    /** Vídeos relacionados con uno (incluye el propio vídeo si viene). */
+    suspend fun getWatchNext(videoId: String, gl: String = "US"): Result<TrackPage> = runCatching {
+        val response = post(YouTubeEndpoints.NEXT_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("videoId", videoId)
+            put("playlistId", "RDAMVM$videoId")
+            put("isAudioOnly", false)
+            put("enablePersistentPlaylistPanel", true)
+            put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
+        })
+        TrackPage(
+            items = YouTubeCatalogParsers.parseUpNext(response, videoId, dropSeed = false),
+            continuation = YouTubeCatalogParsers.parseWatchNextContinuation(response),
+        )
+    }
+
+    suspend fun getWatchNextContinuation(videoId: String, continuation: String, gl: String = "US"): Result<TrackPage> = runCatching {
+        val response = post(YouTubeEndpoints.NEXT_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("continuation", continuation)
+            put("isAudioOnly", false)
+            put("enablePersistentPlaylistPanel", true)
+        })
+        TrackPage(
+            items = YouTubeCatalogParsers.parseUpNext(response, videoId, dropSeed = false),
+            continuation = YouTubeCatalogParsers.parseWatchNextContinuation(response),
+        )
     }
 
     suspend fun getArtist(id: String, gl: String = "US"): Result<Artist> = runCatching {

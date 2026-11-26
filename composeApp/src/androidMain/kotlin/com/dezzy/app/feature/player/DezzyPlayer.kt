@@ -28,6 +28,10 @@ import com.dezzy.app.core.model.QueueItem
 import com.dezzy.app.core.model.Track
 import com.dezzy.app.core.net.HttpClientFactory
 import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.feature.video.AndroidVideoMode
+import com.dezzy.app.feature.video.MusicVideoDownloader
+import com.dezzy.app.feature.video.MusicVideoResolver
+import com.dezzy.app.feature.video.VideoModeController
 import com.dezzy.app.source.stream.AudioQuality
 import com.dezzy.app.source.stream.StreamPriority
 import com.dezzy.app.source.stream.StreamUrlResolver
@@ -66,6 +70,7 @@ class DezzyPlayer(
     private val repository: MusicRepository,
     private val db: DezzyDatabase,
     private val prefs: DezzyPreferences,
+    private val videoResolver: MusicVideoResolver,
 ) : PlayerController {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -93,6 +98,63 @@ class DezzyPlayer(
         userVolume = volume.coerceIn(0f, 1f)
         _state.update { it.copy(volume = userVolume) }
         applyVolume()
+        videoModeInstance?.setVolume(userVolume)
+    }
+
+    // Modo vídeo ------------------------------------------------------------------
+    private var videoModeInstance: AndroidVideoMode? = null
+
+    private val videoMode: AndroidVideoMode
+        get() = videoModeInstance ?: AndroidVideoMode(
+            context = context,
+            resolver = videoResolver,
+            downloader = MusicVideoDownloader(context),
+            prefs = prefs,
+            scope = scope,
+            host = videoHost,
+        ).also { videoModeInstance = it }
+
+    override val video: VideoModeController get() = videoMode
+
+    /** El ExoPlayer del vídeo cuando es él quien suena; null si suena la canción. */
+    private val drivingVideo: ExoPlayer? get() = videoModeInstance?.takeIf { it.isDriving }?.drivingPlayer
+
+    private val videoHost = object : AndroidVideoMode.Host {
+        override val audioPlayer: ExoPlayer? get() = exo
+        override fun currentEntryId(): String? = queue.state.value.current?.queueEntryId
+        override fun currentTrack(): Track? = queue.state.value.current?.track
+        override fun audioPosition(): Long {
+            val player = exo
+            return if (player != null && player.mediaItemCount > 0) player.currentPosition.coerceAtLeast(0)
+            else pendingResumeMs ?: 0L
+        }
+        override fun audioPlayWhenReady(): Boolean = exo?.playWhenReady ?: false
+        override fun audioDuration(): Long? =
+            exo?.takeIf { it.mediaItemCount > 0 }?.let(::knownDuration)?.takeIf { it > 0 }
+                ?: queue.state.value.current?.track?.durationSeconds?.takeIf { it > 0 }?.times(1000)
+        override fun pauseAudio() {
+            exo?.pause()
+        }
+        override fun resumeAudio(positionMs: Long, play: Boolean) {
+            val player = exo
+            if (player == null || player.mediaItemCount == 0 || player.playbackState == Player.STATE_IDLE) {
+                pendingResumeMs = positionMs
+                if (play) play() else publishPlayer()
+                return
+            }
+            player.seekTo(positionMs)
+            if (play) play() else player.pause()
+            updateFade()
+            publishPlayer()
+        }
+        override val repeatOne: Boolean get() = queue.state.value.repeat == RepeatMode.ONE
+        override fun hasNext(): Boolean = queue.nextIndex() != null
+        override fun skipToNext() = next()
+        override val volume: Float get() = userVolume
+        override fun onVideoStateChanged() {
+            publishPlayer()
+            notifySessionOfVideo()
+        }
     }
 
     // Carga en curso ------------------------------------------------------------
@@ -187,6 +249,10 @@ class DezzyPlayer(
     }
 
     override fun play() {
+        if (drivingVideo != null) {
+            videoMode.play()
+            return
+        }
         val index = queue.state.value.index
         val player = exoPlayer
         if (player.mediaItemCount == 0 || player.playbackState == Player.STATE_IDLE) {
@@ -203,10 +269,19 @@ class DezzyPlayer(
     }
 
     override fun pause() {
+        if (drivingVideo != null) {
+            videoMode.pause()
+            return
+        }
         exo?.pause()
     }
 
     override fun togglePlay() {
+        drivingVideo?.let { vp ->
+            val active = vp.playWhenReady && vp.playbackState != Player.STATE_ENDED
+            if (active) pause() else play()
+            return
+        }
         val player = exo
         val active = player != null && player.playWhenReady &&
             player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED
@@ -218,9 +293,14 @@ class DezzyPlayer(
     }
 
     override fun previous() {
-        val position = exo?.currentPosition ?: 0L
+        val vp = drivingVideo
+        val position = vp?.currentPosition ?: exo?.currentPosition ?: 0L
         when (val action = queue.previous(position)) {
             PreviousAction.Restart -> {
+                if (vp != null) {
+                    videoMode.seekTo(0)
+                    return
+                }
                 val player = exo
                 if (player == null || player.mediaItemCount == 0) {
                     pendingResumeMs = 0
@@ -234,6 +314,11 @@ class DezzyPlayer(
     }
 
     override fun seekTo(positionMs: Long) {
+        if (drivingVideo != null) {
+            videoMode.seekTo(positionMs)
+            publishPlayer()
+            return
+        }
         val player = exo
         if (player == null || player.mediaItemCount == 0) pendingResumeMs = positionMs.coerceAtLeast(0)
         else player.seekTo(positionMs.coerceAtLeast(0))
@@ -313,6 +398,8 @@ class DezzyPlayer(
         afterQueueChange()
         publishPlayer()
         scope.launch { saveQueue() }
+        // El vídeo de la canción anterior se cierra (y, si toca, se abre el de esta).
+        videoModeInstance?.onSongChanged()
     }
 
     private fun startWatchdog() {
@@ -513,8 +600,17 @@ class DezzyPlayer(
         val player = exo
         val current = queue.state.value.current
         val fallbackDuration = (current?.track?.durationSeconds ?: 0L) * 1000
+        val vp = drivingVideo
         _state.update {
-            if (player == null || player.mediaItemCount == 0) {
+            if (vp != null) {
+                it.copy(
+                    isPlaying = vp.isPlaying,
+                    isBuffering = (vp.playbackState == Player.STATE_BUFFERING || vp.playbackState == Player.STATE_IDLE) &&
+                        vp.playWhenReady,
+                    positionMs = vp.currentPosition.coerceAtLeast(0),
+                    durationMs = knownDuration(vp).takeIf { d -> d > 0 } ?: fallbackDuration,
+                )
+            } else if (player == null || player.mediaItemCount == 0) {
                 it.copy(isPlaying = false, isBuffering = false, positionMs = pendingResumeMs ?: 0L, durationMs = fallbackDuration)
             } else {
                 it.copy(
@@ -613,7 +709,93 @@ class DezzyPlayer(
      * ExoPlayer sólo tiene una canción; la sesión debe ofrecer ⏮/⏭ igualmente y mandarlos a
      * la cola. Reproducir y pausar también pasan por aquí para recargar si hace falta.
      */
+    // Quien escucha a la sesión (notificación, pantalla de bloqueo) y lo último que se le dijo
+    // del vídeo: el ExoPlayer de la canción no avisa de lo que hace el vídeo.
+    private val sessionListeners = mutableListOf<Player.Listener>()
+    private var notifiedVideoPlaying: Boolean? = null
+    private var notifiedVideoPlayWhenReady: Boolean? = null
+    private var notifiedVideoState: Int? = null
+    private var notifiedVideoDriving = false
+
+    private fun notifySessionOfVideo() {
+        if (sessionListeners.isEmpty()) return
+        val session = sessionPlayer
+        val driving = drivingVideo != null
+        val playing = session.isPlaying
+        val playWhenReady = session.playWhenReady
+        val playbackState = session.playbackState
+        val switched = driving != notifiedVideoDriving
+        notifiedVideoDriving = driving
+        val listeners = sessionListeners.toList()
+        if (switched || playWhenReady != notifiedVideoPlayWhenReady) {
+            listeners.forEach { it.onPlayWhenReadyChanged(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) }
+        }
+        if (switched || playbackState != notifiedVideoState) {
+            listeners.forEach { it.onPlaybackStateChanged(playbackState) }
+        }
+        if (switched || playing != notifiedVideoPlaying) {
+            listeners.forEach { it.onIsPlayingChanged(playing) }
+        }
+        notifiedVideoPlaying = playing
+        notifiedVideoPlayWhenReady = playWhenReady
+        notifiedVideoState = playbackState
+    }
+
+    private fun notifySessionSeek() {
+        val session = sessionPlayer
+        val position = Player.PositionInfo(
+            null, session.currentMediaItemIndex, session.currentMediaItem, null, 0,
+            session.currentPosition, session.contentPosition, C.INDEX_UNSET, C.INDEX_UNSET,
+        )
+        sessionListeners.toList().forEach {
+            it.onPositionDiscontinuity(position, position, Player.DISCONTINUITY_REASON_SEEK)
+        }
+    }
+
     private inner class QueuePlayer(player: Player) : ForwardingPlayer(player) {
+        override fun addListener(listener: Player.Listener) {
+            sessionListeners += listener
+            super.addListener(listener)
+        }
+
+        override fun removeListener(listener: Player.Listener) {
+            sessionListeners -= listener
+            super.removeListener(listener)
+        }
+
+        // Mientras suena el vídeo, la sesión ve su estado y no el de la canción en pausa.
+        override fun isPlaying(): Boolean = drivingVideo?.isPlaying ?: super.isPlaying()
+        override fun getPlayWhenReady(): Boolean = drivingVideo?.playWhenReady ?: super.getPlayWhenReady()
+        override fun getPlaybackState(): Int = drivingVideo?.playbackState
+            ?.let { if (it == Player.STATE_IDLE) Player.STATE_BUFFERING else it }
+            ?: super.getPlaybackState()
+        override fun getCurrentPosition(): Long = drivingVideo?.currentPosition ?: super.getCurrentPosition()
+        override fun getContentPosition(): Long = drivingVideo?.currentPosition ?: super.getContentPosition()
+        override fun getBufferedPosition(): Long = drivingVideo?.bufferedPosition ?: super.getBufferedPosition()
+        override fun getContentBufferedPosition(): Long =
+            drivingVideo?.bufferedPosition ?: super.getContentBufferedPosition()
+        override fun getDuration(): Long = drivingVideo?.duration ?: super.getDuration()
+        override fun getContentDuration(): Long = drivingVideo?.duration ?: super.getContentDuration()
+        override fun seekTo(positionMs: Long) {
+            if (drivingVideo != null) {
+                this@DezzyPlayer.seekTo(positionMs)
+                notifySessionSeek()
+            } else {
+                super.seekTo(positionMs)
+            }
+        }
+        override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+            if (drivingVideo != null) seekTo(positionMs) else super.seekTo(mediaItemIndex, positionMs)
+        }
+        override fun seekBack() {
+            val vp = drivingVideo ?: return super.seekBack()
+            seekTo((vp.currentPosition - vp.seekBackIncrement).coerceAtLeast(0))
+        }
+        override fun seekForward() {
+            val vp = drivingVideo ?: return super.seekForward()
+            seekTo(vp.currentPosition + vp.seekForwardIncrement)
+        }
+
         override fun getAvailableCommands(): Player.Commands =
             super.getAvailableCommands().buildUpon().addAll(*QUEUE_COMMANDS).build()
 

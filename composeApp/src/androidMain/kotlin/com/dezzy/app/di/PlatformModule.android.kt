@@ -30,7 +30,7 @@ actual val platformModule = module {
     }
     single {
         val client = get<YouTubeMusicClient>()
-        DezzyPlayer(androidContext(), get(), get(), get(), get()).apply {
+        DezzyPlayer(androidContext(), get(), get(), get(), get(), get()).apply {
             radioProvider = { seed -> seed.videoId?.let { client.getUpNext(it).getOrNull() }.orEmpty() }
         }
     }
