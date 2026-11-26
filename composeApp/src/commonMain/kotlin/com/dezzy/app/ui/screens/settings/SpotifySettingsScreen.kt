@@ -24,10 +24,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.setValue
 import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.model.SessionProvider
+import com.dezzy.app.source.spotify.SpotifyHomeOnlyKey
+import com.dezzy.app.source.spotify.SpotifyLiveLikeSyncKey
+import com.dezzy.app.source.spotify.SpotifyUseHomeKey
+import com.dezzy.app.source.spotify.SpotifyUseSearchKey
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
+import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -41,6 +47,10 @@ internal fun SpotifySettingsScreen(ctx: ScreenContext) {
     val autoSync by ctx.prefs.spotifyAutoSync.collectAsState(true)
     val likedAsPlaylist by ctx.prefs.spotifyLikedAsPlaylist.collectAsState(true)
     var confirmSignOut by remember { mutableStateOf(false) }
+    var useSearch by rememberPreference(SpotifyUseSearchKey, false)
+    var useHome by rememberPreference(SpotifyUseHomeKey, false)
+    var homeOnly by rememberPreference(SpotifyHomeOnlyKey, false)
+    var liveLikes by rememberPreference(SpotifyLiveLikeSyncKey, false)
 
     fun open(page: SettingsPage) = ctx.navigator.push(Screen.Settings(page))
 
@@ -112,13 +122,38 @@ internal fun SpotifySettingsScreen(ctx: ScreenContext) {
             }
             item(key = "options") {
                 SettingsGroup(label = "Opciones") {
-                    SettingsPendingRow("Usar para búsquedas", "6b", ctx, icon = Icons.Rounded.Search)
+                    SettingsSwitchRow(
+                        title = "Usar para búsquedas",
+                        subtitle = "Añade resultados de tu Spotify a la búsqueda",
+                        icon = Icons.Rounded.Search,
+                        checked = useSearch,
+                        onCheckedChange = { useSearch = it },
+                    )
                     SettingsDivider()
-                    SettingsPendingRow("Usar para la pantalla de inicio", "6b", ctx, icon = Icons.Rounded.Home)
+                    SettingsSwitchRow(
+                        title = "Usar para la pantalla de inicio",
+                        subtitle = "Muestra tus me gusta recientes de Spotify en Inicio",
+                        icon = Icons.Rounded.Home,
+                        checked = useHome,
+                        onCheckedChange = { useHome = it },
+                    )
                     SettingsDivider()
-                    SettingsPendingRow("Exclusivo de inicio", "6b", ctx, icon = Icons.Rounded.Home)
+                    SettingsSwitchRow(
+                        title = "Exclusivo de inicio",
+                        subtitle = "En Inicio, sólo estanterías de Spotify en lugar de las del catálogo",
+                        icon = Icons.Rounded.Home,
+                        checked = homeOnly && useHome,
+                        onCheckedChange = { homeOnly = it },
+                        enabled = useHome,
+                    )
                     SettingsDivider()
-                    SettingsPendingRow("Sincronizar Me Gusta en vivo", "6b", ctx, icon = Icons.Rounded.Sync)
+                    SettingsSwitchRow(
+                        title = "Sincronizar Me gusta en vivo",
+                        subtitle = "Los me gusta nuevos de Spotify se añaden a tus favoritos",
+                        icon = Icons.Rounded.Sync,
+                        checked = liveLikes,
+                        onCheckedChange = { liveLikes = it },
+                    )
                     SettingsDivider()
                     SettingsPendingRow(
                         "Descargar para escuchar sin conexión", "8", ctx,

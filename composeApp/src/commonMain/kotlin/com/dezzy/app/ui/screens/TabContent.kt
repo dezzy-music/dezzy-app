@@ -32,6 +32,8 @@ import com.dezzy.app.ui.screens.settings.PlayerSettingsScreen
 import com.dezzy.app.ui.screens.settings.PrivacySettingsScreen
 import com.dezzy.app.ui.screens.settings.SettingsScreen
 import com.dezzy.app.ui.screens.settings.SpotifyImportScreen
+import com.dezzy.app.ui.screens.settings.ScrobbleSettingsScreen
+import com.dezzy.app.ui.screens.settings.DiscordSettingsScreen
 import com.dezzy.app.ui.screens.settings.SpotifyLoginScreen
 import com.dezzy.app.ui.screens.settings.SpotifySettingsScreen
 import com.dezzy.app.ui.screens.settings.StorageSettingsScreen
@@ -82,6 +84,8 @@ fun TabContent(
             SettingsPage.SPOTIFY -> SpotifySettingsScreen(ctx)
             SettingsPage.SPOTIFY_LOGIN -> SpotifyLoginScreen(ctx)
             SettingsPage.SPOTIFY_IMPORT -> SpotifyImportScreen(ctx)
+            SettingsPage.SCROBBLING -> ScrobbleSettingsScreen(ctx)
+            SettingsPage.DISCORD -> DiscordSettingsScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         null -> when (navigator.tab) {

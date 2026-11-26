@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -83,9 +84,14 @@ import com.dezzy.app.source.youtube.MoodItem
 import com.dezzy.app.source.youtube.MoodSection
 import com.dezzy.app.source.youtube.SearchSuggestions
 import com.dezzy.app.ui.components.CoverImage
+import com.dezzy.app.source.spotify.SpotifyFeatures
+import com.dezzy.app.source.spotify.SpotifyTrack
+import com.dezzy.app.ui.components.SpotifyTrackRow
 import com.dezzy.app.ui.components.TrackRow
+import com.dezzy.app.ui.components.rememberSpotifyTrackPlayer
 import com.dezzy.app.ui.navigation.Screen
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 
 /** Cuántos géneros se muestran en la portada antes de «Ver todo». */
 private const val SearchHomeGenreCount = 8
@@ -348,6 +354,13 @@ private fun MoodCard(item: MoodItem, onClick: () -> Unit, modifier: Modifier = M
 private fun SearchResults(ctx: ScreenContext, query: String) {
     var source by rememberSaveable { mutableStateOf(SearchSourceOption.YOUTUBE) }
     val result = rememberLoad(query) { ctx.client.search(query) }
+    val features: SpotifyFeatures = koinInject()
+    val spotifyPlayer = rememberSpotifyTrackPlayer(ctx, features)
+    // Sólo con sesión y «Usar para búsquedas» activo; si Spotify falla, queda vacío sin avisar.
+    val spotifyTracks by produceState<List<SpotifyTrack>>(emptyList(), query) {
+        value = emptyList()
+        if (features.searchEnabled()) value = features.searchTracks(query, 10)
+    }
 
     Column(Modifier.fillMaxSize()) {
         SearchSourceChips(
@@ -362,6 +375,12 @@ private fun SearchResults(ctx: ScreenContext, query: String) {
                 Load.Loading -> loadingRows()
                 is Load.Failed -> errorRow(r.message)
                 is Load.Done -> resultItems(r.value, query, ctx)
+            }
+            if (spotifyTracks.isNotEmpty()) {
+                item(key = "spotify_h") { SearchResultSectionHeader("De tu Spotify") }
+                items(spotifyTracks.size, key = { "spotify:${spotifyTracks[it].id}" }) { i ->
+                    SpotifyTrackRow(spotifyTracks[i], spotifyPlayer)
+                }
             }
             item { Spacer(Modifier.height(96.dp)) }
         }

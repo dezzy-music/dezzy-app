@@ -142,11 +142,19 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
         }
         item(key = "services") {
             SettingsGroup(label = "Servicios") {
-                SettingsPendingRow("Last.fm", "6b", ctx, icon = Icons.Rounded.GraphicEq)
+                SettingsRow(
+                    title = "Last.fm y ListenBrainz",
+                    subtitle = "Registra lo que escuchas",
+                    icon = Icons.Rounded.GraphicEq,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SCROBBLING)) },
+                )
                 SettingsDivider()
-                SettingsPendingRow("ListenBrainz", "6b", ctx, icon = Icons.Rounded.Sensors)
-                SettingsDivider()
-                SettingsPendingRow("Discord", "6b", ctx, icon = Icons.Rounded.Hub)
+                SettingsRow(
+                    title = "Discord",
+                    subtitle = "Muestra lo que escuchas en tu perfil",
+                    icon = Icons.Rounded.Hub,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.DISCORD)) },
+                )
             }
         }
     }

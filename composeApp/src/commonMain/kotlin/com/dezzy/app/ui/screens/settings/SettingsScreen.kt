@@ -122,6 +122,8 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.SPOTIFY -> "Integración de Spotify"
     SettingsPage.SPOTIFY_LOGIN -> "Iniciar sesión en Spotify"
     SettingsPage.SPOTIFY_IMPORT -> "Importar de Spotify"
+    SettingsPage.SCROBBLING -> "Scrobbling"
+    SettingsPage.DISCORD -> "Discord"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */

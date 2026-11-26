@@ -97,8 +97,14 @@ import com.dezzy.app.core.model.MusicSection
 import com.dezzy.app.core.model.Track
 import com.dezzy.app.feature.player.PlaybackState
 import com.dezzy.app.ui.components.CoverImage
+import com.dezzy.app.source.spotify.SpotifyFeatures
+import com.dezzy.app.source.spotify.SpotifyHomeOnlyKey
+import com.dezzy.app.source.spotify.SpotifyTrack
+import com.dezzy.app.source.spotify.SpotifyUseHomeKey
 import com.dezzy.app.ui.components.SectionHeader
+import com.dezzy.app.ui.components.SpotifyTrackShelf
 import com.dezzy.app.ui.components.TrackRow
+import com.dezzy.app.ui.components.rememberSpotifyTrackPlayer
 import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.ui.navigation.Screen
@@ -146,8 +152,20 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
     val quickPicks = rememberLoad(seedId) {
         if (seedId == null) Result.success(emptyList()) else ctx.client.getUpNext(seedId)
     }
-    var filter by rememberSaveable { mutableStateOf(HomeFilter.FOR_YOU) }
-    val home = if (filter == HomeFilter.MUSIC || seedId == null) rememberLoad("home") { ctx.client.getHome() } else null
+    val features: SpotifyFeatures = koinInject()
+    val useSpotifyHome by remember { ctx.prefs.value(SpotifyUseHomeKey, false) }.collectAsState(false)
+    val spotifyHomeOnly by remember { ctx.prefs.value(SpotifyHomeOnlyKey, false) }.collectAsState(false)
+    val spotifyOn = useSpotifyHome && sessions[SessionProvider.SPOTIFY]?.isValid == true
+    val exclusive = spotifyOn && spotifyHomeOnly
+    // null = cargando; falla en silencio (lista vacía) si no hay red o la sesión no vale.
+    val spotifyLikes by produceState<List<SpotifyTrack>?>(null, spotifyOn) {
+        value = if (spotifyOn) features.recentLikes(20) else emptyList()
+    }
+    val spotifyPlayer = rememberSpotifyTrackPlayer(ctx, features)
+
+    var filterState by rememberSaveable { mutableStateOf(HomeFilter.FOR_YOU) }
+    val filter = if (filterState == HomeFilter.SPOTIFY && !spotifyOn) HomeFilter.FOR_YOU else filterState
+    val home = if (filter == HomeFilter.MUSIC || (seedId == null && !exclusive)) rememberLoad("home") { ctx.client.getHome() } else null
 
     var showMore by remember { mutableStateOf(false) }
     var pinSlot by remember { mutableIntStateOf(0) }
@@ -170,9 +188,19 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
             )
         }
         item(key = "chips") {
-            HomeFilterChips(filter) { f ->
-                if (f == HomeFilter.COMMUNITY) ctx.pending("Comunidad", "9") else filter = f
+            HomeFilterChips(filter, spotifyVisible = spotifyOn) { f ->
+                if (f == HomeFilter.COMMUNITY) ctx.pending("Comunidad", "9") else filterState = f
             }
+        }
+
+        if (filter == HomeFilter.SPOTIFY) {
+            val likes = spotifyLikes
+            when {
+                likes == null -> loadingRows(4)
+                likes.isEmpty() -> emptyRow("No he podido traer canciones de tu Spotify ahora mismo")
+                else -> item(key = "sp:likes") { SpotifyTrackShelf("Tus me gusta recientes", likes, spotifyPlayer) }
+            }
+            return@LazyColumn
         }
 
         if (filter == HomeFilter.MUSIC) {
@@ -200,7 +228,14 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
             item(key = "resume") { ResumeCard(ctx, last, nowMs) }
         }
 
-        if (picks.isNotEmpty() || quickPicks is Load.Loading && seedId != null) {
+        if (spotifyOn) {
+            spotifyLikes?.takeIf { it.isNotEmpty() }?.let { likes ->
+                item(key = "sp:likes") { SpotifyTrackShelf("Tus me gusta recientes", likes, spotifyPlayer) }
+            }
+        }
+
+        // «Exclusivo de inicio»: en esta parte sólo van las estanterías de Spotify.
+        if (!exclusive && (picks.isNotEmpty() || quickPicks is Load.Loading && seedId != null)) {
             item(key = "qp:h") { SectionHeader("Selección rápida", strapline = "Empieza una radio") }
             when (quickPicks) {
                 Load.Loading -> loadingRows(4)
@@ -247,7 +282,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         }
 
         // Sin historial todavía: las estanterías de YouTube Music llenan el inicio.
-        if (seedId == null) when (home) {
+        if (seedId == null && !exclusive) when (home) {
             null, Load.Loading -> loadingRows(4)
             is Load.Failed -> errorRow(home.message)
             is Load.Done -> home.value.forEach { carousel(it, ctx, "yt:") }
@@ -289,9 +324,9 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
 }
 
 @Composable
-private fun HomeFilterChips(selected: HomeFilter, onSelect: (HomeFilter) -> Unit) {
-    // «Spotify» sólo aparece cuando hay estanterías de Spotify (llegan en la fase 6).
-    val visible = HomeFilter.entries.filter { it != HomeFilter.SPOTIFY }
+private fun HomeFilterChips(selected: HomeFilter, spotifyVisible: Boolean, onSelect: (HomeFilter) -> Unit) {
+    // «Spotify» sólo aparece con sesión y «Usar para la pantalla de inicio» activo.
+    val visible = HomeFilter.entries.filter { it != HomeFilter.SPOTIFY || spotifyVisible }
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(visible) { f ->
             FilterChip(

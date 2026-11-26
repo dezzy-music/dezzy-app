@@ -28,8 +28,12 @@ import com.dezzy.app.source.youtube.YouTubeMusicClient
 import com.dezzy.app.feature.video.MusicVideoResolver
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import com.dezzy.app.feature.discord.discordModule
+import com.dezzy.app.feature.scrobble.scrobbleModule
+import com.dezzy.app.source.spotify.spotifyFeaturesModule
 
 val coreModule: Module = module {
+    includes(scrobbleModule, discordModule, spotifyFeaturesModule)
     single { HttpClientFactory.create() }
     single { DezzyDatabase(get()) }
     single { DezzyPreferences(get()) }

@@ -14,6 +14,7 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.source.spotify.SpotifyFeatures
 import com.dezzy.app.source.spotify.SpotifyImporter
 import com.dezzy.app.source.youtube.YouTubeLibrarySync
 import com.dezzy.app.ui.AppShell
@@ -39,9 +40,11 @@ fun App() {
     val glass by prefs.glassIntensity.collectAsState("PURE")
     val importer: SpotifyImporter = koinInject()
     val librarySync: YouTubeLibrarySync = koinInject()
+    val spotifyFeatures: SpotifyFeatures = koinInject()
     LaunchedEffect(Unit) {
         importer.startAutoSync()
         runCatching { librarySync.syncLikesIfDue() }
+        runCatching { spotifyFeatures.maybeAutoSyncLikes() }
     }
 
     DezzyTheme(

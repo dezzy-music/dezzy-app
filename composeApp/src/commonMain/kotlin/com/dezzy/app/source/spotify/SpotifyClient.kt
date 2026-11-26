@@ -92,6 +92,7 @@ class SpotifyClient(
             ),
         ),
         fetchLibraryTracks(listOf("087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240")),
+        searchSuggestions(listOf("556f5a15b2fdd3a7113ffd377ad9805e38a3a27b8bb1ca7d6d76bad54aa8ee12")),
     }
 
     private fun nowMs(): Long = Clock.System.now().toEpochMilliseconds()
@@ -220,6 +221,44 @@ class SpotifyClient(
             offset += limit
         }
         return out
+    }
+
+    /** Las [limit] canciones más recientes de «Canciones que te gustan» (la primera página, sin recorrerla toda). */
+    suspend fun recentLikes(limit: Int = 20): List<SpotifyTrack> {
+        val n = limit.coerceIn(1, 50)
+        val page = gql(Operation.fetchLibraryTracks, buildJsonObject { put("offset", 0); put("limit", n) })
+        val rows = page.o("me").o("library").o("tracks").a("items") ?: JsonArray(emptyList())
+        return rows.mapNotNull { row -> toTrack(row.o("track").s("_uri"), row.o("track").o("data")) }.take(n)
+    }
+
+    /** Busca canciones en el catálogo de Spotify (consulta `searchSuggestions`, como el escritorio). */
+    suspend fun searchTracks(query: String, limit: Int = 10): List<SpotifyTrack> {
+        val q = query.trim().take(200)
+        if (q.isEmpty()) return emptyList()
+        val data = gql(Operation.searchSuggestions, buildJsonObject { put("query", q); put("limit", limit.coerceIn(1, 50)) })
+        val out = LinkedHashMap<String, SpotifyTrack>()
+        collectTracks(data, 0, out)
+        return out.values.take(limit)
+    }
+
+    /** La respuesta no tiene una forma fija: se recorre buscando objetos con `uri` de canción. */
+    private fun collectTracks(node: JsonElement?, depth: Int, out: MutableMap<String, SpotifyTrack>) {
+        if (depth > 14 || node == null) return
+        when (node) {
+            is JsonObject -> {
+                val uri = node.s("uri") ?: node.s("_uri")
+                if (uri != null && uri.startsWith(TRACK_URI)) {
+                    val t = toTrack(uri, node)
+                    if (t != null) {
+                        out.putIfAbsent(t.id, t)
+                        return
+                    }
+                }
+                for (v in node.values) collectTracks(v, depth + 1, out)
+            }
+            is JsonArray -> for (v in node) collectTracks(v, depth + 1, out)
+            else -> Unit
+        }
     }
 
     // --- token ---

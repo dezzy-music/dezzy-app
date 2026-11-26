@@ -9,7 +9,10 @@ import android.app.Application
 import com.dezzy.app.di.coreModule
 import com.dezzy.app.di.platformModule
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
+import com.dezzy.app.feature.discord.DiscordPresence
+import com.dezzy.app.feature.scrobble.Scrobbler
 
 class DezzyApplication : Application() {
     override fun onCreate() {
@@ -18,5 +21,9 @@ class DezzyApplication : Application() {
             androidContext(this@DezzyApplication)
             modules(platformModule, coreModule)
         }
+        // Siguen funcionando con la app en segundo plano: viven en su propio scope.
+        val koin = GlobalContext.get()
+        koin.get<Scrobbler>().start()
+        koin.get<DiscordPresence>().start()
     }
 }
