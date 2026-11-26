@@ -5,10 +5,10 @@
 
 package com.dezzy.app.di
 
-import com.dezzy.app.core.database.DefaultMusicRepository
+import com.dezzy.app.core.database.SqlMusicRepository
+import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.net.HttpClientFactory
-import com.dezzy.app.core.prefs.createPlatformSecureStorage
 import com.dezzy.app.source.stream.PlatformPoTokenProvider
 import com.dezzy.app.source.stream.StreamUrlResolver
 import com.dezzy.app.source.youtube.YouTubeMusicClient
@@ -17,8 +17,8 @@ import org.koin.dsl.module
 
 val coreModule: Module = module {
     single { HttpClientFactory.create() }
-    single<MusicRepository> { DefaultMusicRepository() }
-    single { createPlatformSecureStorage() }
+    single { DezzyDatabase(get()) }
+    single<MusicRepository> { SqlMusicRepository(get()) }
     single { YouTubeMusicClient(get()) }
     single { PlatformPoTokenProvider() }
     single { StreamUrlResolver(get(), get()) }

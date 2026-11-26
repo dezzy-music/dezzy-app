@@ -5,7 +5,9 @@
 
 package com.dezzy.app.core
 
-import com.dezzy.app.core.database.DefaultMusicRepository
+import com.dezzy.app.core.database.SqlMusicRepository
+import com.dezzy.app.core.database.db.DezzyDatabase
+import kotlinx.coroutines.Dispatchers
 import com.dezzy.app.core.model.Track
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -15,7 +17,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MusicRepositoryTest {
-    private val repo = DefaultMusicRepository()
+    // Reloj que avanza 1 ms por llamada: el orden de «más reciente» no depende del reloj real.
+    private var tick = 1_700_000_000_000L
+    private val repo = SqlMusicRepository(
+        db = DezzyDatabase(createTestDriver()),
+        io = Dispatchers.Unconfined,
+        now = { tick++ },
+    )
 
     private val sampleTrack = Track(
         videoId = "track_1",
@@ -81,5 +89,24 @@ class MusicRepositoryTest {
         repo.deletePlaylist(playlist.id)
         val deleted = repo.getPlaylistById(playlist.id)
         assertEquals(null, deleted)
+    }
+
+    @Test
+    fun testDataSurvivesNewRepositoryOnSameDatabase() = runTest {
+        val db = DezzyDatabase(createTestDriver())
+        SqlMusicRepository(db, Dispatchers.Unconfined).setFavorite(sampleTrack, true)
+        val reopened = SqlMusicRepository(db, Dispatchers.Unconfined)
+        assertTrue(reopened.isFavorite("track_1"))
+        assertEquals("Álbum KMP", reopened.getTrack("track_1")?.album)
+    }
+
+    @Test
+    fun testSaveTrackKeepsKnownFieldsWhenNewDataLacksThem() = runTest {
+        repo.saveTrack(sampleTrack.copy(thumbnail = "https://img/1.jpg"))
+        repo.saveTrack(sampleTrack.copy(title = "Título nuevo", album = null, thumbnail = null))
+        val stored = repo.getTrack("track_1")
+        assertEquals("Título nuevo", stored?.title)
+        assertEquals("Álbum KMP", stored?.album)
+        assertEquals("https://img/1.jpg", stored?.thumbnail)
     }
 }

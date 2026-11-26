@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -48,6 +49,9 @@ kotlin {
 
                 // DataStore Preferences
                 implementation(libs.androidx.datastore.preferences.core)
+
+                // Base de datos (SQLDelight, Apache-2.0)
+                implementation(libs.sqldelight.coroutines)
             }
         }
         val commonTest by getting {
@@ -62,13 +66,36 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.okhttp)
+                implementation(libs.sqldelight.android.driver)
+                implementation(libs.koin.android)
+            }
+        }
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.sqldelight.sqlite.driver)
+            }
+        }
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.sqldelight.sqlite.driver)
             }
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
+                implementation(libs.sqldelight.sqlite.driver)
             }
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("DezzyDatabase") {
+            packageName.set("com.dezzy.app.core.database.db")
+            schemaOutputDirectory.set(file("src/commonMain/sqldelight/databases"))
+            verifyMigrations.set(true)
         }
     }
 }

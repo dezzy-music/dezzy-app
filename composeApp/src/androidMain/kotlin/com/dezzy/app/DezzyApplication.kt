@@ -1,0 +1,22 @@
+/*
+ * Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+ * Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+ */
+
+package com.dezzy.app
+
+import android.app.Application
+import com.dezzy.app.di.coreModule
+import com.dezzy.app.di.platformModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
+
+class DezzyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        startKoin {
+            androidContext(this@DezzyApplication)
+            modules(platformModule, coreModule)
+        }
+    }
+}

@@ -1,0 +1,180 @@
+-- Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+-- Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+--
+-- Esquema propio de Dezzy (app KMP). Todas las marcas de tiempo son
+-- milisegundos UTC reales (epoch). El importador de Dezzy 3.x (fase 11)
+-- convierte su historial, que guardaba hora local como si fuera UTC.
+
+CREATE TABLE track (
+    video_id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    artists TEXT NOT NULL,
+    album TEXT,
+    thumbnail TEXT,
+    duration_seconds INTEGER,
+    spotify_id TEXT,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE favorite (
+    video_id TEXT NOT NULL PRIMARY KEY REFERENCES track(video_id),
+    liked_at INTEGER NOT NULL
+);
+
+CREATE INDEX favorite_liked_at ON favorite(liked_at);
+
+-- Cada reproducción es una fila: las estadísticas, la racha y
+-- «Tu año en música» necesitan todas, no sólo la última.
+CREATE TABLE play_event (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL REFERENCES track(video_id),
+    played_at INTEGER NOT NULL
+);
+
+CREATE INDEX play_event_played_at ON play_event(played_at);
+CREATE INDEX play_event_video ON play_event(video_id, played_at);
+
+CREATE TABLE playlist (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    author TEXT,
+    thumbnail TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE playlist_entry (
+    playlist_id TEXT NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    video_id TEXT NOT NULL REFERENCES track(video_id),
+    PRIMARY KEY (playlist_id, position)
+);
+
+-- Caché del catálogo: el objeto entero en JSON (kotlinx.serialization).
+CREATE TABLE catalog_cache (
+    kind TEXT NOT NULL,
+    id TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, id)
+);
+
+-- Caché persistente de URLs de audio (fase 3). Ligadas a la IP que las pidió.
+CREATE TABLE stream_cache (
+    video_id TEXT NOT NULL,
+    quality TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    PRIMARY KEY (video_id, quality)
+);
+
+-- track ----------------------------------------------------------------
+
+-- Android 6.0 trae SQLite 3.8: sin «ON CONFLICT DO UPDATE». Se hace en dos
+-- pasos dentro de una transacción (insertTrackIfAbsent + updateTrack).
+insertTrackIfAbsent:
+INSERT OR IGNORE INTO track(video_id, title, artists, album, thumbnail, duration_seconds, spotify_id, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+updateTrack:
+UPDATE track SET
+    title = :title,
+    artists = :artists,
+    album = coalesce(:album, album),
+    thumbnail = coalesce(:thumbnail, thumbnail),
+    duration_seconds = coalesce(:durationSeconds, duration_seconds),
+    spotify_id = coalesce(:spotifyId, spotify_id),
+    updated_at = :updatedAt
+WHERE video_id = :videoId;
+
+trackById:
+SELECT * FROM track WHERE video_id = ?;
+
+-- favorite -------------------------------------------------------------
+
+favorites:
+SELECT track.* FROM favorite JOIN track USING (video_id)
+ORDER BY favorite.liked_at DESC;
+
+isFavorite:
+SELECT count(*) FROM favorite WHERE video_id = ?;
+
+addFavorite:
+INSERT OR IGNORE INTO favorite(video_id, liked_at) VALUES (?, ?);
+
+removeFavorite:
+DELETE FROM favorite WHERE video_id = ?;
+
+-- historial ------------------------------------------------------------
+
+addPlay:
+INSERT INTO play_event(video_id, played_at) VALUES (?, ?);
+
+-- Recientes sin repetir: la última vez que sonó cada canción.
+recentTracks:
+SELECT track.* FROM track
+JOIN (
+    SELECT video_id, max(played_at) AS last_played
+    FROM play_event GROUP BY video_id
+) AS last USING (video_id)
+ORDER BY last.last_played DESC
+LIMIT ?;
+
+playsBetween:
+SELECT * FROM play_event WHERE played_at >= ? AND played_at < ? ORDER BY played_at;
+
+clearPlays:
+DELETE FROM play_event;
+
+-- playlists ------------------------------------------------------------
+
+insertPlaylist:
+INSERT INTO playlist(id, title, author, thumbnail, created_at) VALUES (?, ?, ?, ?, ?);
+
+playlists:
+SELECT playlist.*, (SELECT count(*) FROM playlist_entry WHERE playlist_id = playlist.id) AS track_count
+FROM playlist ORDER BY created_at DESC;
+
+playlistById:
+SELECT * FROM playlist WHERE id = ?;
+
+playlistTracks:
+SELECT track.* FROM playlist_entry JOIN track USING (video_id)
+WHERE playlist_entry.playlist_id = ?
+ORDER BY playlist_entry.position;
+
+nextPosition:
+SELECT coalesce(max(position) + 1, 0) FROM playlist_entry WHERE playlist_id = ?;
+
+addEntry:
+INSERT INTO playlist_entry(playlist_id, position, video_id) VALUES (?, ?, ?);
+
+removeEntriesForVideo:
+DELETE FROM playlist_entry WHERE playlist_id = ? AND video_id = ?;
+
+deletePlaylistEntries:
+DELETE FROM playlist_entry WHERE playlist_id = ?;
+
+deletePlaylist:
+DELETE FROM playlist WHERE id = ?;
+
+-- caché de catálogo ----------------------------------------------------
+
+putCatalog:
+INSERT OR REPLACE INTO catalog_cache(kind, id, payload, updated_at) VALUES (?, ?, ?, ?);
+
+getCatalog:
+SELECT payload FROM catalog_cache WHERE kind = ? AND id = ?;
+
+-- caché de streams -----------------------------------------------------
+
+putStream:
+INSERT OR REPLACE INTO stream_cache(video_id, quality, payload, expires_at) VALUES (?, ?, ?, ?);
+
+getStream:
+SELECT payload, expires_at FROM stream_cache WHERE video_id = ? AND quality = ?;
+
+deleteStream:
+DELETE FROM stream_cache WHERE video_id = ?;
+
+purgeExpiredStreams:
+DELETE FROM stream_cache WHERE expires_at < ?;

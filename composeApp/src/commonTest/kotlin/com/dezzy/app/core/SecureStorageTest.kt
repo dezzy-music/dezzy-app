@@ -5,14 +5,14 @@
 
 package com.dezzy.app.core
 
-import com.dezzy.app.core.prefs.createPlatformSecureStorage
+import com.dezzy.app.core.prefs.InMemorySecureStorage
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SecureStorageTest {
-    private val storage = createPlatformSecureStorage()
+    private val storage = InMemorySecureStorage()
 
     @Test
     fun testSecureStorageOperations() = runTest {
