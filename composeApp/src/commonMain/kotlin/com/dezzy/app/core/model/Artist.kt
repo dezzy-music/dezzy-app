@@ -15,5 +15,6 @@ data class Artist(
     val listeners: String? = null,
     val description: String? = null,
     val songs: List<Track> = emptyList(),
+    val shelves: List<MusicSection> = emptyList(),
     val subscribed: Boolean? = null
 )

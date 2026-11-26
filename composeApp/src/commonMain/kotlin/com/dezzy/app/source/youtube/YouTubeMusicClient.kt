@@ -6,6 +6,7 @@
 package com.dezzy.app.source.youtube
 
 import com.dezzy.app.core.model.Album
+import com.dezzy.app.core.model.Artist
 import com.dezzy.app.core.model.MusicSection
 import com.dezzy.app.core.model.Playlist
 import com.dezzy.app.core.model.SearchResult
@@ -42,6 +43,60 @@ class YouTubeMusicClient(
                 put("gl", gl)
             }
         }
+    }
+
+    private suspend fun post(url: String, payload: JsonObject): JsonObject =
+        httpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            header(HttpHeaders.Origin, YouTubeEndpoints.ORIGIN)
+            header(HttpHeaders.Referrer, YouTubeEndpoints.REFERER)
+            setBody(payload)
+        }.body()
+
+    /** Radio automática a partir de una canción (lo que suena después), sin la propia canción. */
+    suspend fun getUpNext(videoId: String, gl: String = "US"): Result<List<Track>> = runCatching {
+        val response = post(YouTubeEndpoints.NEXT_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("videoId", videoId)
+            put("playlistId", "RDAMVM$videoId")
+            put("isAudioOnly", true)
+            put("enablePersistentPlaylistPanel", true)
+            put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
+        })
+        YouTubeCatalogParsers.parseUpNext(response, videoId)
+    }
+
+    suspend fun getArtist(id: String, gl: String = "US"): Result<Artist> = runCatching {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("browseId", id)
+        })
+        YouTubeCatalogParsers.parseArtist(response, id)
+    }
+
+    /** Id del artista que mejor encaja con un nombre (los enlaces sólo traen el nombre). */
+    suspend fun findArtistId(name: String, gl: String = "US"): Result<String?> = runCatching {
+        val first = name.split(Regex(",| & | feat\\. ", RegexOption.IGNORE_CASE)).firstOrNull()?.trim()
+        if (first.isNullOrEmpty()) return@runCatching null
+        val artists = searchSingle(first.take(120), YouTubeEndpoints.FILTER_ARTISTS, gl).artists
+        val wanted = YouTubeCatalogParsers.normalize(first)
+        (artists.firstOrNull { YouTubeCatalogParsers.normalize(it.title) == wanted } ?: artists.firstOrNull())?.id
+    }
+
+    suspend fun getSearchSuggestions(input: String, gl: String = "US"): Result<SearchSuggestions> = runCatching {
+        if (input.isBlank()) return@runCatching SearchSuggestions()
+        val response = post(YouTubeEndpoints.SUGGESTIONS_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("input", input)
+        })
+        YouTubeCatalogParsers.parseSuggestions(response)
+    }
+
+    /** Videoclip de la canción: el vídeo que mejor encaje con título, artista y duración. */
+    suspend fun findMusicVideo(track: Track, gl: String = "US"): Result<String?> = runCatching {
+        val query = "${track.title} ${track.artists}".take(200)
+        val candidates = searchSingle(query, YouTubeEndpoints.FILTER_VIDEOS, gl).songs
+        YouTubeCatalogParsers.pickMusicVideo(candidates, track.title, track.artists, track.durationSeconds)
     }
 
     suspend fun getHome(gl: String = "US"): Result<List<MusicSection>> = runCatching {

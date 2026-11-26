@@ -16,6 +16,7 @@ import com.dezzy.app.core.prefs.SecureStorage
 import com.dezzy.app.source.stream.StreamEngine
 import com.dezzy.app.source.stream.WebViewStreamEngine
 import com.dezzy.app.feature.player.DezzyPlayer
+import com.dezzy.app.source.youtube.YouTubeMusicClient
 import com.dezzy.app.feature.player.PlayerController
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -27,6 +28,11 @@ actual val platformModule = module {
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create { androidContext().filesDir.resolve("datastore/dezzy.preferences_pb") }
     }
-    single { DezzyPlayer(androidContext(), get(), get(), get(), get()) }
+    single {
+        val client = get<YouTubeMusicClient>()
+        DezzyPlayer(androidContext(), get(), get(), get(), get()).apply {
+            radioProvider = { seed -> seed.videoId?.let { client.getUpNext(it).getOrNull() }.orEmpty() }
+        }
+    }
     single<PlayerController> { get<DezzyPlayer>() }
 }

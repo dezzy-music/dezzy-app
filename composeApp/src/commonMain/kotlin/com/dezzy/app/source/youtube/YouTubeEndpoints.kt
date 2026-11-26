@@ -10,6 +10,7 @@ object YouTubeEndpoints {
     const val BROWSE_URL = "${BASE_URL}browse?prettyPrint=false"
     const val SEARCH_URL = "${BASE_URL}search?prettyPrint=false"
     const val NEXT_URL = "${BASE_URL}next?prettyPrint=false"
+    const val SUGGESTIONS_URL = "${BASE_URL}music/get_search_suggestions?prettyPrint=false"
     const val PLAYER_URL = "${BASE_URL}player?prettyPrint=false"
     const val YT_PLAYER_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false"
 
