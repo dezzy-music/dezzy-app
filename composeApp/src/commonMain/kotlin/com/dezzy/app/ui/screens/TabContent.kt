@@ -45,6 +45,7 @@ import com.dezzy.app.ui.screens.downloads.DownloadsScreen
 import com.dezzy.app.ui.screens.lossless.LosslessScreen
 import com.dezzy.app.ui.screens.lossless.LosslessDownloadsScreen
 import com.dezzy.app.ui.screens.settings.LosslessSettingsScreen
+import com.dezzy.app.ui.screens.settings.EqualizerScreen
 
 /** Contenido de la pestaña activa o de la pantalla apilada encima. */
 @Composable
@@ -93,6 +94,7 @@ fun TabContent(
             SettingsPage.DISCORD -> DiscordSettingsScreen(ctx)
             SettingsPage.LYRICS -> LyricsSettingsScreen(ctx)
             SettingsPage.LOSSLESS -> LosslessSettingsScreen(ctx)
+            SettingsPage.EQUALIZER -> EqualizerScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         Screen.Downloads -> DownloadsScreen(ctx)

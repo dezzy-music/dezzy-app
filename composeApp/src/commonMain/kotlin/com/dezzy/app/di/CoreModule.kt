@@ -33,11 +33,12 @@ import com.dezzy.app.feature.lyrics.lyricsModule
 import com.dezzy.app.feature.canvas.canvasModule
 import com.dezzy.app.feature.downloads.downloadsModule
 import com.dezzy.app.feature.lossless.losslessModule
+import com.dezzy.app.feature.audio.audioModule
 import com.dezzy.app.feature.scrobble.scrobbleModule
 import com.dezzy.app.source.spotify.spotifyFeaturesModule
 
 val coreModule: Module = module {
-    includes(scrobbleModule, discordModule, spotifyFeaturesModule, lyricsModule, canvasModule, downloadsModule, losslessModule)
+    includes(scrobbleModule, discordModule, spotifyFeaturesModule, lyricsModule, canvasModule, downloadsModule, losslessModule, audioModule)
     single { HttpClientFactory.create() }
     single { DezzyDatabase(get()) }
     single { DezzyPreferences(get()) }

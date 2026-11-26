@@ -7,6 +7,11 @@ package com.dezzy.app.feature.player
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import com.dezzy.app.feature.audio.DezzyEqManager
+import com.dezzy.app.feature.audio.HiResAudioProcessorChain
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -688,6 +693,20 @@ class DezzyPlayer(
         }
     }
 
+    /** Salida float y la cadena Dezzy (EQ C++20, sub-bass, virtualizer, preamp, limitador). */
+    private fun hiResRenderersFactory(): DefaultRenderersFactory =
+        object : DefaultRenderersFactory(context) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): AudioSink = DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput)
+                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                .setAudioProcessorChain(HiResAudioProcessorChain())
+                .build()
+        }.setEnableAudioFloatOutput(true)
+
     private fun buildPlayer(): ExoPlayer {
         val http = OkHttpDataSource.Factory(OkHttpClient()).setUserAgent(HttpClientFactory.DEFAULT_USER_AGENT)
         val koin = KoinPlatform.getKoin()
@@ -702,7 +721,10 @@ class DezzyPlayer(
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
-        return ExoPlayer.Builder(context)
+        DezzyEqManager.initAndLoad(prefs)
+        val hiRes = DezzyEqManager.readHiResEnabledBlocking(prefs)
+        val builder = if (hiRes) ExoPlayer.Builder(context, hiResRenderersFactory()) else ExoPlayer.Builder(context)
+        return builder
             .setMediaSourceFactory(DefaultMediaSourceFactory(source))
             .setAudioAttributes(attributes, true)
             .setHandleAudioBecomingNoisy(true)

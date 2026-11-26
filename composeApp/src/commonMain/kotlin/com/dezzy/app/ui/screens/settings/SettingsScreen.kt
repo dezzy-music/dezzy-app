@@ -126,6 +126,7 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.DISCORD -> "Discord"
     SettingsPage.LYRICS -> "Letras e IA"
     SettingsPage.LOSSLESS -> "Descargas lossless"
+    SettingsPage.EQUALIZER -> "Ecualizador"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */

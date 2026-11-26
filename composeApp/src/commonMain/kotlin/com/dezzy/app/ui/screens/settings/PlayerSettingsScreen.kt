@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.dezzy.app.feature.audio.AudioEffects
 import com.dezzy.app.feature.downloads.MobileDataQualityKey
 import com.dezzy.app.feature.video.VideoKeepModeOnSongChangeKey
 import com.dezzy.app.feature.video.VideoMaxQualityKey
@@ -26,10 +27,13 @@ import com.dezzy.app.feature.video.VideoQuality
 import com.dezzy.app.feature.video.VideoResizeMode
 import com.dezzy.app.feature.video.VideoResizeModeKey
 import com.dezzy.app.source.stream.AudioQuality
+import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 private fun audioQualityLabel(q: AudioQuality): String = when (q) {
@@ -49,6 +53,8 @@ internal fun qualityLabel(key: String): String = when (key) {
 internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     val prefs = ctx.prefs
     val scope = ctx.scope
+    val audioEffects: AudioEffects = koinInject()
+    val audioFx by audioEffects.state.collectAsState()
     val quality by prefs.audioQuality.collectAsState("auto")
     val normalize by prefs.normalizeVolume.collectAsState(false)
     val crossfade by prefs.crossfadeSeconds.collectAsState(0)
@@ -73,7 +79,17 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                     onSelect = { scope.launch { prefs.setAudioQuality(it.name) } },
                 )
                 SettingsDivider()
-                SettingsPendingRow("Motor Hi-Res", "8b", ctx)
+                SettingsSwitchRow(
+                    title = "Motor de audio Hi-Res (32-bit float)",
+                    subtitle = when {
+                        !audioFx.processingSupported -> "El procesado de audio sólo funciona en Android"
+                        !audioFx.nativeAvailable -> "Usando el motor de respaldo"
+                        else -> "Se aplica al volver a abrir la app"
+                    },
+                    checked = audioFx.hiResEnabled,
+                    onCheckedChange = audioEffects::setHiResEnabled,
+                    enabled = audioFx.processingSupported,
+                )
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Calidad con datos móviles",
@@ -106,7 +122,12 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsPendingRow("Saltar silencios", "4", ctx)
                 SettingsDivider()
-                SettingsPendingRow("Ecualizador", "4", ctx, icon = Icons.Rounded.GraphicEq)
+                SettingsRow(
+                    title = "Ecualizador",
+                    subtitle = if (audioFx.eqEnabled) "Activado" else "Desactivado",
+                    icon = Icons.Rounded.GraphicEq,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.EQUALIZER)) },
+                )
             }
         }
         item(key = "behavior") {
