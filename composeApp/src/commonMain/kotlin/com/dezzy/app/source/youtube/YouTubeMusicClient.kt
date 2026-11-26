@@ -25,7 +25,10 @@ import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -162,6 +165,48 @@ class YouTubeMusicClient(
             put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
         })
         YouTubeCatalogParsers.parseUpNext(response, videoId)
+    }
+
+    /**
+     * Letra sin tiempos del catálogo: `next` da la pestaña de letra (browseId «MPLY…») y `browse` con ese
+     * id trae el `musicDescriptionShelfRenderer`. null si no hay o algo falla.
+     */
+    suspend fun getLyrics(videoId: String): String? {
+        return try {
+            val next = post(YouTubeEndpoints.NEXT_URL, buildJsonObject {
+                put("context", buildContext())
+                put("videoId", videoId)
+                put("isAudioOnly", true)
+            })
+            val browseId = findLyricsBrowseId(next) ?: return null
+            val page = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+                put("context", buildContext())
+                put("browseId", browseId)
+            })
+            val shelf = findKey(page, "musicDescriptionShelfRenderer") as? JsonObject ?: return null
+            val runs = (shelf["description"] as? JsonObject)?.get("runs") as? JsonArray ?: return null
+            runs.mapNotNull { ((it as? JsonObject)?.get("text") as? JsonPrimitive)?.content }
+                .joinToString("")
+                .takeIf { it.isNotBlank() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun findLyricsBrowseId(el: JsonElement): String? = when (el) {
+        is JsonObject -> (el["browseId"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            ?.takeIf { it.startsWith("MPLY") }
+            ?: el.values.firstNotNullOfOrNull { findLyricsBrowseId(it) }
+        is JsonArray -> el.firstNotNullOfOrNull { findLyricsBrowseId(it) }
+        else -> null
+    }
+
+    private fun findKey(el: JsonElement, key: String): JsonElement? = when (el) {
+        is JsonObject -> el[key] ?: el.values.firstNotNullOfOrNull { findKey(it, key) }
+        is JsonArray -> el.firstNotNullOfOrNull { findKey(it, key) }
+        else -> null
     }
 
     /** Búsqueda de vídeos (filtro «Vídeos»): primera página. */

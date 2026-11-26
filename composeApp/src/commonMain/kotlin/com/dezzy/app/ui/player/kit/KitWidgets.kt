@@ -67,7 +67,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,6 +95,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.feature.canvas.CANVAS_SONG_DEFAULT
+import com.dezzy.app.feature.canvas.CanvasLoop
+import com.dezzy.app.feature.canvas.CanvasResolver
+import com.dezzy.app.feature.canvas.CanvasSongEnabledKey
+import com.dezzy.app.ui.player.canvas.CanvasVideo
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.glass.DezzyIconButton
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -232,6 +239,10 @@ class CanvasArtwork(
     val videoUrl: String? = null,
     val videoUrlVertical: String? = null,
     val source: String? = null,
+    /** Si el vídeo es un trozo de un videoclip: desde dónde se repite (ms). */
+    val loopStartMs: Long = 0L,
+    /** Duración del trozo que se repite (ms); 0 = el vídeo entero. */
+    val loopLengthMs: Long = 0L,
 ) {
     /** (principal, respaldo) para el reproductor de canvas. */
     fun playbackUrls(): Pair<String?, String?> =
@@ -243,7 +254,10 @@ class CanvasArtwork(
     }
 }
 
-/** Canvas de la canción que suena; null hasta que llegue el resolvedor de canvas (fase 7). */
+/**
+ * Canvas de la canción que suena: trozo de su videoclip en bucle. Respeta el ajuste «Canvas de la
+ * canción» (apagado = null) y devuelve null mientras se busca o si la canción no tiene videoclip.
+ */
 @Composable
 fun rememberPlaybackCanvas(
     mediaId: String?,
@@ -251,16 +265,44 @@ fun rememberPlaybackCanvas(
     artist: String?,
     albumTitle: String?,
     durationMs: Long,
-): CanvasArtwork? = null
+): CanvasArtwork? {
+    val resolver: CanvasResolver = koinInject()
+    val enabled by rememberPreference(CanvasSongEnabledKey, CANVAS_SONG_DEFAULT)
+    var canvas by remember(mediaId, enabled) { mutableStateOf<CanvasArtwork?>(null) }
+    LaunchedEffect(mediaId, title, enabled) {
+        canvas = null
+        if (!enabled || (mediaId.isNullOrBlank() && title.isNullOrBlank())) return@LaunchedEffect
+        canvas = resolver.resolve(
+            mediaId = mediaId,
+            title = title,
+            artist = artist,
+            durationSec = durationMs.takeIf { it > 0 }?.let { (it / 1000).toInt() },
+        )
+    }
+    return canvas
+}
 
-/** Reproduce el canvas en bucle; no pinta nada hasta la fase 7. */
+/** Reproduce el canvas en bucle, sin sonido; no pinta nada si no hay URL. */
 @Composable
 fun CanvasArtworkPlayer(
     primaryUrl: String?,
     fallbackUrl: String?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-) = Unit
+) {
+    val url = primaryUrl?.takeIf { it.isNotBlank() } ?: fallbackUrl?.takeIf { it.isNotBlank() } ?: return
+    val resolver: CanvasResolver = koinInject()
+    // Sin trozo conocido se reproduce entero; no se pinta hasta saberlo para no reiniciar el vídeo.
+    val loop by produceState<CanvasLoop?>(null, url) { value = resolver.loopFor(url) ?: CanvasLoop(0L, 0L) }
+    val ready = loop ?: return
+    CanvasVideo(
+        url = url,
+        loopStartMs = ready.startMs,
+        loopLengthMs = ready.lengthMs,
+        playing = isPlaying,
+        modifier = modifier,
+    )
+}
 
 // ── Letras (llegan en la fase 7) ─────────────────────────────────────────────────────────────
 

@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dezzy.app.core.model.Track
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.SectionHeader
 import com.dezzy.app.ui.components.TrackRow
 
@@ -120,6 +123,15 @@ fun ArtistScreen(id: String, ctx: ScreenContext) {
                         onBack = { ctx.navigator.back() },
                         onPlay = if (a.songs.isEmpty()) null else ({ ctx.player.playTracks(a.songs, 0, source) }),
                         onShuffle = { ctx.player.playTracks(a.songs.shuffled(), 0, source) },
+                        thumbnailContent = {
+                            // Canvas del artista: trozo mudo del videoclip de su primera canción sobre la foto.
+                            androidx.compose.foundation.layout.Box(
+                                Modifier.size(200.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                            ) {
+                                CoverImage(a.thumbnail, Modifier.matchParentSize(), androidx.compose.foundation.shape.CircleShape, sizePx = 720)
+                                com.dezzy.app.ui.player.canvas.ArtistCanvas(a.songs.firstOrNull(), Modifier.matchParentSize())
+                            }
+                        },
                     )
                 }
                 if (a.songs.isNotEmpty()) {

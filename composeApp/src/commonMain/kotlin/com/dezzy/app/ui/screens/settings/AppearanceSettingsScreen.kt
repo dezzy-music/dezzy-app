@@ -63,6 +63,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dezzy.app.feature.canvas.CANVAS_ARTIST_DEFAULT
+import com.dezzy.app.feature.canvas.CANVAS_SONG_DEFAULT
+import com.dezzy.app.feature.canvas.CanvasArtistEnabledKey
+import com.dezzy.app.feature.canvas.CanvasSongEnabledKey
 import com.dezzy.app.ui.player.kit.BlurRadiusKey
 import com.dezzy.app.ui.player.kit.DisableBlurKey
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
@@ -119,6 +123,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var showCodec by rememberPreference(ShowCodecOnPlayerKey, true)
     var visualizerName by rememberPreference(VisualizerStyleKey, VisualizerStyle.ESFERA.name)
     var visualizerSwipe by rememberPreference(VisualizerSwipeKey, true)
+    var canvasSong by rememberPreference(CanvasSongEnabledKey, CANVAS_SONG_DEFAULT)
+    var canvasArtist by rememberPreference(CanvasArtistEnabledKey, CANVAS_ARTIST_DEFAULT)
 
     var showStyleSelector by remember { mutableStateOf(false) }
 
@@ -238,9 +244,21 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onCheckedChange = { showCodec = it },
                 )
                 SettingsDivider()
-                SettingsPendingRow(title = "Canvas de la canción", phase = "7", ctx = ctx, icon = Icons.Rounded.Videocam)
+                SettingsSwitchRow(
+                    title = "Canvas de la canción",
+                    subtitle = "Un trozo del videoclip, sin sonido, sobre la carátula",
+                    icon = Icons.Rounded.Videocam,
+                    checked = canvasSong,
+                    onCheckedChange = { canvasSong = it },
+                )
                 SettingsDivider()
-                SettingsPendingRow(title = "Canvas del artista", phase = "7", ctx = ctx, icon = Icons.Rounded.Videocam)
+                SettingsSwitchRow(
+                    title = "Canvas del artista",
+                    subtitle = "Cabecera en movimiento en la página del artista",
+                    icon = Icons.Rounded.Videocam,
+                    checked = canvasArtist,
+                    onCheckedChange = { canvasArtist = it },
+                )
             }
         }
 

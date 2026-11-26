@@ -8,6 +8,9 @@ package com.dezzy.app.ui.player.kit
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.feature.lyrics.LyricsManager
+import com.dezzy.app.feature.lyrics.LyricsState
+import com.dezzy.app.feature.lyrics.toLrc
 import com.dezzy.app.feature.video.VideoDownloadState
 import com.dezzy.app.feature.video.VideoModeController
 import com.dezzy.app.feature.video.VideoPlayerHandle
@@ -27,11 +30,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 
 /*
  * Kit de los estilos de reproductor (fase 5c). Da a los 13 estilos portados las mismas piezas que
@@ -206,8 +212,22 @@ class PlayerConnection(
         m?.let { CurrentSong(SongInfo(liked)) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
-    /** Letras: llegan en la fase 7. */
-    val currentLyrics: StateFlow<LyricsEntity?> = MutableStateFlow<LyricsEntity?>(null).asStateFlow()
+    /** Letra de la canción actual, tal como la deja el gestor de letras (sincronizada en formato LRC, o plana). */
+    val currentLyrics: StateFlow<LyricsEntity?> = flow {
+        val manager = KoinPlatform.getKoin().get<LyricsManager>()
+        manager.start()
+        emitAll(manager.state)
+    }.map { st ->
+        val found = st as? LyricsState.Found
+        val synced = found?.result?.synced
+        val plain = found?.result?.plain
+        when {
+            found == null -> null
+            !synced.isNullOrEmpty() -> LyricsEntity(found.videoId, synced.toLrc())
+            !plain.isNullOrBlank() -> LyricsEntity(found.videoId, plain)
+            else -> null
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, null)
     /** Códec y bitrate: el motor aún no los publica. */
     val currentFormat: StateFlow<AudioFormat?> = MutableStateFlow<AudioFormat?>(null).asStateFlow()
 

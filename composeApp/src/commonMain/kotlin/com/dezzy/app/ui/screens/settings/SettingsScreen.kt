@@ -124,6 +124,7 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.SPOTIFY_IMPORT -> "Importar de Spotify"
     SettingsPage.SCROBBLING -> "Scrobbling"
     SettingsPage.DISCORD -> "Discord"
+    SettingsPage.LYRICS -> "Letras e IA"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */
@@ -155,7 +156,7 @@ internal fun SettingsScreen(ctx: ScreenContext) {
     val group1 = listOf(
         SettingsEntry("Apariencia", "Tema del sistema, color dinámico", Icons.Rounded.Palette) { open(SettingsPage.APPEARANCE) },
         SettingsEntry("Reproductor y audio", "Calidad alta, normalizar volumen", Icons.Rounded.PlayCircle) { open(SettingsPage.PLAYER) },
-        SettingsEntry("Letras e IA", "Traducción automática activada", Icons.Rounded.Lyrics) { ctx.pending("Letras e IA", "7") },
+        SettingsEntry("Letras e IA", "Traducción, alineación y animación", Icons.Rounded.Lyrics) { open(SettingsPage.LYRICS) },
         SettingsEntry("Contenido", "${languageName(language)}, ${countryName(country)}", Icons.Rounded.Language) { open(SettingsPage.CONTENT) },
     )
     val group2 = listOf(

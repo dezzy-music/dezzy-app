@@ -53,6 +53,7 @@ import com.dezzy.app.ui.player.kit.PlayerMenu
 import com.dezzy.app.ui.player.kit.ShowMediaInfo
 import com.dezzy.app.ui.player.kit.SleepTimerDialog
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
+import com.dezzy.app.ui.player.lyrics.LyricsScreen
 import com.dezzy.app.ui.player.styles.AuroraPlayer
 import com.dezzy.app.ui.player.styles.CarModePlayer
 import com.dezzy.app.ui.player.styles.ClassicPlayer
@@ -93,6 +94,7 @@ fun PlayerRouter(
     var showSleep by remember { mutableStateOf(false) }
     var showVisualizer by remember { mutableStateOf(false) }
     var showStyles by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
     val mediaMetadata by connection.mediaMetadata.collectAsState()
     val isPlaying by connection.isPlaying.collectAsState()
 
@@ -112,7 +114,7 @@ fun PlayerRouter(
     PlatformBackHandler(enabled = showStyles) { showStyles = false }
 
     val onQueue = { showQueue = true }
-    val onLyrics = { connection.pending("Letras", "7") }
+    val onLyrics = { showLyrics = true }
     val onSleep = { showSleep = true }
     val onVisualizer = { showVisualizer = true }
     val onMenu: () -> Unit = {
@@ -220,6 +222,10 @@ fun PlayerRouter(
 
             AnimatedVisibility(showStyles, enter = fadeIn(), exit = fadeOut()) {
                 StyleSelectorPage(style, onApply = { showStyles = false }, onBack = { showStyles = false })
+            }
+
+            if (showLyrics) {
+                LyricsScreen(playerConnection = connection, onClose = { showLyrics = false })
             }
         }
 

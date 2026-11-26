@@ -57,7 +57,7 @@ import com.dezzy.app.ui.player.kit.DevicesButton
 import com.dezzy.app.ui.player.kit.IpodThemeMode
 import com.dezzy.app.ui.player.kit.IpodThemeModeKey
 import com.dezzy.app.ui.player.kit.LocalPlayerConnection
-import com.dezzy.app.ui.player.kit.Lyrics
+import com.dezzy.app.ui.player.lyrics.LyricsPanel
 import com.dezzy.app.ui.player.kit.NavController
 import com.dezzy.app.ui.player.kit.ShareBottomSheet
 import com.dezzy.app.ui.player.kit.isLandscape as kitIsLandscape
@@ -453,9 +453,8 @@ fun IpodPlayer(
                                             .weight(1f)
                                             .fillMaxHeight()
                                     ) {
-                                        Lyrics(
-                                            lyricsSyncOffset = 0,
-                                            sliderPositionProvider = { sliderPosition },
+                                        LyricsPanel(
+                                            playerConnection = playerConnection,
                                             modifier = Modifier.fillMaxSize(),
                                             // Proporcional a la tipografía retro del iPod
                                             // (título 8.5sp / artista 7.5sp) en vez del

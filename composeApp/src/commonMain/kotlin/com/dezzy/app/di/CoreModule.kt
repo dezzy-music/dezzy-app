@@ -29,11 +29,13 @@ import com.dezzy.app.feature.video.MusicVideoResolver
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import com.dezzy.app.feature.discord.discordModule
+import com.dezzy.app.feature.lyrics.lyricsModule
+import com.dezzy.app.feature.canvas.canvasModule
 import com.dezzy.app.feature.scrobble.scrobbleModule
 import com.dezzy.app.source.spotify.spotifyFeaturesModule
 
 val coreModule: Module = module {
-    includes(scrobbleModule, discordModule, spotifyFeaturesModule)
+    includes(scrobbleModule, discordModule, spotifyFeaturesModule, lyricsModule, canvasModule)
     single { HttpClientFactory.create() }
     single { DezzyDatabase(get()) }
     single { DezzyPreferences(get()) }
