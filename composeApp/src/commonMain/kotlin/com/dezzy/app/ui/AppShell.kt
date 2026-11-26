@@ -92,6 +92,16 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             }
         }
     }
+    val connectBridge: com.dezzy.app.feature.connect.ConnectPlaybackBridge = koinInject()
+    androidx.compose.runtime.LaunchedEffect(navigator) {
+        com.dezzy.app.feature.social.P2PDeepLinks.pending.collect { peer ->
+            if (peer == null) return@collect
+            com.dezzy.app.feature.social.P2PDeepLinks.pending.value = null
+            navigator.select(com.dezzy.app.ui.navigation.Tab.TOGETHER)
+            if (peer.isNotBlank()) navigator.push(com.dezzy.app.ui.navigation.Screen.P2PChat(peer))
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(connectBridge) { connectBridge.toasts.collect { toast(it) } }
     val connection = remember(player, client, repository) {
         PlayerConnection(player, repository, client, scope, toast) { title, phase ->
             expanded = false

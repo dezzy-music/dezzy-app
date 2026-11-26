@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Info
@@ -127,6 +129,8 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.LYRICS -> "Letras e IA"
     SettingsPage.LOSSLESS -> "Descargas lossless"
     SettingsPage.EQUALIZER -> "Ecualizador"
+    SettingsPage.DESKTOP_LINK -> "Vincular escritorio"
+    SettingsPage.SOCIAL -> "Red social"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */
@@ -165,6 +169,8 @@ internal fun SettingsScreen(ctx: ScreenContext) {
         SettingsEntry("Cuentas y servicios", "YouTube, Spotify", Icons.Rounded.Hub) { open(SettingsPage.ACCOUNTS) },
         SettingsEntry("Descargas y almacenamiento", "Caché 1,2 GB, lossless", Icons.Rounded.Download) { open(SettingsPage.STORAGE) },
         SettingsEntry("Privacidad", "Historial activado", Icons.Rounded.Lock) { open(SettingsPage.PRIVACY) },
+        SettingsEntry("Red social", "Amigos, radar y tus 12 palabras", Icons.Rounded.Groups) { open(SettingsPage.SOCIAL) },
+        SettingsEntry("Vincular escritorio", "Pasa tus sesiones a Dezzy Desktop", Icons.Rounded.Computer) { open(SettingsPage.DESKTOP_LINK) },
     )
     val group3 = listOf(
         SettingsEntry("Actualizaciones", "Versión 3.0.8 disponible", Icons.Rounded.SystemUpdate, badge = false) { ctx.pending("Actualizaciones", "11") },

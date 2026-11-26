@@ -104,9 +104,14 @@ import com.dezzy.app.feature.downloads.DownloadManager
 import com.dezzy.app.ui.player.canvas.CanvasVideo
 import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.ui.components.glass.DezzyIconButton
+import com.dezzy.app.feature.connect.ConnectService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.PI
@@ -357,20 +362,28 @@ object SongCreditsResolver {
     suspend fun resolve(mediaId: String, title: String, artist: String): SongCredits? = null
 }
 
-// ── Dispositivos (Dezzy Connect llega en la fase 9) ──────────────────────────────────────────
+// ── Dispositivos (Dezzy Connect) ─────────────────────────────────────────────────────────────
 
 enum class ConnectState { DISCONNECTED, CONNECTING, CONNECTED }
 
-/** Enlace con Dezzy Desktop; desconectado hasta la fase 9. */
-class DesktopLink {
-    val connectionState: StateFlow<ConnectState> = MutableStateFlow(ConnectState.DISCONNECTED).asStateFlow()
-    val connectedDeviceName: StateFlow<String?> = MutableStateFlow<String?>(null).asStateFlow()
+/** Estado de Dezzy Connect para los reproductores: conectado si hay algún Dezzy de tu grupo enlazado. */
+class DesktopLink(service: ConnectService, scope: CoroutineScope) {
+    val connectionState: StateFlow<ConnectState> = service.state
+        .map { if (it.peers.isNotEmpty()) ConnectState.CONNECTED else ConnectState.DISCONNECTED }
+        .stateIn(scope, SharingStarted.Eagerly, ConnectState.DISCONNECTED)
+    val connectedDeviceName: StateFlow<String?> = service.state
+        .map { it.peers.firstOrNull()?.name }
+        .stateIn(scope, SharingStarted.Eagerly, null)
 }
 
 @Composable
-fun rememberDesktopLink(): DesktopLink = remember { DesktopLink() }
+fun rememberDesktopLink(): DesktopLink {
+    val service: ConnectService = koinInject()
+    val scope = rememberCoroutineScope()
+    return remember(service) { DesktopLink(service, scope) }
+}
 
-/** Nombre del Chromecast al que se transmite, o null (Cast llega en la fase 9). */
+/** Nombre del Chromecast al que se transmite, o null (Chromecast llega más tarde). */
 @Composable
 fun rememberCastingRouteName(): String? = null
 
@@ -411,32 +424,7 @@ fun DevicesButton(
     }
 }
 
-/** Hoja «Conectar a un dispositivo». Por ahora sólo este teléfono y Escuchar juntos. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ConnectDeviceBottomSheet(
-    onDismissRequest: () -> Unit,
-    onOpenListenTogether: (() -> Unit)? = null,
-) {
-    val phone = rememberPhoneDeviceName()
-    ModalBottomSheet(onDismissRequest = onDismissRequest) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 16.dp)) {
-            Text("Conectar a un dispositivo", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(16.dp))
-            SheetRow(Icons.Rounded.Smartphone, phone, "Reproduciendo aquí", trailing = Icons.Rounded.Check)
-            Text(
-                "Tus otros Dezzy, Chromecast y Bluetooth llegan con Dezzy Connect.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 12.dp),
-            )
-            if (onOpenListenTogether != null) {
-                HorizontalDivider()
-                SheetRow(Icons.Rounded.Groups, "Escuchar juntos", "Escucha en sincronía con tus amigos", onClick = onOpenListenTogether)
-            }
-        }
-    }
-}
+// La hoja «Conectar a un dispositivo» (ConnectDeviceBottomSheet) vive en ConnectSheet.kt.
 
 // ── Compartir ────────────────────────────────────────────────────────────────────────────────
 

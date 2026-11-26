@@ -5,6 +5,8 @@
 -- milisegundos UTC reales (epoch). El importador de Dezzy 3.x (fase 11)
 -- convierte su historial, que guardaba hora local como si fuera UTC.
 
+import kotlin.Boolean;
+
 CREATE TABLE track (
     video_id TEXT NOT NULL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -280,3 +282,157 @@ SELECT value FROM kv WHERE key = ?;
 
 deleteKv:
 DELETE FROM kv WHERE key = ?;
+
+-- red social P2P (fase 9a) ----------------------------------------------
+-- Copia local de la red social (Nostr). Se reconstruye desde los relés si se borra.
+-- Las fechas de estas tablas son segundos (como en los eventos de Nostr), no milisegundos.
+-- Van con IF NOT EXISTS porque P2PStore también las crea al arrancar en bases ya existentes.
+
+CREATE TABLE IF NOT EXISTS p2p_message (
+    id TEXT NOT NULL PRIMARY KEY,
+    peer TEXT NOT NULL,
+    from_me INTEGER AS Boolean NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    song_json TEXT,
+    juntos_link TEXT
+);
+
+CREATE INDEX IF NOT EXISTS p2p_message_peer ON p2p_message(peer);
+CREATE INDEX IF NOT EXISTS p2p_message_created ON p2p_message(created_at);
+
+CREATE TABLE IF NOT EXISTS p2p_profile (
+    pubkey TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    about TEXT NOT NULL,
+    picture TEXT,
+    is_private INTEGER AS Boolean NOT NULL,
+    updated_at INTEGER NOT NULL,
+    banner TEXT,
+    banner_video TEXT
+);
+
+CREATE TABLE IF NOT EXISTS p2p_private_post (
+    id TEXT NOT NULL PRIMARY KEY,
+    author TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    json TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS p2p_private_post_author ON p2p_private_post(author);
+
+CREATE TABLE IF NOT EXISTS p2p_private_reaction (
+    id TEXT NOT NULL PRIMARY KEY,
+    post_id TEXT NOT NULL,
+    author TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    reply_to TEXT
+);
+
+CREATE INDEX IF NOT EXISTS p2p_private_reaction_post ON p2p_private_reaction(post_id);
+
+CREATE TABLE IF NOT EXISTS p2p_follow_request (
+    pubkey TEXT NOT NULL,
+    incoming INTEGER AS Boolean NOT NULL,
+    status TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (pubkey, incoming)
+);
+
+CREATE TABLE IF NOT EXISTS p2p_chat_state (
+    peer TEXT NOT NULL PRIMARY KEY,
+    last_read_at INTEGER NOT NULL
+);
+
+p2pMessageExists:
+SELECT count(*) FROM p2p_message WHERE id = ?;
+
+p2pInsertMessage:
+INSERT OR IGNORE INTO p2p_message(id, peer, from_me, content, created_at, song_json, juntos_link)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+p2pMessages:
+SELECT id, peer, from_me, content, created_at, song_json, juntos_link
+FROM p2p_message WHERE peer = ? ORDER BY created_at ASC;
+
+p2pLastMessages:
+SELECT m.id, m.peer, m.from_me, m.content, m.created_at, m.song_json, m.juntos_link
+FROM p2p_message m
+JOIN (SELECT peer, MAX(created_at) AS last_at FROM p2p_message GROUP BY peer) l
+    ON m.peer = l.peer AND m.created_at = l.last_at
+GROUP BY m.peer ORDER BY m.created_at DESC;
+
+p2pUnreadCounts:
+SELECT m.peer, COUNT(*) AS unread FROM p2p_message m
+LEFT JOIN p2p_chat_state s ON s.peer = m.peer
+WHERE m.from_me = 0 AND m.created_at > IFNULL(s.last_read_at, 0)
+GROUP BY m.peer;
+
+p2pUpsertChatState:
+INSERT OR REPLACE INTO p2p_chat_state(peer, last_read_at) VALUES (?, ?);
+
+p2pDeleteConversation:
+DELETE FROM p2p_message WHERE peer = ?;
+
+p2pUpsertProfile:
+INSERT OR REPLACE INTO p2p_profile(pubkey, name, about, picture, is_private, updated_at, banner, banner_video)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+p2pProfiles:
+SELECT pubkey, name, about, picture, is_private, updated_at, banner, banner_video
+FROM p2p_profile WHERE pubkey IN :pubkeys;
+
+p2pInsertPrivatePost:
+INSERT OR IGNORE INTO p2p_private_post(id, author, created_at, json) VALUES (?, ?, ?, ?);
+
+p2pPrivatePosts:
+SELECT id, author, created_at, json FROM p2p_private_post
+WHERE author IN :authors ORDER BY created_at DESC LIMIT :limit;
+
+p2pPrivatePostsOf:
+SELECT id, author, created_at, json FROM p2p_private_post
+WHERE author = ? ORDER BY created_at DESC LIMIT ?;
+
+p2pPrivatePost:
+SELECT id, author, created_at, json FROM p2p_private_post WHERE id = ?;
+
+p2pDeletePrivatePost:
+DELETE FROM p2p_private_post WHERE id = ?;
+
+p2pInsertPrivateReaction:
+INSERT OR IGNORE INTO p2p_private_reaction(id, post_id, author, created_at, type, content, reply_to)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+p2pPrivateReactions:
+SELECT id, post_id, author, created_at, type, content, reply_to
+FROM p2p_private_reaction WHERE post_id IN :postIds;
+
+p2pUpsertFollowRequest:
+INSERT OR REPLACE INTO p2p_follow_request(pubkey, incoming, status, created_at) VALUES (?, ?, ?, ?);
+
+p2pPendingIncomingRequests:
+SELECT pubkey, incoming, status, created_at FROM p2p_follow_request
+WHERE incoming = 1 AND status = 'pending' ORDER BY created_at DESC;
+
+p2pApprovedFollowers:
+SELECT pubkey FROM p2p_follow_request WHERE incoming = 1 AND status = 'approved';
+
+p2pFollowRequest:
+SELECT pubkey, incoming, status, created_at FROM p2p_follow_request WHERE pubkey = ? AND incoming = ?;
+
+p2pClearMessages:
+DELETE FROM p2p_message;
+
+p2pClearPrivatePosts:
+DELETE FROM p2p_private_post;
+
+p2pClearPrivateReactions:
+DELETE FROM p2p_private_reaction;
+
+p2pClearFollowRequests:
+DELETE FROM p2p_follow_request;
+
+p2pClearChatState:
+DELETE FROM p2p_chat_state;

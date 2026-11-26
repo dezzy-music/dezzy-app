@@ -35,8 +35,25 @@ class MainActivity : ComponentActivity() {
             App()
         }
         askNotificationPermission()
+        handleSocialIntent(intent)
         lifecycleScope.launch {
             VideoPipState.eligible.collect { setVideoPipEligible(it) }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleSocialIntent(intent)
+    }
+
+    /** Toque en una notificación de la red social: abre el chat o la pestaña Juntos. */
+    private fun handleSocialIntent(intent: android.content.Intent?) {
+        when (intent?.action) {
+            com.dezzy.app.feature.social.P2PNotifications.ACTION_OPEN_CHAT ->
+                com.dezzy.app.feature.social.P2PDeepLinks.pending.value =
+                    intent.getStringExtra(com.dezzy.app.feature.social.P2PNotifications.EXTRA_PEER).orEmpty()
+            com.dezzy.app.feature.social.P2PNotifications.ACTION_OPEN_SOCIAL ->
+                com.dezzy.app.feature.social.P2PDeepLinks.pending.value = ""
         }
     }
 

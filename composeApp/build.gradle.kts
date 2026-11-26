@@ -44,6 +44,7 @@ kotlin {
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.kotlinx.json)
                 implementation(libs.ktor.client.logging)
+                implementation(libs.ktor.client.websockets)
 
                 // Koin DI
                 implementation(libs.koin.core)
@@ -68,7 +69,19 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+        // Código JVM compartido por Android y escritorio: criptografía (secp256k1 con BouncyCastle, MIT),
+        // servidor local de Dezzy Connect (Ktor, Apache-2.0) y QR (ZXing core, Apache-2.0).
+        val jvmShared by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(libs.bouncycastle.bcprov)
+                implementation(libs.ktor.server.cio)
+                implementation(libs.ktor.server.websockets)
+                implementation(libs.zxing.core)
+            }
+        }
         val androidMain by getting {
+            dependsOn(jvmShared)
             dependencies {
                 implementation(compose.preview)
                 implementation(libs.androidx.activity.compose)
@@ -83,6 +96,9 @@ kotlin {
                 implementation(libs.media3.exoplayer.hls)
                 implementation(libs.media3.ui)
                 implementation(libs.media3.database)
+                implementation(libs.camerax.camera2)
+                implementation(libs.camerax.lifecycle)
+                implementation(libs.camerax.view)
                 // Cristal líquido (lente y refracción), Apache-2.0
                 implementation(libs.backdrop)
             }
@@ -98,6 +114,7 @@ kotlin {
             }
         }
         val desktopMain by getting {
+            dependsOn(jvmShared)
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
@@ -141,6 +158,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
     buildTypes {

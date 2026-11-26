@@ -189,7 +189,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         }
         item(key = "chips") {
             HomeFilterChips(filter, spotifyVisible = spotifyOn) { f ->
-                if (f == HomeFilter.COMMUNITY) ctx.pending("Comunidad", "9") else filterState = f
+                if (f == HomeFilter.COMMUNITY) ctx.navigator.select(Tab.TOGETHER) else filterState = f
             }
         }
 

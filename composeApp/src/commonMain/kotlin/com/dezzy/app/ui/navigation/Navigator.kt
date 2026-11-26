@@ -55,12 +55,16 @@ sealed interface Screen {
     /** Buscador lossless (Deezer vía el resolver del usuario). */
     data object Lossless : Screen
     data object LosslessDownloads : Screen
+    /** Fase 9: red social P2P y Dezzy Connect. */
+    data class P2PChat(val pubkey: String) : Screen
+    data class P2PProfile(val pubkey: String) : Screen
+    data object P2PWelcome : Screen
 }
 
 enum class SettingsPage {
     MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT,
     ACCOUNTS, CONTENT, YOUTUBE_LOGIN, SPOTIFY, SPOTIFY_LOGIN, SPOTIFY_IMPORT,
-    SCROBBLING, DISCORD, LYRICS, LOSSLESS, EQUALIZER,
+    SCROBBLING, DISCORD, LYRICS, LOSSLESS, EQUALIZER, DESKTOP_LINK, SOCIAL,
 }
 
 /**

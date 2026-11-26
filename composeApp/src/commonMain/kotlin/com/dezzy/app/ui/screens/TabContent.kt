@@ -95,16 +95,21 @@ fun TabContent(
             SettingsPage.LYRICS -> LyricsSettingsScreen(ctx)
             SettingsPage.LOSSLESS -> LosslessSettingsScreen(ctx)
             SettingsPage.EQUALIZER -> EqualizerScreen(ctx)
+            SettingsPage.DESKTOP_LINK -> com.dezzy.app.ui.screens.social.DesktopLinkSettingsScreen(ctx)
+            SettingsPage.SOCIAL -> com.dezzy.app.ui.screens.social.SocialSettingsScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         Screen.Downloads -> DownloadsScreen(ctx)
         Screen.Lossless -> LosslessScreen(ctx)
         Screen.LosslessDownloads -> LosslessDownloadsScreen(ctx)
+        is Screen.P2PChat -> com.dezzy.app.ui.screens.social.P2PChatScreen(ctx, top.pubkey)
+        is Screen.P2PProfile -> com.dezzy.app.ui.screens.social.P2PProfileScreen(ctx, top.pubkey)
+        Screen.P2PWelcome -> com.dezzy.app.ui.screens.social.P2PWelcomeScreen(ctx)
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")
             Tab.LIBRARY -> LibraryScreen(ctx)
-            Tab.TOGETHER -> PendingScreen(Screen.Pending("Juntos", "9 (conectado)"), ctx, root = true)
+            Tab.TOGETHER -> com.dezzy.app.ui.screens.social.SocialHubScreen(ctx)
         }
     }
 }
