@@ -217,6 +217,16 @@ object YouTubeParsers {
         )
     }
 
+    /** Rejilla con cabecera (páginas de estados de ánimo y géneros). */
+    fun parseGridShelf(shelfObj: JsonObject): MusicSection? {
+        val grid = shelfObj["gridRenderer"]?.jsonObject ?: return null
+        val title = YouTubeJsonHelper.runsText(
+            grid["header"]?.jsonObject?.get("gridHeaderRenderer")?.jsonObject?.get("title")
+        )
+        val items = grid["items"]?.jsonArray.orEmpty().mapNotNull { (it as? JsonObject)?.let(::parseMusicItem) }
+        return if (items.isEmpty()) null else MusicSection(title = title, items = items)
+    }
+
     fun parseHomeSections(json: JsonObject): List<MusicSection> {
         val sections = mutableListOf<MusicSection>()
         val contents = json["contents"]?.jsonObject
@@ -229,7 +239,8 @@ object YouTubeParsers {
 
         for (section in contents) {
             val secObj = section as? JsonObject ?: continue
-            parseCarouselShelf(secObj)?.let { sections.add(it) }
+            val shelf = parseCarouselShelf(secObj) ?: parseGridShelf(secObj)
+            shelf?.let { sections.add(it) }
         }
 
         return sections

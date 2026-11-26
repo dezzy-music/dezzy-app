@@ -28,6 +28,9 @@ class DezzyPreferences(
         val KEY_GLASS_INTENSITY = stringPreferencesKey("liquidGlassIntensity")
         val KEY_PURE_BLACK = booleanPreferencesKey("pure_black")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val KEY_PINNED_PLAYLIST_1 = stringPreferencesKey("pinnedPlaylist1")
+        val KEY_PINNED_PLAYLIST_2 = stringPreferencesKey("pinnedPlaylist2")
+        val KEY_DJ_NAME = stringPreferencesKey("djName")
     }
 
     /** Estilo de interfaz: NORMAL, LIQUID_GLASS o NOTHING. */
@@ -123,4 +126,17 @@ class DezzyPreferences(
             prefs[KEY_THEME_MODE] = mode
         }
     }
+
+    /** Listas fijadas en los huecos 3 y 4 de los accesos rápidos del Inicio. */
+    fun pinnedPlaylist(slot: Int): Flow<String?> = dataStore.data.map { prefs ->
+        prefs[if (slot == 1) KEY_PINNED_PLAYLIST_1 else KEY_PINNED_PLAYLIST_2]
+    }
+
+    suspend fun setPinnedPlaylist(slot: Int, playlistId: String?) {
+        val key = if (slot == 1) KEY_PINNED_PLAYLIST_1 else KEY_PINNED_PLAYLIST_2
+        dataStore.edit { prefs -> if (playlistId == null) prefs.remove(key) else prefs[key] = playlistId }
+    }
+
+    /** Nombre propio del DJ («DJ <nombre>»); vacío = «DJ Dezzy». */
+    val djName: Flow<String> = dataStore.data.map { prefs -> prefs[KEY_DJ_NAME] ?: "" }
 }

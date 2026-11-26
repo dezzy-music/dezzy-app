@@ -142,6 +142,23 @@ SELECT * FROM play_event WHERE played_at >= ? AND played_at < ? ORDER BY played_
 clearPlays:
 DELETE FROM play_event;
 
+-- Las que más sonaron desde una fecha (marcación rápida del Inicio).
+mostPlayed:
+SELECT track.* FROM track
+JOIN (
+    SELECT video_id, count(*) AS plays, max(played_at) AS last_played
+    FROM play_event WHERE played_at >= ? GROUP BY video_id
+) AS top USING (video_id)
+ORDER BY top.plays DESC, top.last_played DESC
+LIMIT ?;
+
+-- Favoritos que no suenan desde una fecha («favoritos olvidados»).
+forgottenFavorites:
+SELECT track.* FROM favorite JOIN track USING (video_id)
+WHERE track.video_id NOT IN (SELECT video_id FROM play_event WHERE played_at >= ?)
+ORDER BY favorite.liked_at DESC
+LIMIT ?;
+
 -- playlists ------------------------------------------------------------
 
 insertPlaylist:
@@ -206,6 +223,14 @@ INSERT INTO listen_event(video_id, started_at, seconds) VALUES (?, ?, ?);
 
 listenSecondsBetween:
 SELECT coalesce(sum(seconds), 0) FROM listen_event WHERE started_at >= ? AND started_at < ?;
+
+-- Días (en hora local, desplazada por el primer parámetro) con algo escuchado, del más reciente al más viejo.
+listenDays:
+SELECT DISTINCT (started_at + :offset) / 86400000 AS day FROM listen_event
+WHERE started_at >= :since ORDER BY day DESC;
+
+listenSecondsForVideo:
+SELECT coalesce(sum(seconds), 0) FROM listen_event WHERE video_id = ? AND started_at >= ?;
 
 -- kv -------------------------------------------------------------------
 

@@ -36,6 +36,16 @@ sealed interface Screen {
     data class Artist(val id: String) : Screen
     data class Playlist(val id: String) : Screen
     data class Search(val query: String) : Screen
+    /** Lista guardada en el móvil. */
+    data class LocalPlaylist(val id: String) : Screen
+    /** «Tus me gusta». */
+    data object Liked : Screen
+    data object History : Screen
+    data object MoodsAndGenres : Screen
+    /** Página de `browse` con carruseles (un estado de ánimo o un género). */
+    data class Browse(val title: String, val browseId: String, val params: String?) : Screen
+    /** Función que llega en una fase posterior de la migración. */
+    data class Pending(val title: String, val phase: String) : Screen
 }
 
 /**

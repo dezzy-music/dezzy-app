@@ -26,6 +26,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -34,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dezzy.app.feature.player.PlayerController
@@ -55,6 +58,7 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
     val state by player.state.collectAsState()
     var expanded by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val snackbar = remember { SnackbarHostState() }
 
     PlatformBackHandler(enabled = expanded) { expanded = false }
     PlatformBackHandler(enabled = !expanded && navigator.canGoBack) { navigator.back() }
@@ -76,9 +80,10 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             }
             Column(Modifier.weight(1f).fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    TabContent(navigator, player, client, state)
+                    TabContent(navigator, player, client, state, snackbar)
                     // Velo bajo la barra de estado para que el contenido no choque con los iconos.
                     Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(colors.surface.copy(alpha = 0.92f)))
+                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
                 }
                 MiniPlayer(state, player, onExpand = { expanded = true })
                 if (wide) {

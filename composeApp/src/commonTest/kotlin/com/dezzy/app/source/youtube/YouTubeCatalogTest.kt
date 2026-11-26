@@ -96,4 +96,14 @@ class YouTubeCatalogTest {
         val suggestions = client.getSearchSuggestions("bohemian").getOrThrow()
         assertTrue(suggestions.queries.isNotEmpty(), "Debe haber sugerencias")
     }
+
+    @Test
+    fun realMoodsAndGenres() = runTest {
+        val moods = client.getMoodsAndGenres().getOrThrow()
+        assertTrue(moods.isNotEmpty(), "sin bloques")
+        val first = moods.first().items.first()
+        val page = client.getBrowseSections(first.browseId, first.params).getOrThrow()
+        println("moods=${moods.map { it.title + ":" + it.items.size }} page(${first.title})=${page.map { it.title + ":" + it.items.size }}")
+        assertTrue(page.isNotEmpty(), "página vacía")
+    }
 }

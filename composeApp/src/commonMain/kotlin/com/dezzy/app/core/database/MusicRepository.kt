@@ -22,6 +22,15 @@ interface MusicRepository {
     suspend fun addToHistory(track: Track)
     suspend fun clearHistory()
 
+    // Inicio: marcación rápida, favoritos olvidados, racha y minutos de hoy
+    fun getMostPlayed(sinceMs: Long, limit: Int = 24): Flow<List<Track>>
+    fun getForgottenFavorites(notPlayedSinceMs: Long, limit: Int = 20): Flow<List<Track>>
+    /** Días seguidos (hora local) con algo escuchado, contando hoy o, si hoy aún no, desde ayer. */
+    suspend fun listenStreakDays(utcOffsetMs: Long): Int
+    /** Segundos escuchados desde la medianoche local. */
+    suspend fun todayListenSeconds(utcOffsetMs: Long): Long
+    suspend fun listenedSecondsSince(videoId: String, sinceMs: Long): Long
+
     // Playlists
     fun getPlaylists(): Flow<List<Playlist>>
     suspend fun getPlaylistById(id: String): Playlist?

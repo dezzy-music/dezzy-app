@@ -15,6 +15,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
+/** Un botón de «Estados de ánimo y géneros»: abre una página de `browse` con sus `params`. */
+data class MoodItem(val title: String, val browseId: String, val params: String?, val color: Long?)
+
+/** Un bloque de esa página («Estados de ánimo», «Géneros»…). */
+data class MoodSection(val title: String, val items: List<MoodItem>)
+
 /** Sugerencias del buscador: textos para completar y resultados directos. */
 data class SearchSuggestions(
     val queries: List<String> = emptyList(),
@@ -217,5 +223,26 @@ object YouTubeCatalogParsers {
             }
         }
         return if (bestId != null && bestScore >= 4) bestId else null
+    }
+
+    /** Página `FEmusic_moods_and_genres`: rejillas de botones con color. */
+    fun parseMoodsAndGenres(json: JsonObject): List<MoodSection> {
+        val contents = json.obj("contents").obj("singleColumnBrowseResultsRenderer").arr("tabs")
+            ?.firstOrNull().obj("tabRenderer").obj("content").obj("sectionListRenderer").arr("contents")
+            ?: return emptyList()
+        val sections = mutableListOf<MoodSection>()
+        for (section in contents) {
+            val grid = section.obj("gridRenderer") ?: continue
+            val title = YouTubeJsonHelper.runsText(grid.obj("header").obj("gridHeaderRenderer")?.get("title"))
+            val items = grid.arr("items").orEmpty().mapNotNull { node ->
+                val button = node.obj("musicNavigationButtonRenderer") ?: return@mapNotNull null
+                val endpoint = button.obj("clickCommand").obj("browseEndpoint") ?: return@mapNotNull null
+                val browseId = endpoint.str("browseId") ?: return@mapNotNull null
+                val color = button.obj("solid").str("leftStripeColor")?.toLongOrNull()
+                MoodItem(YouTubeJsonHelper.runsText(button["buttonText"]), browseId, endpoint.str("params"), color)
+            }
+            if (items.isNotEmpty()) sections += MoodSection(title, items)
+        }
+        return sections
     }
 }

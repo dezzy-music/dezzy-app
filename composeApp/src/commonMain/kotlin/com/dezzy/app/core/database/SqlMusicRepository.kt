@@ -70,6 +70,38 @@ class SqlMusicRepository(
 
     override suspend fun clearHistory() = withContext(io) { q.clearPlays() }
 
+    // Inicio ---------------------------------------------------------------
+
+    override fun getMostPlayed(sinceMs: Long, limit: Int): Flow<List<Track>> =
+        q.mostPlayed(sinceMs, limit.toLong(), ::trackOf).asFlow().mapToList(io)
+
+    override fun getForgottenFavorites(notPlayedSinceMs: Long, limit: Int): Flow<List<Track>> =
+        q.forgottenFavorites(notPlayedSinceMs, limit.toLong(), ::trackOf).asFlow().mapToList(io)
+
+    override suspend fun listenStreakDays(utcOffsetMs: Long): Int = withContext(io) {
+        val today = (now() + utcOffsetMs) / DAY_MS
+        val days = q.listenDays(utcOffsetMs, now() - 400 * DAY_MS).executeAsList().map { it ?: Long.MIN_VALUE }
+        var expected = if (days.firstOrNull() == today) today else today - 1
+        var streak = 0
+        for (day in days) {
+            if (day > expected) continue
+            if (day != expected) break
+            streak++
+            expected--
+        }
+        streak
+    }
+
+    override suspend fun todayListenSeconds(utcOffsetMs: Long): Long = withContext(io) {
+        val local = now() + utcOffsetMs
+        val start = local - local % DAY_MS - utcOffsetMs
+        q.listenSecondsBetween(start, start + DAY_MS).executeAsOne()
+    }
+
+    override suspend fun listenedSecondsSince(videoId: String, sinceMs: Long): Long = withContext(io) {
+        q.listenSecondsForVideo(videoId, sinceMs).executeAsOne()
+    }
+
     // Playlists ------------------------------------------------------------
 
     override fun getPlaylists(): Flow<List<Playlist>> =
@@ -190,5 +222,6 @@ class SqlMusicRepository(
     private companion object {
         const val KIND_ALBUM = "album"
         const val KIND_ARTIST = "artist"
+        const val DAY_MS = 86_400_000L
     }
 }

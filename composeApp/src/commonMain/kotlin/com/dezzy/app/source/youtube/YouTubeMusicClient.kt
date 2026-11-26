@@ -92,6 +92,25 @@ class YouTubeMusicClient(
         YouTubeCatalogParsers.parseSuggestions(response)
     }
 
+    /** «Estados de ánimo y géneros» de la pestaña Descubre. */
+    suspend fun getMoodsAndGenres(gl: String = "US"): Result<List<MoodSection>> = runCatching {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("browseId", "FEmusic_moods_and_genres")
+        })
+        YouTubeCatalogParsers.parseMoodsAndGenres(response)
+    }
+
+    /** Cualquier página de `browse` hecha de carruseles (un estado de ánimo, un género…). */
+    suspend fun getBrowseSections(browseId: String, params: String?, gl: String = "US"): Result<List<MusicSection>> = runCatching {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("browseId", browseId)
+            if (params != null) put("params", params)
+        })
+        YouTubeParsers.parseHomeSections(response)
+    }
+
     /** Videoclip de la canción: el vídeo que mejor encaje con título, artista y duración. */
     suspend fun findMusicVideo(track: Track, gl: String = "US"): Result<String?> = runCatching {
         val query = "${track.title} ${track.artists}".take(200)
