@@ -10,10 +10,13 @@ import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.prefs.KeystoreSecureStorage
 import com.dezzy.app.core.prefs.SecureStorage
+import com.dezzy.app.source.stream.StreamEngine
+import com.dezzy.app.source.stream.WebViewStreamEngine
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 actual val platformModule = module {
     single<SqlDriver> { AndroidSqliteDriver(DezzyDatabase.Schema, androidContext(), "dezzy.db") }
     single<SecureStorage> { KeystoreSecureStorage(androidContext()) }
+    single<StreamEngine> { WebViewStreamEngine(androidContext()) }
 }

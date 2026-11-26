@@ -33,11 +33,3 @@ data class StreamAudio(
     val clientName: String,
     val loudnessDb: Double? = null
 )
-
-@Serializable
-data class DecodedPoToken(
-    val contentBinding: String,
-    val timestampSeconds: Long,
-    val clientState: Int,
-    val keys: List<Int>
-)

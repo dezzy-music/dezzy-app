@@ -178,3 +178,6 @@ DELETE FROM stream_cache WHERE video_id = ?;
 
 purgeExpiredStreams:
 DELETE FROM stream_cache WHERE expires_at < ?;
+
+clearStreams:
+DELETE FROM stream_cache;

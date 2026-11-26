@@ -9,7 +9,8 @@ import com.dezzy.app.core.database.SqlMusicRepository
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.net.HttpClientFactory
-import com.dezzy.app.source.stream.PlatformPoTokenProvider
+import com.dezzy.app.core.database.SqlStreamCache
+import com.dezzy.app.source.stream.HttpStreamProbe
 import com.dezzy.app.source.stream.StreamUrlResolver
 import com.dezzy.app.source.youtube.YouTubeMusicClient
 import org.koin.core.module.Module
@@ -20,6 +21,5 @@ val coreModule: Module = module {
     single { DezzyDatabase(get()) }
     single<MusicRepository> { SqlMusicRepository(get()) }
     single { YouTubeMusicClient(get()) }
-    single { PlatformPoTokenProvider() }
-    single { StreamUrlResolver(get(), get()) }
+    single { StreamUrlResolver(engine = get(), probe = HttpStreamProbe(get()), cache = SqlStreamCache(get())) }
 }

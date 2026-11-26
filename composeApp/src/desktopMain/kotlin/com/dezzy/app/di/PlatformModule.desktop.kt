@@ -10,6 +10,8 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.dezzy.app.core.database.db.DezzyDatabase
 import com.dezzy.app.core.prefs.InMemorySecureStorage
 import com.dezzy.app.core.prefs.SecureStorage
+import com.dezzy.app.source.stream.StreamEngine
+import com.dezzy.app.source.stream.UnavailableStreamEngine
 import org.koin.dsl.module
 import java.io.File
 import java.util.Properties
@@ -20,4 +22,5 @@ actual val platformModule = module {
         JdbcSqliteDriver("jdbc:sqlite:" + File(dir, "dezzy.db").absolutePath, Properties(), DezzyDatabase.Schema)
     }
     single<SecureStorage> { InMemorySecureStorage() }
+    single<StreamEngine> { UnavailableStreamEngine() }
 }

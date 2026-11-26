@@ -1,0 +1,2 @@
+@bufbuild/protobuf 2.17.0 - licencia (Apache-2.0 AND BSD-3-Clause)
+https://github.com/bufbuild/protobuf-es/blob/main/LICENSE
