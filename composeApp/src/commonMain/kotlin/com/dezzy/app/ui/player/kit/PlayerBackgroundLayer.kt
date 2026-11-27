@@ -100,7 +100,16 @@ fun PlayerBackgroundLayer(
             else -> thumbnailUrl
         }
 
-        if (isGradientBased || imageUrl.isNullOrBlank()) {
+        if (playerBackground == PlayerBackgroundStyle.CUSTOM && playerCustomImageUri.isNotBlank()) {
+            // La imagen propia se ve tal cual: a pantalla completa, sin giros y sólo con el
+            // desenfoque, la atenuación y el contraste que se eligen en Ajustes.
+            CustomImageBackground(
+                uri = playerCustomImageUri,
+                blur = if (disableBlur) 0f else playerCustomBlur,
+                contrast = playerCustomContrast,
+                brightness = playerCustomBrightness,
+            )
+        } else if (isGradientBased || imageUrl.isNullOrBlank()) {
             val colors = if (gradientColors.size >= 2) {
                 gradientColors
             } else if (gradientColors.isNotEmpty()) {
@@ -255,3 +264,51 @@ fun PlayerBackgroundLayer(
 /** Blur de fondo que respeta "Desactivar desenfoque" y la escala de intensidad. */
 private fun Modifier.playerBlur(radius: Dp, disabled: Boolean, scale: Float): Modifier =
     if (disabled || scale <= 0f) this else blur(radius * scale)
+
+/**
+ * Imagen propia del «Fondo personalizado», a pantalla completa. [blur] en dp (0 = nítida),
+ * [brightness] 1 = sin atenuar y [contrast] 1 = sin cambios. También la usa la vista previa.
+ */
+@Composable
+fun CustomImageBackground(
+    uri: String,
+    blur: Float,
+    contrast: Float,
+    brightness: Float,
+    modifier: Modifier = Modifier,
+) {
+    val t = (1f - contrast) * 128f
+    val filter = remember(contrast) {
+        if (contrast == 1f) null
+        else ColorFilter.colorMatrix(
+            ColorMatrix(
+                floatArrayOf(
+                    contrast, 0f, 0f, 0f, t,
+                    0f, contrast, 0f, 0f, t,
+                    0f, 0f, contrast, 0f, t,
+                    0f, 0f, 0f, 1f, 0f,
+                ),
+            ),
+        )
+    }
+    Box(modifier.fillMaxSize().clipToBounds()) {
+        AsyncImage(
+            model = uri,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            colorFilter = filter,
+            modifier = Modifier
+                .fillMaxSize()
+                // Un poco más grande para que el desenfoque no deje bordes claros.
+                .then(if (blur > 0f) Modifier.graphicsLayer { scaleX = 1.08f; scaleY = 1.08f }.blur(blur.dp) else Modifier),
+        )
+        // Atenuación: negro encima según el brillo elegido (1 = nada).
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = (1f - brightness).coerceIn(0f, 0.85f))))
+        // Un velo suave abajo para que los controles y la letra se lean siempre.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))),
+        )
+    }
+}

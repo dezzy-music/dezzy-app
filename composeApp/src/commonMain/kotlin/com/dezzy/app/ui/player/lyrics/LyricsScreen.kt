@@ -97,9 +97,6 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     val manager: LyricsManager = koinInject()
     val meta by playerConnection.mediaMetadata.collectAsState()
     val bgStyle by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
-    val designStyle by rememberEnumPreference(PlayerDesignStyleKey, PlayerDesignStyle.V1)
-    // «Fondo del reproductor» sólo aplica con el estilo Clásico.
-    val customPlayerBg = designStyle == PlayerDesignStyle.V1 && bgStyle != PlayerBackgroundStyle.DEFAULT
     var showCanvas by remember { mutableStateOf(false) }
     var shareLines by remember { mutableStateOf<List<String>?>(null) }
     var showMenu by remember { mutableStateOf(false) }
@@ -112,6 +109,9 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     val bgBlur by rememberPreference(LyricsBgBlurKey, 0f)
     val bgDim by rememberPreference(LyricsBgDimKey, 0.4f)
     val useImage = lyricsBg == LyricsBackground.IMAGE && bgImageUri.isNotBlank()
+    // «Fondo del reproductor» (Degradado, Resplandor, Personalizado…) también va detrás de las letras,
+    // con cualquier estilo de reproductor, salvo que las letras tengan su propia imagen o color liso.
+    val customPlayerBg = bgStyle != PlayerBackgroundStyle.DEFAULT && !useImage && lyricsBg != LyricsBackground.SOLID
 
     // Ajustes › Apariencia › Letras: barra de estado oculta y fondo con la portada desenfocada.
     val hideStatusBar by rememberPreference(com.dezzy.app.ui.screens.settings.prefs.LyricsHideStatusBarKey, false)

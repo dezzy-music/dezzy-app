@@ -199,6 +199,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var appFont by rememberEnumPreference(AppFontKey, AppFont.NUNITO)
     var customImageUri by rememberPreference(PlayerCustomImageUriKey, "")
     var customBrightness by rememberPreference(PlayerCustomBrightnessKey, 1f)
+    var customBlur by rememberPreference(com.dezzy.app.ui.player.kit.PlayerCustomBlurKey, 0f)
+    var customContrast by rememberPreference(com.dezzy.app.ui.player.kit.PlayerCustomContrastKey, 1f)
     var miniBgStyle by rememberEnumPreference(
         com.dezzy.app.ui.player.kit.MiniBackgroundStyleKey,
         com.dezzy.app.ui.player.kit.MiniBackgroundStyle.DEZZY_STYLE,
@@ -388,8 +390,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onApply = { playerStyle = it },
                     onOpenFull = { showStyleSelector = true },
                 )
-                // «Fondo del reproductor»: sólo lo admite el estilo Clásico (también lo usan sus letras).
-                if (playerStyle == PlayerDesignStyle.V1) {
+                // «Fondo del reproductor»: también va detrás de las letras, con cualquier estilo.
+                run {
                     SettingsDivider()
                     SettingsChoiceRow(
                         title = "Fondo del reproductor",
@@ -409,21 +411,16 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     )
                     if (playerBackground == PlayerBackgroundStyle.CUSTOM) {
                         SettingsDivider()
-                        SettingsRow(
-                            title = "Fondo personalizado",
-                            subtitle = if (customImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
-                            icon = Icons.Rounded.Image,
-                            onClick = { pickPlayerImage() },
-                        )
-                        SettingsDivider()
-                        SettingsSliderRow(
-                            title = "Atenuación de la imagen",
-                            icon = Icons.Rounded.Contrast,
-                            value = customBrightness,
-                            valueRange = 0.2f..1f,
-                            steps = 7,
-                            valueLabel = { "${((1f - it) * 100).toInt()} %" },
-                            onValueChangeFinished = { customBrightness = it },
+                        PlayerBackgroundEditor(
+                            imageUri = customImageUri,
+                            blur = customBlur,
+                            brightness = customBrightness,
+                            contrast = customContrast,
+                            onPickImage = { pickPlayerImage() },
+                            onRemoveImage = { customImageUri = "" },
+                            onBlurChange = { customBlur = it },
+                            onBrightnessChange = { customBrightness = it },
+                            onContrastChange = { customContrast = it },
                         )
                     }
                 }
