@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -52,7 +53,7 @@ fun vocalMixSubtitle(mix: Float): String {
         mix > 0f -> "Más voz"
         else -> "Instrumental"
     }
-    return "$label · DSP"
+    return "$label · 0 ms DSP"
 }
 
 /** «1.00», con dos decimales y punto. */
@@ -66,9 +67,9 @@ fun formatFactor(value: Float): String {
 fun MenuGroupHeader(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.padding(start = 4.dp, top = 14.dp, bottom = 2.dp),
     )
 }
@@ -82,15 +83,18 @@ fun MenuRow(icon: ImageVector, title: String, subtitle: String? = null, onClick:
             .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(16.dp))
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
             if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    subtitle, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -102,8 +106,9 @@ fun MenuRow(icon: ImageVector, title: String, subtitle: String? = null, onClick:
 fun MenuChip(icon: ImageVector, text: String, onClick: () -> Unit) {
     AssistChip(
         onClick = onClick,
-        label = { Text(text) },
-        leadingIcon = { Icon(icon, null) },
+        label = { Text(text, fontWeight = FontWeight.Bold) },
+        leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) },
+        shape = androidx.compose.foundation.shape.CircleShape,
     )
 }
 

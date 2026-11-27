@@ -39,6 +39,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Album as OutlinedAlbum
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.InterpreterMode
+import androidx.compose.material.icons.outlined.Speed as OutlinedSpeed
+import androidx.compose.material.icons.rounded.Sensors
+import androidx.compose.material.icons.rounded.Shortcut
+import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Album
@@ -616,7 +623,7 @@ fun ColumnScope.PlayerMenu(
             Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            MenuChip(Icons.Rounded.Share, "Compartir") { share = true }
+            MenuChip(Icons.Rounded.Shortcut, "Compartir") { share = true }
             MenuChip(Icons.Rounded.Mic, "Voz / Pista") { voiceDialog = true }
             MenuChip(Icons.AutoMirrored.Rounded.PlaylistAdd, "Añadir") { addToPlaylist = true }
             if (dlStatus != null) {
@@ -635,29 +642,29 @@ fun ColumnScope.PlayerMenu(
         }
         Column(Modifier.padding(horizontal = 20.dp)) {
             MenuGroupHeader("Ver y escuchar")
-            MenuRow(Icons.Rounded.Videocam, "Ver video") { connection.enableVideoMode(); onDismiss() }
-            MenuRow(Icons.Rounded.GraphicEq, "Visualizador", "El estilo se elige en Ajustes › Apariencia") {
+            MenuRow(Icons.Rounded.SlowMotionVideo, "Ver video") { connection.enableVideoMode(); onDismiss() }
+            MenuRow(Icons.Rounded.AutoAwesome, "Visualizador", "El estilo se elige en Ajustes › Apariencia") {
                 onDismiss(); openVisualizer()
             }
-            MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy", "Pídele música escribiendo o con tu voz") {
+            MenuRow(Icons.Rounded.GraphicEq, "DJ Dezzy", "Pídele música escribiendo o con tu voz") {
                 onDismiss(); navController.navigate("dj_dezzy")
             }
-            MenuRow(Icons.Rounded.Radio, "Empezar radio") { connection.playQueue(mediaMetadata.track); onDismiss() }
+            MenuRow(Icons.Rounded.Sensors, "Empezar radio") { connection.playQueue(mediaMetadata.track); onDismiss() }
 
             MenuGroupHeader("Audio")
             MenuRow(Icons.Rounded.Mic, "Voz / Instrumental", vocalMixSubtitle(fxState.vocalMix)) { voiceDialog = true }
             MenuRow(Icons.Rounded.Equalizer, "Ecualizador") { onDismiss(); navController.navigate("settings/equalizer") }
-            MenuRow(Icons.Rounded.Speed, "Velocidad y tono", "x${formatFactor(playback.speed)} • x${formatFactor(playback.pitch)}") {
+            MenuRow(Icons.Outlined.OutlinedSpeed, "Velocidad y tono", "x${formatFactor(playback.speed)} • x${formatFactor(playback.pitch)}") {
                 speedDialog = true
             }
-            MenuRow(Icons.Rounded.Bedtime, "Temporizador") { onDismiss(); openSleep() }
+            MenuRow(Icons.Outlined.DarkMode, "Temporizador") { onDismiss(); openSleep() }
 
             MenuGroupHeader("Ir a")
             mediaMetadata.artists.firstOrNull()?.let { artist ->
-                MenuRow(Icons.Rounded.Person, "Ver artista", artist.name) { onDismiss(); navController.openArtist(artist) }
+                MenuRow(Icons.Outlined.InterpreterMode, "Ver artista") { onDismiss(); navController.openArtist(artist) }
             }
             if (albumTitle != null) {
-                MenuRow(Icons.Rounded.Album, "Ver álbum", albumTitle) {
+                MenuRow(Icons.Outlined.OutlinedAlbum, "Ver álbum") {
                     val albumId = mediaMetadata.album?.id
                     if (albumId != null) {
                         onDismiss(); navController.navigate("album/$albumId")
