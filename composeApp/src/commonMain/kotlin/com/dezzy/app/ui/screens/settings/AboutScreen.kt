@@ -583,7 +583,7 @@ private fun LinkSquare(
 
 /** Devuelve (buscando, acción): comprueba la última release y abre su página si es más nueva. */
 @Composable
-private fun rememberUpdateCheck(ctx: ScreenContext): Pair<Boolean, () -> Unit> {
+internal fun rememberUpdateCheck(ctx: ScreenContext): Pair<Boolean, () -> Unit> {
     val http: io.ktor.client.HttpClient = org.koin.compose.koinInject()
     val uri = LocalUriHandler.current
     var checking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }

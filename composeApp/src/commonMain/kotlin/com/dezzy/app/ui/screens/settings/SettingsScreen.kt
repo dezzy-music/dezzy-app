@@ -177,6 +177,7 @@ private fun normalize(text: String): String = buildString {
 internal fun SettingsScreen(ctx: ScreenContext) {
     var query by rememberSaveable { mutableStateOf("") }
     fun open(page: SettingsPage) = ctx.navigator.push(Screen.Settings(page))
+    val (checkingUpdates, checkUpdates) = rememberUpdateCheck(ctx)
     val accounts: AccountStore = koinInject()
     val sessions by accounts.sessions.collectAsState()
     val youtube = sessions[SessionProvider.YOUTUBE]
@@ -234,7 +235,11 @@ internal fun SettingsScreen(ctx: ScreenContext) {
         },
         SettingsEntry("Token de reproducción", "PoToken y datos del cliente web", Icons.Rounded.VpnKey) { open(SettingsPage.PO_TOKEN) },
         SettingsEntry("Experimentos", "Funciones en pruebas y depuración", Icons.Rounded.Science) { open(SettingsPage.EXPERIMENTS) },
-        SettingsEntry("Actualizaciones", "Estás al día, versión $AppVersionName", Icons.Rounded.SystemUpdate) { },
+        SettingsEntry(
+            "Actualizaciones",
+            if (checkingUpdates) "Buscando…" else "Estás al día, versión $AppVersionName",
+            Icons.Rounded.SystemUpdate,
+        ) { checkUpdates() },
         SettingsEntry("Acerca de", "Dezzy $AppVersionName", Icons.Rounded.Info) { open(SettingsPage.ABOUT) },
     )
 
