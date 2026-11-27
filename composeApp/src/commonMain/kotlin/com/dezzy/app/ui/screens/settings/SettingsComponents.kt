@@ -143,10 +143,10 @@ internal fun Modifier.settingsCard(): Modifier =
 @Composable
 private fun SettingsIconCircle(icon: ImageVector) {
     Box(
-        Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+        Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.surface)
     }
 }
 

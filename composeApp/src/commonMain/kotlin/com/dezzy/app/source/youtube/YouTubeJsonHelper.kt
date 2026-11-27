@@ -29,6 +29,12 @@ object YouTubeJsonHelper {
     }
 
     fun pickThumb(element: JsonElement?): String? {
+        // Las tarjetas envuelven la miniatura en musicThumbnailRenderer / croppedSquareThumbnailRenderer.
+        if (element is JsonObject) {
+            val wrapped = element["musicThumbnailRenderer"] ?: element["croppedSquareThumbnailRenderer"]
+                ?: element["musicAnimatedThumbnailRenderer"]?.let { (it as? JsonObject)?.get("backupRenderer") }
+            if (wrapped != null) return pickThumb(wrapped)
+        }
         val list = when {
             element is JsonObject && element.containsKey("thumbnails") -> element["thumbnails"]?.jsonArray
             element is JsonObject && element.containsKey("thumbnail") -> {
