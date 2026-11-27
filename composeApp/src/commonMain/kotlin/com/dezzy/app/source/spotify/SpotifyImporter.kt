@@ -104,17 +104,42 @@ class SpotifyImporter(
         job = scope.launch {
             try {
                 if (!client.hasSession()) return@launch
-                if (!prefs.spotifyAutoSync.first()) return@launch
-                if (nowMs() - prefs.spotifyLastSync.first() < AUTO_SYNC_INTERVAL_MS) return@launch
-                val ids = repo.importedRemoteIds(SOURCE).toSet()
-                if (ids.isEmpty()) return@launch
-                run(ids, silent = true)
+                val last = prefs.spotifyLastSync.first()
+                // Nunca sincronizada (sesión recién iniciada): toda la biblioteca, sin preguntar.
+                if (last > 0L) {
+                    if (!prefs.spotifyAutoSync.first()) return@launch
+                    if (nowMs() - last < AUTO_SYNC_INTERVAL_MS) return@launch
+                }
+                syncAllPlaylists()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // En silencio: se reintentará en el próximo arranque.
             }
         }
+    }
+
+    /**
+     * Sincroniza de una vez toda la biblioteca de Spotify (todas las listas y «Me gusta»),
+     * como la app actual al iniciar sesión. Corre en segundo plano y sin tocar el estado de la UI.
+     */
+    fun syncEverything() {
+        if (busy()) return
+        job = scope.launch {
+            try {
+                if (client.hasSession()) syncAllPlaylists()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // En silencio: se reintentará en el próximo arranque.
+            }
+        }
+    }
+
+    private suspend fun syncAllPlaylists() {
+        known = client.playlists()
+        val ids = known.map { it.id }.toSet()
+        if (ids.isNotEmpty()) run(ids, silent = true)
     }
 
     private class Totals(val playlists: Int, val tracks: Int, val notFound: Int)

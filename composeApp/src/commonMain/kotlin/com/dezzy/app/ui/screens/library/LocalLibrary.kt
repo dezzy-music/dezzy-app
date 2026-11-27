@@ -42,6 +42,19 @@ suspend fun toggleLocalItem(
     return !present
 }
 
+/** Añade al final de la lista local los [items] que aún no estaban; devuelve cuántos se añadieron. */
+suspend fun mergeLocalItems(
+    prefs: DezzyPreferences,
+    key: androidx.datastore.preferences.core.Preferences.Key<String>,
+    items: List<MusicItem>,
+): Int {
+    val current = parseLocalItems(prefs.value(key, "").first())
+    val known = current.map { it.id }.toHashSet()
+    val fresh = items.filter { known.add(it.id) }
+    if (fresh.isNotEmpty()) prefs.set(key, json.encodeToString(serializer, current + fresh))
+    return fresh.size
+}
+
 /** Orden de la rejilla de listas en Biblioteca (0 personalizado, 1 nombre, 2 más canciones). */
 val LibrarySortKey = androidx.datastore.preferences.core.intPreferencesKey("librarySort")
 

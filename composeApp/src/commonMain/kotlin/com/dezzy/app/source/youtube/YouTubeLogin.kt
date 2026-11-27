@@ -35,7 +35,8 @@ class YouTubeLogin(
             client.getAccountInfo()?.let { info ->
                 accounts.updateProfile(SessionProvider.YOUTUBE, info.name, info.handle, info.avatarUrl, info.dataSyncId)
             }
-            scope.launch { sync.syncLikes() }
+            // Todo de golpe al iniciar sesión: me gusta, listas, artistas y álbumes.
+            scope.launch { runCatching { sync.syncAll() } }
             val stored = accounts.account(SessionProvider.YOUTUBE)
             Result.success(
                 UserSession(

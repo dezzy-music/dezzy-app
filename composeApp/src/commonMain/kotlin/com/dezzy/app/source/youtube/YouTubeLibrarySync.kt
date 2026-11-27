@@ -9,8 +9,17 @@ import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.core.prefs.DezzyPreferences
+import com.dezzy.app.core.model.MusicItemType
+import com.dezzy.app.ui.screens.library.SavedAlbumsKey
+import com.dezzy.app.ui.screens.library.SubscribedArtistsKey
+import com.dezzy.app.ui.screens.library.mergeLocalItems
+import com.dezzy.app.ui.screens.settings.prefs.YtSyncLibraryKey
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
 import kotlin.time.Clock
 
 /**
@@ -45,16 +54,65 @@ class YouTubeLibrarySync(
         return added
     }
 
-    /** Sincroniza si pasaron al menos 12 h desde la última vez. */
+    private val allMutex = Mutex()
+    private val _syncing = MutableStateFlow(false)
+
+    /** true mientras corre la sincronización completa. */
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
+    /**
+     * Sincronización completa de la cuenta, de una vez (como la app actual al iniciar sesión):
+     * «me gusta», todas las listas de la biblioteca, artistas suscritos y álbumes guardados.
+     * Sin «Sincronizar biblioteca» activo sólo trae los «me gusta». Nunca borra nada local.
+     */
+    suspend fun syncAll() {
+        if (accounts.account(SessionProvider.YOUTUBE) == null) return
+        if (!allMutex.tryLock()) return
+        _syncing.value = true
+        try {
+            syncLikes()
+            if (!prefs.value(YtSyncLibraryKey, true).first()) return
+            val lists = safe { client.getLibraryPlaylists() }
+            for (list in lists) {
+                val tracks = safe { client.getPlaylist(list.id).getOrThrow().tracks }
+                    .filter { it.videoId != null }
+                    .distinctBy { it.videoId }
+                // Una lista que llega vacía (fallo de red) no pisa la que ya había.
+                if (tracks.isNotEmpty()) {
+                    repo.replaceImportedPlaylist(SOURCE, list.id, list.title, list.thumbnail, tracks)
+                }
+            }
+            val artists = safe { client.getLibraryItems(BROWSE_ARTISTS) }.filter { it.type == MusicItemType.ARTIST }
+            if (artists.isNotEmpty()) mergeLocalItems(prefs, SubscribedArtistsKey, artists)
+            val albums = safe { client.getLibraryItems(BROWSE_ALBUMS) }.filter { it.type == MusicItemType.ALBUM }
+            if (albums.isNotEmpty()) mergeLocalItems(prefs, SavedAlbumsKey, albums)
+        } finally {
+            _syncing.value = false
+            allMutex.unlock()
+        }
+    }
+
+    /** Al arrancar: sincronización completa si pasaron al menos 12 h desde la última. */
     suspend fun syncLikesIfDue() {
         if (accounts.account(SessionProvider.YOUTUBE) == null) return
         val last = prefs.youtubeLastLikesSync.first()
-        if (now() - last >= INTERVAL_MS) syncLikes()
+        if (now() - last >= INTERVAL_MS) syncAll()
+    }
+
+    private suspend fun <T> safe(block: suspend () -> List<T>): List<T> = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList()
     }
 
     private fun now() = Clock.System.now().toEpochMilliseconds()
 
     private companion object {
         const val INTERVAL_MS = 12L * 60 * 60 * 1000
+        const val SOURCE = "youtube"
+        const val BROWSE_ARTISTS = "FEmusic_library_corpus_artists"
+        const val BROWSE_ALBUMS = "FEmusic_liked_albums"
     }
 }

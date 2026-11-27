@@ -135,6 +135,39 @@ class YouTubeMusicClient(
             .map { Playlist(id = it.id, title = it.title, author = it.subtitle.ifBlank { null }, thumbnail = it.thumbnail) }
     }
 
+    /**
+     * Elementos de una página de biblioteca de la cuenta: artistas suscritos
+     * («FEmusic_library_corpus_artists») o álbumes guardados («FEmusic_liked_albums»).
+     * Recorre toda la respuesta, así vale tanto para rejillas como para listas.
+     */
+    suspend fun getLibraryItems(browseId: String): List<com.dezzy.app.core.model.MusicItem> {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext())
+            put("browseId", browseId)
+        })
+        val out = ArrayList<com.dezzy.app.core.model.MusicItem>()
+        fun walk(e: JsonElement) {
+            when (e) {
+                is JsonObject -> {
+                    if (e.containsKey("musicResponsiveListItemRenderer") || e.containsKey("musicTwoRowItemRenderer")) {
+                        YouTubeParsers.parseMusicItem(e)?.let { item ->
+                            // Los artistas de la biblioteca llegan como «MPLA» + id del canal.
+                            out += if (item.id.startsWith("MPLA")) {
+                                item.copy(id = item.id.removePrefix("MPLA"), type = MusicItemType.ARTIST)
+                            } else item
+                        }
+                        return
+                    }
+                    e.values.forEach { walk(it) }
+                }
+                is JsonArray -> e.forEach { walk(it) }
+                else -> Unit
+            }
+        }
+        walk(response)
+        return out.distinctBy { it.id }
+    }
+
     /** Canciones de «Me gusta» (la lista «LM»). */
     suspend fun getLikedSongs(): List<Track> = getPlaylist("LM").getOrThrow().tracks
 

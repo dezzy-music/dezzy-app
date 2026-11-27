@@ -53,6 +53,7 @@ private fun spDcFrom(header: String): String? =
 @Composable
 internal fun SpotifyLoginScreen(ctx: ScreenContext) {
     val client: SpotifyClient = koinInject()
+    val importer: com.dezzy.app.source.spotify.SpotifyImporter = koinInject()
     var isProcessing by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf("") }
     var hasError by remember { mutableStateOf(false) }
@@ -68,6 +69,8 @@ internal fun SpotifyLoginScreen(ctx: ScreenContext) {
             result.fold(
                 {
                     statusMessage = "¡Conectado a Spotify!"
+                    // Toda la biblioteca de golpe, sin tener que elegir listas.
+                    importer.syncEverything()
                     delay(300)
                     ctx.navigator.back()
                 },
