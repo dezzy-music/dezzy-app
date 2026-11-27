@@ -6,8 +6,8 @@ Este documento está pensado para quien llegue nuevo a `dezzy-app`.
 
 ## Ramas
 
-- **`main`**: rama por defecto del repositorio. Va por detrás.
-- **`fase-5-ui`**: aquí está todo el trabajo actual (unos 60 commits por delante de `main`). Trabaja sobre esta rama o crea ramas desde ella.
+- **`main`**: rama principal, al día. Crea tus ramas desde aquí.
+- **`fase-5-ui`**: rama donde se hizo la fase de interfaz; ya está fusionada en `main`.
 
 ## Cómo compilar
 
