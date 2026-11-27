@@ -5,6 +5,7 @@
 
 package com.dezzy.app
 
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,6 +62,16 @@ fun App() {
     val lyricsManager: LyricsManager = koinInject()
     LaunchedEffect(Unit) {
         lyricsManager.start()
+        // «Tema aleatorio al inicio»: una paleta predefinida al azar en cada arranque.
+        runCatching {
+            if (prefs.value(com.dezzy.app.ui.screens.settings.prefs.ThemeRandomAtStartKey, false).first()) {
+                val n = com.dezzy.app.ui.theme.PaletteSeedColors.size
+                if (n > 0) prefs.set(
+                    com.dezzy.app.ui.theme.ColorPaletteKey,
+                    com.dezzy.app.ui.theme.presetActiveValue(kotlin.random.Random.nextInt(n)),
+                )
+            }
+        }
         importer.startAutoSync()
         runCatching { librarySync.syncLikesIfDue() }
         runCatching { spotifyFeatures.maybeAutoSyncLikes() }

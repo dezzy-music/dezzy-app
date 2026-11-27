@@ -438,11 +438,17 @@ private fun VideoModeScreen(
     var fullscreen by rememberSaveable { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showQuality by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
     val inPip by VideoPipState.inPip.collectAsState()
     val qualityOptions by playerConnection.videoQualityOptions.collectAsState()
     val selectedHeight by playerConnection.videoSelectedHeight.collectAsState()
     val playingHeight by playerConnection.videoPlayingHeight.collectAsState()
     val qualityLabel = qualityLabel(selectedHeight, playingHeight)
+
+    if (showComments) {
+        val commentsId = mediaMetadata?.id
+        if (commentsId != null) VideoCommentsSheet(commentsId) { showComments = false } else showComments = false
+    }
 
     val togglePlay: () -> Unit = {
         videoPlayer?.let { it.playWhenReady = !it.playWhenReady }
@@ -633,8 +639,7 @@ private fun VideoModeScreen(
                     VideoActionChip(
                         icon = Icons.Rounded.ChatBubble,
                         label = "Comentarios",
-                        // Los comentarios llegan en la fase 7.
-                        onClick = { playerConnection.pending("Comentarios", "7") },
+                        onClick = { showComments = true },
                     )
                     VideoActionChip(
                         icon = Icons.Rounded.Download,

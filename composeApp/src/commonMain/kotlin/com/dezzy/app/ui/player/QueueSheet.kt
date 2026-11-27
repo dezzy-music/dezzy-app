@@ -79,6 +79,7 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
     val connection = LocalPlayerConnection.current
     var locked by rememberPreference(QueueLockedKey, false)
     var clearMenu by remember { mutableStateOf(false) }
+    var commentsFor by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { if (queue.index > 0) list.scrollToItem((queue.index - 1).coerceAtLeast(0)) }
     // Como en la app actual, la cola se abre a pantalla completa.
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -128,7 +129,7 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
             IconButton(onClick = { locked = !locked }) {
                 Icon(if (locked) Icons.Rounded.Lock else Icons.Rounded.LockOpen, if (locked) "Desbloquear la cola" else "Bloquear la cola")
             }
-            IconButton(onClick = { connection?.pending?.invoke("Comentarios", "7") }) {
+            IconButton(onClick = { commentsFor = queue.current?.track?.videoId }) {
                 Icon(Icons.Rounded.ChatBubbleOutline, "Comentarios")
             }
             Box {
@@ -196,6 +197,9 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
                 )
             }
         }
+    }
+    commentsFor?.let { id ->
+        com.dezzy.app.ui.player.video.VideoCommentsSheet(id) { commentsFor = null }
     }
 }
 

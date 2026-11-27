@@ -55,6 +55,7 @@ val coreModule: Module = module {
     single { ContentLocale(get()) }
     // El cliente de catálogo lleva la sesión; MusicVideoResolver y StreamUrlResolver reciben el HttpClient sin cookies.
     single { YouTubeMusicClient(get(), get(), get()) }
+    single { com.dezzy.app.source.youtube.YouTubeComments(get()) }
     single { SqlMusicRepository(get()) }
     single<MusicRepository> { AccountAwareMusicRepository(get<SqlMusicRepository>(), get(), get()) }
     single { YouTubeLibrarySync(get(), get<SqlMusicRepository>(), get(), get()) }
