@@ -133,6 +133,7 @@ import com.dezzy.app.ui.screens.settings.prefs.WallpaperImageEnabledKey
 import com.dezzy.app.ui.screens.settings.prefs.WallpaperVideoEnabledKey
 import com.dezzy.app.ui.theme.AppFont
 import com.dezzy.app.ui.theme.AppFontKey
+import com.dezzy.app.ui.theme.fontFamily
 import com.dezzy.app.ui.player.kit.BlurRadiusKey
 import com.dezzy.app.ui.player.kit.DisableBlurKey
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
@@ -335,6 +336,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     selected = appFont,
                     label = { it.label },
                     onSelect = { appFont = it },
+                    optionFont = { it.fontFamily() },
                 )
                 SettingsDivider()
                 SettingsSliderRow(

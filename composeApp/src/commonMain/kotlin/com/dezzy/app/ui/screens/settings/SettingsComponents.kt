@@ -7,6 +7,7 @@ package com.dezzy.app.ui.screens.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -228,6 +229,8 @@ internal fun <T> SettingsChoiceRow(
     label: (T) -> String,
     onSelect: (T) -> Unit,
     subtitle: String? = null,
+    /** Fuente con la que se pinta cada opción (p. ej. la lista de fuentes). */
+    optionFont: (@Composable (T) -> androidx.compose.ui.text.font.FontFamily?)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     SettingsRow(title = title, subtitle = subtitle ?: label(selected), icon = icon, onClick = { open = true })
@@ -236,7 +239,7 @@ internal fun <T> SettingsChoiceRow(
             onDismissRequest = { open = false },
             title = { Text(title) },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                     options.forEach { option ->
                         Row(
                             Modifier
@@ -246,7 +249,11 @@ internal fun <T> SettingsChoiceRow(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = option == selected, onClick = { open = false; onSelect(option) })
-                            Text(label(option), modifier = Modifier.padding(start = 8.dp))
+                            Text(
+                                label(option),
+                                modifier = Modifier.padding(start = 8.dp),
+                                fontFamily = optionFont?.invoke(option),
+                            )
                         }
                     }
                 }

@@ -14,6 +14,28 @@ import com.dezzy.app.resources.nunito_extrabold
 import com.dezzy.app.resources.nunito_medium
 import com.dezzy.app.resources.nunito_regular
 import com.dezzy.app.resources.nunito_semibold
+import com.dezzy.app.resources.poppins_regular
+import com.dezzy.app.resources.poppins_bold
+import com.dezzy.app.resources.inter
+import com.dezzy.app.resources.montserrat
+import com.dezzy.app.resources.lora
+import com.dezzy.app.resources.playfair_display
+import com.dezzy.app.resources.rubik
+import com.dezzy.app.resources.kanit_regular
+import com.dezzy.app.resources.kanit_bold
+import com.dezzy.app.resources.comfortaa
+import com.dezzy.app.resources.pacifico
+import com.dezzy.app.resources.lobster
+import com.dezzy.app.resources.dancing_script
+import com.dezzy.app.resources.caveat
+import com.dezzy.app.resources.great_vibes
+import com.dezzy.app.resources.cinzel
+import com.dezzy.app.resources.outfit
+import com.dezzy.app.resources.syne
+import com.dezzy.app.resources.space_grotesk
+import com.dezzy.app.resources.merriweather
+import com.dezzy.app.resources.oswald
+import org.jetbrains.compose.resources.FontResource
 import org.jetbrains.compose.resources.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -22,13 +44,38 @@ import androidx.compose.ui.unit.sp
 
 private val base = Typography()
 
-/** Fuente de la app: Nunito (incluida, licencia OFL; la de la app actual) o familias del sistema. */
+/**
+ * Fuente de la app: las mismas 26 opciones y en el mismo orden que la app actual. Los archivos son
+ * de Google Fonts (licencia OFL); «SF Pro Display» es de Apple y no se puede incluir, así que usa
+ * Inter, la más parecida.
+ */
 enum class AppFont(val label: String) {
-    NUNITO("Nunito"),
-    DEFAULT("Predeterminada"),
+    POPPINS("Poppins (Predeterminada)"),
+    SF_PRO("SF Pro Display (Premium)"),
+    DEFAULT("Material 3"),
     SERIF("Serif"),
-    MONOSPACE("Monoespaciada"),
-    ROUNDED("Manuscrita"),
+    MONOSPACE("Monospace"),
+    SYSTEM("Sistema"),
+    INTER("Inter"),
+    ROBOTO("Roboto"),
+    MONTSERRAT("Montserrat"),
+    LORA("Lora"),
+    PLAYFAIR("Playfair Display"),
+    NUNITO("Nunito"),
+    RUBIK("Rubik"),
+    KANIT("Kanit"),
+    COMFORTAA("Comfortaa"),
+    PACIFICO("Pacifico"),
+    LOBSTER("Lobster"),
+    DANCING_SCRIPT("Dancing Script"),
+    CAVEAT("Caveat"),
+    GREAT_VIBES("Great Vibes"),
+    CINZEL("Cinzel"),
+    OUTFIT("Outfit"),
+    SYNE("Syne"),
+    SPACE_GROTESK("Space Grotesk"),
+    MERRIWEATHER("Merriweather"),
+    OSWALD("Oswald"),
 }
 
 val AppFontKey = stringPreferencesKey("appFont")
@@ -43,20 +90,65 @@ private fun nunitoFamily(): FontFamily = FontFamily(
     Font(Res.font.nunito_black, FontWeight.Black),
 )
 
+/** Familia de un archivo variable o de peso único: el mismo archivo sirve para todos los pesos. */
 @Composable
-private fun AppFont.family(): FontFamily? = when (this) {
-    AppFont.NUNITO -> nunitoFamily()
+private fun single(res: FontResource): FontFamily = FontFamily(
+    Font(res, FontWeight.Normal),
+    Font(res, FontWeight.Medium),
+    Font(res, FontWeight.SemiBold),
+    Font(res, FontWeight.Bold),
+    Font(res, FontWeight.ExtraBold),
+    Font(res, FontWeight.Black),
+)
+
+/** Familia de [AppFont]; null = la tipografía de Material 3 sin cambios. */
+@Composable
+fun AppFont.fontFamily(): FontFamily? = when (this) {
+    AppFont.POPPINS -> FontFamily(
+        Font(Res.font.poppins_regular, FontWeight.Normal),
+        Font(Res.font.poppins_regular, FontWeight.Medium),
+        Font(Res.font.poppins_bold, FontWeight.SemiBold),
+        Font(Res.font.poppins_bold, FontWeight.Bold),
+        Font(Res.font.poppins_bold, FontWeight.ExtraBold),
+        Font(Res.font.poppins_bold, FontWeight.Black),
+    )
+    AppFont.SF_PRO, AppFont.INTER -> single(Res.font.inter)
     AppFont.DEFAULT -> null
     AppFont.SERIF -> FontFamily.Serif
     AppFont.MONOSPACE -> FontFamily.Monospace
-    // Compose común no trae «sans-serif-rounded»; la familia más cercana disponible es la cursiva del sistema.
-    AppFont.ROUNDED -> FontFamily.Cursive
+    AppFont.SYSTEM -> FontFamily.Default
+    AppFont.ROBOTO -> FontFamily.SansSerif
+    AppFont.MONTSERRAT -> single(Res.font.montserrat)
+    AppFont.LORA -> single(Res.font.lora)
+    AppFont.PLAYFAIR -> single(Res.font.playfair_display)
+    AppFont.NUNITO -> nunitoFamily()
+    AppFont.RUBIK -> single(Res.font.rubik)
+    AppFont.KANIT -> FontFamily(
+        Font(Res.font.kanit_regular, FontWeight.Normal),
+        Font(Res.font.kanit_regular, FontWeight.Medium),
+        Font(Res.font.kanit_bold, FontWeight.SemiBold),
+        Font(Res.font.kanit_bold, FontWeight.Bold),
+        Font(Res.font.kanit_bold, FontWeight.ExtraBold),
+        Font(Res.font.kanit_bold, FontWeight.Black),
+    )
+    AppFont.COMFORTAA -> single(Res.font.comfortaa)
+    AppFont.PACIFICO -> single(Res.font.pacifico)
+    AppFont.LOBSTER -> single(Res.font.lobster)
+    AppFont.DANCING_SCRIPT -> single(Res.font.dancing_script)
+    AppFont.CAVEAT -> single(Res.font.caveat)
+    AppFont.GREAT_VIBES -> single(Res.font.great_vibes)
+    AppFont.CINZEL -> single(Res.font.cinzel)
+    AppFont.OUTFIT -> single(Res.font.outfit)
+    AppFont.SYNE -> single(Res.font.syne)
+    AppFont.SPACE_GROTESK -> single(Res.font.space_grotesk)
+    AppFont.MERRIWEATHER -> single(Res.font.merriweather)
+    AppFont.OSWALD -> single(Res.font.oswald)
 }
 
 /** Aplica la fuente elegida a todos los estilos de la tipografía. */
 @Composable
 fun Typography.withAppFont(font: AppFont): Typography {
-    val f = font.family() ?: return this
+    val f = font.fontFamily() ?: return this
     return copy(
         displayLarge = displayLarge.copy(fontFamily = f),
         displayMedium = displayMedium.copy(fontFamily = f),
