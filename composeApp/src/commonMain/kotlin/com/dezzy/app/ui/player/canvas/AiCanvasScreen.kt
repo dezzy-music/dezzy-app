@@ -112,7 +112,7 @@ private val CANVAS_TEMPLATES = CanvasTemplate.entries
 
 /**
  * El ánimo de la canción sesga la energía de la composición: cuánto se inclinan las palabras, cuántas
- * formas aparecen y qué plantilla se favorece. Sin capa de IA el ánimo es siempre NEUTRAL.
+ * formas aparecen y qué plantilla se favorece. Sin la capa de IA el ánimo es NEUTRAL.
  */
 private enum class CanvasMood(
     val jitterScale: Float,
@@ -127,6 +127,55 @@ private enum class CanvasMood(
     MELANCHOLIC(0.5f, 0.10f, CanvasTemplate.LEFT_COLUMN),
     DARK(0.7f, 0.12f, CanvasTemplate.LEFT_COLUMN),
     NEUTRAL(1f, 0.20f, null),
+}
+
+/** Resultado de la capa de IA para una canción: ánimo y palabra héroe por índice de línea. */
+private class AiCanvasLayer(val mood: CanvasMood, val heroes: Map<Int, String>)
+
+/** Una consulta por canción y sesión: la misma canción no vuelve a gastar la cuota de la clave. */
+private object AiCanvasLayerCache {
+    val byTrack = HashMap<String, AiCanvasLayer>()
+}
+
+private const val AI_MAX_LINES = 80
+
+/** Pide a Gemini (clave del usuario) el ánimo y la palabra a destacar de cada línea. null si falla. */
+private suspend fun requestAiLayer(
+    http: io.ktor.client.HttpClient,
+    key: String,
+    title: String,
+    artist: String,
+    lines: List<CanvasLine>,
+): AiCanvasLayer? {
+    val numbered = lines.take(AI_MAX_LINES).mapIndexedNotNull { i, l ->
+        l.text.trim().takeIf { it.isNotEmpty() }?.let { "$i: $it" }
+    }
+    if (numbered.isEmpty()) return null
+    val moods = CanvasMood.entries.joinToString("|") { it.name }
+    val system = """
+        Eres director de arte de un canvas tipográfico para letras de canciones.
+        Responde SOLO con un objeto JSON, sin texto alrededor, con esta forma:
+        {"mood":"$moods","heroes":{"<número de línea>":"<una palabra exacta de esa línea>"}}
+        Para cada línea elige la palabra con más carga emocional o el gancho; cópiala tal cual aparece.
+    """.trimIndent()
+    val prompt = "Canción: $title — $artist\n" + numbered.joinToString("\n")
+    val raw = com.dezzy.app.feature.ai.DezzyIaClient(http)
+        .chat(key, system, listOf(com.dezzy.app.feature.ai.IaTurn(true, prompt)))
+        .getOrNull() ?: return null
+    return runCatching {
+        val start = raw.indexOf('{')
+        val end = raw.lastIndexOf('}')
+        val obj = kotlinx.serialization.json.Json.parseToJsonElement(raw.substring(start, end + 1))
+            as kotlinx.serialization.json.JsonObject
+        val moodName = (obj["mood"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.trim()?.uppercase()
+        val mood = CanvasMood.entries.firstOrNull { it.name == moodName } ?: CanvasMood.NEUTRAL
+        val heroes = (obj["heroes"] as? kotlinx.serialization.json.JsonObject).orEmpty().mapNotNull { (k, v) ->
+            val idx = k.trim().toIntOrNull() ?: return@mapNotNull null
+            val word = (v as? kotlinx.serialization.json.JsonPrimitive)?.content?.trim().orEmpty()
+            if (word.isEmpty()) null else idx to word
+        }.toMap()
+        AiCanvasLayer(mood, heroes)
+    }.getOrNull()
 }
 
 /** Formas usadas como «puntuación visual» entre palabras y como decorado: una familia geométrica y sólida. */
@@ -410,8 +459,25 @@ fun AiCanvasScreen(onClose: () -> Unit) {
     val baseTemplate = remember(seed) { CANVAS_TEMPLATES[seed.mod(CANVAS_TEMPLATES.size)] }
     val recurring = remember(lines) { buildRecurringWords(lines) }
 
-    // Sin capa de IA el ánimo es neutro y la palabra héroe sale de la heurística local.
-    val mood = CanvasMood.NEUTRAL
+    // Capa de IA (Ajustes › Letras › «Énfasis inteligente (IA)», con la clave de Gemini del usuario):
+    // elige el ánimo de la canción y la palabra héroe de cada línea. Sin ella: neutro y heurística local.
+    val smartEmphasis by com.dezzy.app.ui.player.kit.rememberPreference(
+        com.dezzy.app.ui.screens.settings.prefs.LyricsSmartEmphasisKey, false,
+    )
+    val djSettings: com.dezzy.app.feature.dj.DjSettings = koinInject()
+    val http: io.ktor.client.HttpClient = koinInject()
+    var aiLayer by remember(trackId) { mutableStateOf(AiCanvasLayerCache.byTrack[trackId]) }
+    LaunchedEffect(trackId, lines, smartEmphasis) {
+        if (!smartEmphasis || lines.isEmpty() || aiLayer != null) return@LaunchedEffect
+        val key = djSettings.geminiKey()
+        if (key.isBlank()) return@LaunchedEffect
+        requestAiLayer(http, key, track?.title.orEmpty(), track?.artists.orEmpty(), lines)?.let {
+            AiCanvasLayerCache.byTrack[trackId] = it
+            aiLayer = it
+        }
+    }
+    val mood = if (smartEmphasis) aiLayer?.mood ?: CanvasMood.NEUTRAL else CanvasMood.NEUTRAL
+    val aiHeroes = if (smartEmphasis) aiLayer?.heroes.orEmpty() else emptyMap()
     val template = remember(baseTemplate, mood) { mood.templateBias ?: baseTemplate }
 
     // Paleta de la carátula.
@@ -579,7 +645,7 @@ fun AiCanvasScreen(onClose: () -> Unit) {
                                 // Intro / hueco instrumental.
                                 CanvasFallback(track?.title.orEmpty(), track?.artists.orEmpty(), accent, template)
                             } else {
-                                val items = remember(idx, seed, template, mood, lines) {
+                                val items = remember(idx, seed, template, mood, lines, aiHeroes) {
                                     buildLineComposition(
                                         line = text,
                                         lineIndex = idx,
@@ -587,7 +653,7 @@ fun AiCanvasScreen(onClose: () -> Unit) {
                                         recurring = recurring,
                                         template = template,
                                         mood = mood,
-                                        forcedHero = null,
+                                        forcedHero = aiHeroes[idx],
                                     )
                                 }
                                 // Sólo la línea actual se revela poco a poco; si la línea está
