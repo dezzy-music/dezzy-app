@@ -426,10 +426,12 @@ fun DevicesButton(
     onOpenListenTogether: (() -> Unit)? = null,
     /** Icono en reposo; el estilo Mínimo pasa su versión de trazo fino. */
     idleIcon: ImageVector = Icons.Rounded.Devices,
+    /** Sin círculo de cristal (estilo Apple Music, como en la app actual). */
+    plain: Boolean = false,
 ) {
     val casting = rememberIsCasting()
     var showSheet by remember { mutableStateOf(false) }
-    DezzyIconButton(onClick = { showSheet = true }, modifier = modifier) {
+    PlayerIconButton(plain = plain, onClick = { showSheet = true }, modifier = modifier) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 if (casting) Icons.Rounded.CastConnected else idleIcon,
@@ -841,5 +843,15 @@ private fun SheetRow(
             }
         }
         if (trailing != null) Icon(trailing, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.offset(x = (-4).dp))
+    }
+}
+
+/** Botón de icono del reproductor: plano con [plain] o con el cristal del tema en otro caso. */
+@Composable
+fun PlayerIconButton(plain: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    if (plain) {
+        androidx.compose.material3.IconButton(onClick = onClick, modifier = modifier, content = content)
+    } else {
+        DezzyIconButton(onClick = onClick, modifier = modifier, content = content)
     }
 }

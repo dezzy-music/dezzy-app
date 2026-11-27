@@ -235,8 +235,19 @@ class PlayerConnection(
             else -> null
         }
     }.stateIn(scope, SharingStarted.Eagerly, null)
-    /** Códec y bitrate: el motor aún no los publica. */
-    val currentFormat: StateFlow<AudioFormat?> = MutableStateFlow<AudioFormat?>(null).asStateFlow()
+    /** Códec y bitrate de lo que suena, según lo último que resolvió el resolvedor de streams. */
+    val currentFormat: StateFlow<AudioFormat?> = run {
+        val resolver = runCatching {
+            KoinPlatform.getKoin().getOrNull<com.dezzy.app.source.stream.StreamUrlResolver>()
+        }.getOrNull()
+        if (resolver == null) {
+            MutableStateFlow<AudioFormat?>(null).asStateFlow()
+        } else {
+            combine(mediaMetadata, resolver.resolved) { meta, map ->
+                meta?.id?.let { map[it] }?.let { AudioFormat(it.mimeType, it.bitrateKbps * 1000) }
+            }.stateIn(scope, SharingStarted.Eagerly, null)
+        }
+    }
 
     // Modo vídeo: lo lleva el motor; donde no hay (escritorio), todo queda apagado.
     private val video: VideoModeController? = controller.video

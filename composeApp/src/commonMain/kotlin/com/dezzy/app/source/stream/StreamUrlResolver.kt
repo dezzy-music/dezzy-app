@@ -59,6 +59,18 @@ class StreamUrlResolver(
     private var lastWinner: String? = null
 
     private val preloadSlots = Semaphore(BACKGROUND_SLOTS)
+
+    private val _resolved = kotlinx.coroutines.flow.MutableStateFlow<Map<String, StreamAudio>>(emptyMap())
+
+    /** Último audio resuelto de cada canción (para mostrar códec y bitrate en el reproductor). */
+    val resolved: kotlinx.coroutines.flow.StateFlow<Map<String, StreamAudio>> = _resolved
+
+    private fun remember(audio: StreamAudio): StreamAudio {
+        _resolved.value = (_resolved.value - audio.videoId).let { m ->
+            (if (m.size >= 64) m.entries.drop(m.size - 63).associate { it.key to it.value } else m) + (audio.videoId to audio)
+        }
+        return audio
+    }
     private val downloadSlots = Semaphore(BACKGROUND_SLOTS)
 
     suspend fun resolveStream(
@@ -95,7 +107,7 @@ class StreamUrlResolver(
     suspend fun resetSession() = resetStreaming(hard = false)
 
     private suspend fun resolve(videoId: String, priority: StreamPriority, quality: AudioQuality, force: Boolean): StreamAudio {
-        if (force) invalidate(videoId) else cache.get(videoId, quality, now())?.let { return it }
+        if (force) invalidate(videoId) else cache.get(videoId, quality, now())?.let { return remember(it) }
 
         val key = "$videoId|${quality.name}"
         val pending = stateMutex.withLock {
@@ -111,7 +123,7 @@ class StreamUrlResolver(
                 }
             }.also { inFlight[key] = it }
         }
-        return pending.await()
+        return remember(pending.await())
     }
 
     private suspend fun <T> gate(priority: StreamPriority, block: suspend () -> T): T = when (priority) {

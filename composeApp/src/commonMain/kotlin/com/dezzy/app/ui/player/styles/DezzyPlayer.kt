@@ -48,6 +48,7 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.*
 import com.dezzy.app.ui.components.glass.DezzyTextButton as TextButton
 import com.dezzy.app.ui.components.glass.DezzyIconButton as IconButton
+import com.dezzy.app.ui.player.kit.PlayerIconButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1258,7 +1259,8 @@ fun DezzyPlayer(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // Rewind
-                        IconButton(
+                        PlayerIconButton(
+                            plain = playerStyle == PlayerDesignStyle.APPLE_MUSIC,
                             onClick = { playerConnection.seekToPrevious() },
                             modifier = Modifier.size(56.dp)
                         ) {
@@ -1271,7 +1273,8 @@ fun DezzyPlayer(
                         }
 
                         // Play/Pause (Plain icon, no circular background)
-                        IconButton(
+                        PlayerIconButton(
+                            plain = playerStyle == PlayerDesignStyle.APPLE_MUSIC,
                             onClick = { playerConnection.player.togglePlayPause() },
                             modifier = Modifier.size(72.dp)
                         ) {
@@ -1285,7 +1288,8 @@ fun DezzyPlayer(
                         }
 
                         // Fast Forward
-                        IconButton(
+                        PlayerIconButton(
+                            plain = playerStyle == PlayerDesignStyle.APPLE_MUSIC,
                             onClick = { playerConnection.seekToNext() },
                             modifier = Modifier.size(56.dp)
                         ) {
@@ -1313,7 +1317,8 @@ fun DezzyPlayer(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            IconButton(
+                            PlayerIconButton(
+                                plain = playerStyle == PlayerDesignStyle.APPLE_MUSIC,
                                 onClick = onLyricsClick,
                                 modifier = Modifier.size(48.dp)
                             ) {
@@ -1330,13 +1335,15 @@ fun DezzyPlayer(
                                 activeTint = Color(0xFFFF3B5C),
                                 iconSize = 26.dp,
                                 modifier = Modifier.size(48.dp),
+                                plain = true,
                                 onOpenListenTogether = {
                                     state.collapseSoft()
                                     navController.navigate("settings/music_together")
                                 },
                             )
 
-                            IconButton(
+                            PlayerIconButton(
+                                plain = playerStyle == PlayerDesignStyle.APPLE_MUSIC,
                                 onClick = onQueueClick,
                                 modifier = Modifier.size(48.dp)
                             ) {
