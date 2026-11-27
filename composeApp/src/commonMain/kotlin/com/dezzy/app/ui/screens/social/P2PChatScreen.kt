@@ -59,10 +59,13 @@ import com.dezzy.app.feature.social.P2PMessaging
 import com.dezzy.app.feature.social.P2PNotifications
 import com.dezzy.app.feature.social.P2PSocial
 import com.dezzy.app.feature.social.crypto.NostrCrypto
+import com.dezzy.app.feature.together.TogetherClient
+import com.dezzy.app.feature.together.TogetherState
 import com.dezzy.app.ui.components.glass.DezzyFilledIconButton
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.screens.ScreenContext
 import com.dezzy.app.ui.screens.TopSpacer
+import com.dezzy.app.ui.screens.together.cleanRoomCode
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -105,6 +108,7 @@ fun P2PChatScreen(ctx: ScreenContext, pubkey: String) {
     val messaging: P2PMessaging = koinInject()
     val notifications: P2PNotifications = koinInject()
     val crypto: NostrCrypto = koinInject()
+    val together: TogetherClient = koinInject()
     val user = rememberP2PUser(pubkey)
     val messages by messaging.messages(pubkey).collectAsState(emptyList())
     var text by remember { mutableStateOf("") }
@@ -139,7 +143,17 @@ fun P2PChatScreen(ctx: ScreenContext, pubkey: String) {
                     Text("Cifrado de extremo a extremo", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            IconButton(onClick = { ctx.pending("Escuchar juntos", "9b") }) { Icon(Icons.Rounded.Headphones, "Escuchar juntos") }
+            IconButton(onClick = {
+                val st = together.state.value
+                if (st is TogetherState.InRoom) {
+                    val link = together.roomLink(st.room.code)
+                    ctx.scope.launch {
+                        val ok = runCatching { messaging.sendMessage(pubkey, "Escucha conmigo en Dezzy", juntosLink = link) }.getOrDefault(false)
+                        if (!ok) ctx.toast("No se pudo enviar la invitación")
+                    }
+                }
+                ctx.navigator.push(Screen.Together())
+            }) { Icon(Icons.Rounded.Headphones, "Escuchar juntos") }
         }
         Surface(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clickable { showCode = true },
@@ -247,7 +261,10 @@ private fun MessageBubble(ctx: ScreenContext, m: P2PMessage) {
                 if (m.juntosLink != null) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)) {
                         Row(
-                            Modifier.clickable { ctx.pending("Escuchar juntos", "9b") }.padding(12.dp),
+                            Modifier.clickable {
+                                val c = cleanRoomCode(m.juntosLink)
+                                ctx.navigator.push(Screen.Together(c.ifEmpty { null }))
+                            }.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(Icons.Rounded.Headphones, null, Modifier.size(20.dp))

@@ -102,6 +102,15 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
         }
     }
     androidx.compose.runtime.LaunchedEffect(connectBridge) { connectBridge.toasts.collect { toast(it) } }
+    val togetherSession: com.dezzy.app.feature.together.TogetherSession = koinInject()
+    androidx.compose.runtime.LaunchedEffect(togetherSession) { togetherSession.toasts.collect { toast(it) } }
+    androidx.compose.runtime.LaunchedEffect(navigator) {
+        com.dezzy.app.feature.together.TogetherDeepLinks.pending.collect { code ->
+            if (code == null) return@collect
+            com.dezzy.app.feature.together.TogetherDeepLinks.pending.value = null
+            navigator.push(com.dezzy.app.ui.navigation.Screen.Together(code.ifBlank { null }))
+        }
+    }
     val connection = remember(player, client, repository) {
         PlayerConnection(player, repository, client, scope, toast) { title, phase ->
             expanded = false

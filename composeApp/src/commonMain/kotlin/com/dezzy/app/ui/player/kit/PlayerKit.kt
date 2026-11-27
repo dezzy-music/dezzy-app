@@ -303,7 +303,7 @@ class NavController(
             route.startsWith("album/") -> go(Screen.Album(id))
             route.startsWith("online_playlist/") || route.startsWith("playlist/") -> go(Screen.Playlist(id))
             route.startsWith("search/") -> go(Screen.Search(id))
-            route == "settings/music_together" -> { sheet.collapseSoft(); navigator.select(Tab.TOGETHER) }
+            route == "settings/music_together" -> go(Screen.Together())
             route == "settings" -> go(Screen.Settings(SettingsPage.MAIN))
             route == "settings/appearance" -> go(Screen.Settings(SettingsPage.APPEARANCE))
             route == "settings/player" -> go(Screen.Settings(SettingsPage.PLAYER))

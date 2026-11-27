@@ -105,6 +105,9 @@ fun TabContent(
         is Screen.P2PChat -> com.dezzy.app.ui.screens.social.P2PChatScreen(ctx, top.pubkey)
         is Screen.P2PProfile -> com.dezzy.app.ui.screens.social.P2PProfileScreen(ctx, top.pubkey)
         Screen.P2PWelcome -> com.dezzy.app.ui.screens.social.P2PWelcomeScreen(ctx)
+        is Screen.Together -> com.dezzy.app.ui.screens.together.TogetherScreen(ctx, top.joinCode)
+        Screen.TogetherChat -> com.dezzy.app.ui.screens.together.TogetherChatScreen(ctx)
+        Screen.TogetherDashboard -> com.dezzy.app.ui.screens.together.TogetherDashboardScreen(ctx)
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")

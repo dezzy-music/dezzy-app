@@ -48,6 +48,12 @@ class MainActivity : ComponentActivity() {
 
     /** Toque en una notificación de la red social: abre el chat o la pestaña Juntos. */
     private fun handleSocialIntent(intent: android.content.Intent?) {
+        val data = intent?.data
+        if (intent?.action == android.content.Intent.ACTION_VIEW && data?.scheme == "dezzy" && data.host == "together") {
+            com.dezzy.app.feature.together.TogetherDeepLinks.pending.value =
+                com.dezzy.app.feature.together.TogetherDeepLinks.codeOf(data.toString()).orEmpty()
+            return
+        }
         when (intent?.action) {
             com.dezzy.app.feature.social.P2PNotifications.ACTION_OPEN_CHAT ->
                 com.dezzy.app.feature.social.P2PDeepLinks.pending.value =

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -120,6 +121,7 @@ private fun SocialHome(ctx: ScreenContext) {
         Column(Modifier.fillMaxSize()) {
             TopSpacer()
             ScreenTitle("Social", actions = {
+                IconButton(onClick = { ctx.navigator.push(Screen.Together()) }) { Icon(Icons.Rounded.Headphones, "Escuchar juntos") }
                 IconButton(onClick = { addFriend = true }) { Icon(Icons.Rounded.Search, "Buscar personas") }
                 IconButton(onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SOCIAL)) }) {
                     Icon(Icons.Rounded.Settings, "Ajustes de la red social")

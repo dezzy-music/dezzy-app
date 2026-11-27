@@ -59,6 +59,10 @@ sealed interface Screen {
     data class P2PChat(val pubkey: String) : Screen
     data class P2PProfile(val pubkey: String) : Screen
     data object P2PWelcome : Screen
+    /** Fase 9b: Escuchar juntos (salas en el servidor propio de Dezzy). */
+    data class Together(val joinCode: String? = null) : Screen
+    data object TogetherChat : Screen
+    data object TogetherDashboard : Screen
 }
 
 enum class SettingsPage {
