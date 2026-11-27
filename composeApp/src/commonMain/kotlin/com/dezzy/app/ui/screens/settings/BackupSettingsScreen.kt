@@ -32,6 +32,10 @@ import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -45,7 +49,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
-/** Subir copias a Filebin automáticamente (sólo se guarda el valor; sin efecto aún). */
+/** Subir también a Filebin cada copia que se crea (se muestra el enlace del bin). */
 internal val CloudBackupKey = booleanPreferencesKey("cloudBackup")
 
 @Composable
@@ -53,6 +57,10 @@ internal fun BackupSettingsScreen(ctx: ScreenContext) {
     var cloudBackup by rememberPreference(CloudBackupKey, false)
     var troubleCache by remember { mutableStateOf(true) }
     var troubleVisitor by remember { mutableStateOf(true) }
+    val resolver: com.dezzy.app.source.stream.StreamUrlResolver = org.koin.compose.koinInject()
+    val http: io.ktor.client.HttpClient = org.koin.compose.koinInject()
+    var cloudLink by remember { mutableStateOf<String?>(null) }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
 
     val saveBackup = rememberFileSaver("application/json")
     val saveCsv = rememberFileSaver("text/csv")
@@ -77,6 +85,22 @@ internal fun BackupSettingsScreen(ctx: ScreenContext) {
         }
     }
 
+    cloudLink?.let { link ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { cloudLink = null },
+            title = { Text("Copia subida a Filebin") },
+            text = { Text("Guarda este enlace para restaurarla en otro dispositivo. Filebin borra los archivos pasados unos días.\n\n$link") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(link))
+                    ctx.toast("Enlace copiado")
+                    cloudLink = null
+                }) { Text("Copiar enlace") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { cloudLink = null }) { Text("Cerrar") } },
+        )
+    }
+
     SettingsPage(title = "Copia de seguridad", onBack = { ctx.navigator.back() }) {
         item(key = "backup:card") {
             SettingsGroup {
@@ -89,8 +113,15 @@ internal fun BackupSettingsScreen(ctx: ScreenContext) {
                         Button(
                             onClick = {
                                 ctx.scope.launch {
-                                    runCatching { saveBackup("dezzy-backup.backup", buildBackupJson(ctx)) }
-                                        .onFailure { ctx.toast("No se pudo crear la copia") }
+                                    val json = runCatching { buildBackupJson(ctx) }.getOrNull()
+                                    if (json == null) { ctx.toast("No se pudo crear la copia"); return@launch }
+                                    if (cloudBackup) {
+                                        runCatching { uploadToFilebin(http, "dezzy-backup.backup", json) }
+                                            .onSuccess { cloudLink = it }
+                                            .onFailure { ctx.toast("No se pudo subir la copia a Filebin") }
+                                    }
+                                    runCatching { saveBackup("dezzy-backup.backup", json) }
+                                        .onFailure { ctx.toast("No se pudo guardar la copia") }
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -157,7 +188,13 @@ internal fun BackupSettingsScreen(ctx: ScreenContext) {
                     Button(
                         onClick = {
                             if (!troubleCache && !troubleVisitor) ctx.toast("Elige al menos una opción")
-                            else ctx.toast("Hecho: el motor de reproducción rehará su sesión al siguiente tema")
+                            else ctx.scope.launch {
+                                runCatching {
+                                    if (troubleCache) resolver.clearCache()
+                                    if (troubleVisitor) resolver.resetSession()
+                                }.onSuccess { ctx.toast("Hecho: el siguiente tema se cargará con datos nuevos") }
+                                    .onFailure { ctx.toast("No se pudo completar la reparación") }
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Run troubleshooter") }
@@ -361,4 +398,16 @@ private suspend fun importPlaylist(ctx: ScreenContext, parsed: ParsedList): Stri
     val pl = ctx.repository.createPlaylist(parsed.name)
     parsed.tracks.forEach { ctx.repository.addTrackToPlaylist(pl.id, it) }
     return "Lista importada: ${parsed.tracks.size} canciones"
+}
+
+/** Sube [content] a un bin nuevo de Filebin y devuelve la dirección del bin. */
+private suspend fun uploadToFilebin(http: io.ktor.client.HttpClient, fileName: String, content: String): String {
+    val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+    val bin = "dezzy" + (1..16).map { alphabet.random() }.joinToString("")
+    val response = http.post("https://filebin.net/$bin/$fileName") {
+        setBody(content)
+        contentType(ContentType.Application.OctetStream)
+    }
+    check(response.status.value in 200..299) { "Filebin respondió ${response.status.value}" }
+    return "https://filebin.net/$bin"
 }

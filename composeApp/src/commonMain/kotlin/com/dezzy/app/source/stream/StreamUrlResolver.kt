@@ -91,6 +91,9 @@ class StreamUrlResolver(
         stateMutex.withLock { probeTrust.clear() }
     }
 
+    /** Tira la sesión anónima (visitorData) y el PoToken: el siguiente tema crea otros nuevos. */
+    suspend fun resetSession() = resetStreaming(hard = false)
+
     private suspend fun resolve(videoId: String, priority: StreamPriority, quality: AudioQuality, force: Boolean): StreamAudio {
         if (force) invalidate(videoId) else cache.get(videoId, quality, now())?.let { return it }
 
