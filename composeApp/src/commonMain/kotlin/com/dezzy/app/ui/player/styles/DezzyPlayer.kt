@@ -31,6 +31,8 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Explicit
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Lyrics
@@ -1105,6 +1107,7 @@ fun DezzyPlayer(
                                 text = mediaMetadata?.artists?.joinToString { it.name } ?: "—",
                                 color = Color.White.copy(alpha = 0.55f),
                                 fontSize = 16.sp,
+                                fontWeight = if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) FontWeight.Bold else null,
                                 fontFamily = MaterialTheme.typography.bodyLarge.fontFamily,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1260,7 +1263,7 @@ fun DezzyPlayer(
                             modifier = Modifier.size(56.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.SkipPrevious,
+                                imageVector = if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) Icons.Rounded.FastRewind else Icons.Rounded.SkipPrevious,
                                 contentDescription = "Anterior",
                                 tint = Color.White,
                                 modifier = Modifier.size(44.dp),
@@ -1287,7 +1290,7 @@ fun DezzyPlayer(
                             modifier = Modifier.size(56.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.SkipNext,
+                                imageVector = if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) Icons.Rounded.FastForward else Icons.Rounded.SkipNext,
                                 contentDescription = "Siguiente",
                                 tint = Color.White,
                                 modifier = Modifier.size(44.dp),
