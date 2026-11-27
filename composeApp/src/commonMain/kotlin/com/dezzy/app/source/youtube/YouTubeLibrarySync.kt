@@ -14,6 +14,7 @@ import com.dezzy.app.ui.screens.library.SavedAlbumsKey
 import com.dezzy.app.ui.screens.library.SubscribedArtistsKey
 import com.dezzy.app.ui.screens.library.mergeLocalItems
 import com.dezzy.app.ui.screens.settings.prefs.YtSyncLibraryKey
+import com.dezzy.app.ui.screens.settings.prefs.YtSyncPlaylistsKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +73,10 @@ class YouTubeLibrarySync(
         try {
             syncLikes()
             if (!prefs.value(YtSyncLibraryKey, true).first()) return
-            val lists = safe { client.getLibraryPlaylists() }
+            // «Playlists a sincronizar»: sin selección se traen todas.
+            val chosen = prefs.value(YtSyncPlaylistsKey, "").first()
+                .split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+            val lists = safe { client.getLibraryPlaylists() }.filter { chosen.isEmpty() || it.id in chosen }
             var written = 0
             for (list in lists) {
                 val tracks = safe { client.getPlaylist(list.id).getOrThrow().tracks }

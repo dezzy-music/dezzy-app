@@ -34,6 +34,8 @@ val CanvasCacheMaxMbKey = intPreferencesKey("canvasCacheMaxMb")
 // Cuentas: ajustes de YouTube Music e inicio de sesión avanzado
 val YtUseAccountForBrowseKey = booleanPreferencesKey("ytUseAccountForBrowse")
 val YtSyncLibraryKey = booleanPreferencesKey("ytSyncLibrary")
+/** Ids de las listas de la cuenta que se sincronizan, separados por comas. Vacío: todas. */
+val YtSyncPlaylistsKey = stringPreferencesKey("ytSyncPlaylists")
 val YtAdvancedCookieKey = stringPreferencesKey("ytAdvancedCookie")
 val YtAdvancedVisitorDataKey = stringPreferencesKey("ytAdvancedVisitorData")
 val YtAdvancedDataSyncIdKey = stringPreferencesKey("ytAdvancedDataSyncId")

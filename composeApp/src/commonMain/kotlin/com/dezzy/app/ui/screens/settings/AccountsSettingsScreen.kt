@@ -80,8 +80,17 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
     val youtube = sessions[SessionProvider.YOUTUBE]
     val spotify = sessions[SessionProvider.SPOTIFY]
     var confirmSignOut by remember { mutableStateOf(false) }
-    var syncing by remember { mutableStateOf(false) }
+    var choosePlaylists by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
+    if (choosePlaylists) {
+        SyncPlaylistsDialog(
+            onDismiss = { choosePlaylists = false },
+            onSaved = {
+                choosePlaylists = false
+                ctx.scope.launch { runCatching { sync.syncAll() } }
+            },
+        )
+    }
     var useForBrowse by rememberPreference(YtUseAccountForBrowseKey, true)
     var syncLibrary by rememberPreference(YtSyncLibraryKey, true)
     var cookie by rememberPreference(YtAdvancedCookieKey, "")
@@ -159,24 +168,7 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                         title = "Playlists a sincronizar",
                         subtitle = "Elige qué playlists se descargan a tu biblioteca",
                         icon = Icons.Rounded.MusicNote,
-                        onClick = { ctx.navigator.push(Screen.AccountPlaylists) },
-                    )
-                    SettingsDivider()
-                    SettingsRow(
-                        title = "Sincronizar me gusta",
-                        subtitle = if (syncing) "Sincronizando…" else "Añade a favoritos los me gusta de tu cuenta",
-                        icon = Icons.Rounded.Favorite,
-                        onClick = if (syncing) null else ({
-                            syncing = true
-                            ctx.scope.launch {
-                                val added = runCatching { sync.syncLikes() }
-                                syncing = false
-                                added.fold(
-                                    { ctx.toast("$it canciones añadidas") },
-                                    { ctx.toast("No se pudo sincronizar. Inténtalo de nuevo.") },
-                                )
-                            }
-                        }),
+                        onClick = { choosePlaylists = true },
                     )
                 } else {
                     SettingsRow(
@@ -383,4 +375,58 @@ internal fun AccountProfileRow(name: String, handle: String?, avatarUrl: String?
         }
         trailing?.invoke()
     }
+}
+
+/** «Selecciona playlist para sincronizar»: casillas con las listas de la cuenta; Cancelar / Guardar. */
+@Composable
+private fun SyncPlaylistsDialog(onDismiss: () -> Unit, onSaved: () -> Unit) {
+    val client: com.dezzy.app.source.youtube.YouTubeMusicClient = koinInject()
+    var saved by rememberPreference(com.dezzy.app.ui.screens.settings.prefs.YtSyncPlaylistsKey, "")
+    var lists by remember { mutableStateOf<List<com.dezzy.app.core.model.Playlist>?>(null) }
+    var checked by remember { mutableStateOf<Set<String>?>(null) }
+    LaunchedEffect(Unit) {
+        lists = runCatching { client.getLibraryPlaylists() }.getOrDefault(emptyList())
+    }
+    // La selección guardada se lee una vez; vacía significa «todas» y se muestra sin marcar, como en la app actual.
+    LaunchedEffect(saved) {
+        if (checked == null) checked = saved.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Selecciona playlist para sincronizar", fontWeight = FontWeight.Bold) },
+        text = {
+            val current = lists
+            when {
+                current == null -> Text("Cargando…")
+                current.isEmpty() -> Text("No encontramos listas en tu cuenta de YouTube Music.")
+                else -> androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                    items(current.size) { i ->
+                        val pl = current[i]
+                        val on = checked.orEmpty().contains(pl.id)
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable { checked = if (on) checked.orEmpty() - pl.id else checked.orEmpty() + pl.id }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            androidx.compose.material3.Checkbox(
+                                checked = on,
+                                onCheckedChange = { checked = if (on) checked.orEmpty() - pl.id else checked.orEmpty() + pl.id },
+                            )
+                            CoverImage(pl.thumbnail, Modifier.size(48.dp), RoundedCornerShape(6.dp), sizePx = 144)
+                            Text(pl.title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                saved = checked.orEmpty().joinToString(",")
+                onSaved()
+            }) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
 }

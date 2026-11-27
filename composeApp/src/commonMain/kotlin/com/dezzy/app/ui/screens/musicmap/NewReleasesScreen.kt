@@ -76,10 +76,21 @@ private fun kindOf(section: MusicSection): ReleaseKind {
     }
 }
 
+/** Tipo de cada disco según su subtítulo («EP • …», «Sencillo • …», «Álbum • …»); si no lo dice, el de su sección. */
+private fun kindOfItem(item: com.dezzy.app.core.model.MusicItem, section: MusicSection): ReleaseKind {
+    val first = item.subtitle.substringBefore("•").trim().lowercase()
+    return when {
+        first == "ep" -> ReleaseKind.EP
+        first == "single" || first == "sencillo" -> ReleaseKind.SINGLE
+        first == "álbum" || first == "album" -> ReleaseKind.ALBUM
+        else -> kindOf(section)
+    }
+}
+
 /** Tarjeta gris con tres columnas (álbumes, singles, EPs) separadas por líneas. */
 @Composable
 private fun ReleaseCounts(sections: List<MusicSection>) {
-    val counts = ReleaseKind.entries.associateWith { k -> sections.filter { kindOf(it) == k }.sumOf { it.items.size } }
+    val counts = ReleaseKind.entries.associateWith { k -> sections.sumOf { sec -> sec.items.count { kindOfItem(it, sec) == k } } }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
