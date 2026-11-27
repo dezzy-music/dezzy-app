@@ -199,7 +199,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var canvasArtist by rememberPreference(CanvasArtistEnabledKey, CANVAS_ARTIST_DEFAULT)
     var canvasMode by rememberEnumPreference(CanvasModeKey, CanvasMode.APPLE_WITH_FALLBACK)
 
-    var appFont by rememberEnumPreference(AppFontKey, AppFont.DEFAULT)
+    var appFont by rememberEnumPreference(AppFontKey, AppFont.NUNITO)
     var customImageUri by rememberPreference(PlayerCustomImageUriKey, "")
     var customBrightness by rememberPreference(PlayerCustomBrightnessKey, 1f)
     var miniBackground by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)

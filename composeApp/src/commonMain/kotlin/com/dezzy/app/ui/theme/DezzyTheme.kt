@@ -46,7 +46,7 @@ fun DezzyTheme(
         scheme = scheme.toPureBlack()
     }
 
-    val appFont by rememberEnumPreference(AppFontKey, AppFont.DEFAULT)
+    val appFont by rememberEnumPreference(AppFontKey, AppFont.NUNITO)
     val typography = if (interfaceTheme == AppInterfaceTheme.NOTHING) nothingTypography() else DezzyTypography.withAppFont(appFont)
 
     CompositionLocalProvider(
@@ -56,7 +56,9 @@ fun DezzyTheme(
         MaterialTheme(
             colorScheme = scheme,
             typography = typography,
-            content = content,
-        )
+        ) {
+            // Texto suelto (sin Surface) en el color de primer plano del tema: blanco en oscuro.
+            CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides scheme.onBackground, content = content)
+        }
     }
 }

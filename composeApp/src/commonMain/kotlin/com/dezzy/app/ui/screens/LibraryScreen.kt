@@ -460,65 +460,6 @@ fun HistoryScreen(ctx: ScreenContext) {
     }
 }
 
-@Composable
-fun LocalPlaylistScreen(id: String, ctx: ScreenContext) {
-    var version by remember { mutableIntStateOf(0) }
-    val load = rememberLoad(id to version) {
-        runCatching { ctx.repository.getPlaylistById(id) ?: error("No existe") }
-    }
-    LazyColumn(Modifier.fillMaxSize()) {
-        when (load) {
-            is Load.Loading -> {
-                item { TopSpacer(); ScreenTitle("", onBack = { ctx.navigator.back() }) }
-                loadingRows()
-            }
-            is Load.Failed -> {
-                item { TopSpacer(); ScreenTitle("", onBack = { ctx.navigator.back() }) }
-                errorRow(load.message)
-            }
-            is Load.Done -> {
-                val p = load.value
-                val tracks = p.tracks
-                item {
-                    CollectionHeader(
-                        title = p.title,
-                        subtitle = "${tracks.size} canciones",
-                        thumbnail = p.thumbnail ?: tracks.firstOrNull()?.thumbnail,
-                        round = false,
-                        onBack = { ctx.navigator.back() },
-                        onPlay = tracks.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l, 0, "playlist:${p.id}") } },
-                        onShuffle = tracks.takeIf { it.isNotEmpty() }?.let { l -> { ctx.player.playTracks(l.shuffled(), 0, "playlist:${p.id}") } },
-                        extraActions = tracks.takeIf { it.isNotEmpty() }?.let { l -> { DownloadAllButton(l, ctx) } },
-                    )
-                }
-                if (tracks.isEmpty()) {
-                    emptyRow("Esta lista está vacía. Añade canciones desde el menú de cualquier pista.")
-                } else {
-                    itemsIndexed(tracks) { i, t ->
-                        TrackRow(
-                            t,
-                            onClick = { ctx.player.playTracks(tracks, i, "playlist:${p.id}") },
-                            playing = t.videoId == ctx.playingId,
-                            extraMenu = t.videoId?.let { vid ->
-                                listOf<Pair<String, () -> Unit>>(
-                                    "Quitar de la lista" to {
-                                        ctx.scope.launch {
-                                            ctx.repository.removeTrackFromPlaylist(id, vid)
-                                            version++
-                                        }
-                                        ctx.toast("Quitada de la lista")
-                                    },
-                                )
-                            } ?: emptyList(),
-                        )
-                    }
-                }
-            }
-        }
-        item { Spacer(Modifier.size(24.dp)) }
-    }
-}
-
 /** Selector de lista fijada en la pantalla de inicio (ranura [slot]). */
 @Composable
 fun PinnedPlaylistDialog(ctx: ScreenContext, slot: Int, onDismiss: () -> Unit) {

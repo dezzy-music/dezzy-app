@@ -6,6 +6,15 @@
 package com.dezzy.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import com.dezzy.app.resources.Res
+import com.dezzy.app.resources.nunito_black
+import com.dezzy.app.resources.nunito_bold
+import com.dezzy.app.resources.nunito_extrabold
+import com.dezzy.app.resources.nunito_medium
+import com.dezzy.app.resources.nunito_regular
+import com.dezzy.app.resources.nunito_semibold
+import org.jetbrains.compose.resources.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -13,8 +22,9 @@ import androidx.compose.ui.unit.sp
 
 private val base = Typography()
 
-/** Fuente de la app (familias del sistema, sin descargar nada). */
+/** Fuente de la app: Nunito (incluida, licencia OFL; la de la app actual) o familias del sistema. */
 enum class AppFont(val label: String) {
+    NUNITO("Nunito"),
     DEFAULT("Predeterminada"),
     SERIF("Serif"),
     MONOSPACE("Monoespaciada"),
@@ -23,7 +33,19 @@ enum class AppFont(val label: String) {
 
 val AppFontKey = stringPreferencesKey("appFont")
 
+@Composable
+private fun nunitoFamily(): FontFamily = FontFamily(
+    Font(Res.font.nunito_regular, FontWeight.Normal),
+    Font(Res.font.nunito_medium, FontWeight.Medium),
+    Font(Res.font.nunito_semibold, FontWeight.SemiBold),
+    Font(Res.font.nunito_bold, FontWeight.Bold),
+    Font(Res.font.nunito_extrabold, FontWeight.ExtraBold),
+    Font(Res.font.nunito_black, FontWeight.Black),
+)
+
+@Composable
 private fun AppFont.family(): FontFamily? = when (this) {
+    AppFont.NUNITO -> nunitoFamily()
     AppFont.DEFAULT -> null
     AppFont.SERIF -> FontFamily.Serif
     AppFont.MONOSPACE -> FontFamily.Monospace
@@ -32,6 +54,7 @@ private fun AppFont.family(): FontFamily? = when (this) {
 }
 
 /** Aplica la fuente elegida a todos los estilos de la tipografía. */
+@Composable
 fun Typography.withAppFont(font: AppFont): Typography {
     val f = font.family() ?: return this
     return copy(

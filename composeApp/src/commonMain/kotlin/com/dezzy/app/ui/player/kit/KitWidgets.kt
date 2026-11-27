@@ -578,6 +578,7 @@ fun ColumnScope.PlayerMenu(
     val connection = LocalPlayerConnection.current ?: return
     val openSleep = LocalOpenSleepTimer.current
     val openVisualizer = LocalOpenVisualizer.current
+    val openAod = LocalOpenAod.current
     val playback by connection.controller.state.collectAsState()
     val fx: com.dezzy.app.feature.audio.AudioEffects = koinInject()
     val fxState by fx.state.collectAsState()
@@ -710,7 +711,7 @@ fun ColumnScope.PlayerMenu(
                     onDismiss(); navController.navigate("settings/music_together")
                 }
                 MenuRow(Icons.Rounded.ScreenLockPortrait, "Pantalla siempre activa") {
-                    onDismiss(); connection.pending("Pantalla siempre activa", "posterior")
+                    onDismiss(); openAod()
                 }
                 MenuRow(Icons.Rounded.Info, "Detalles", onClick = onShowDetailsDialog)
                 MenuRow(Icons.Rounded.Settings, "Ajustes del reproductor", "Reproductor y audio") {

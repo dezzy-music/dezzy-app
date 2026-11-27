@@ -38,6 +38,7 @@ interface MusicRepository {
     suspend fun addTrackToPlaylist(playlistId: String, track: Track)
     suspend fun removeTrackFromPlaylist(playlistId: String, videoId: String)
     suspend fun deletePlaylist(playlistId: String)
+    suspend fun renamePlaylist(playlistId: String, title: String)
 
     // Caché de Catálogo
     suspend fun saveTrack(track: Track)

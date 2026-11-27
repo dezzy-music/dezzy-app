@@ -151,6 +151,12 @@ class SqlMusicRepository(
         }
     }
 
+    override suspend fun renamePlaylist(playlistId: String, title: String) = withContext(io) {
+        val row = q.playlistById(playlistId).executeAsOneOrNull() ?: return@withContext
+        q.updatePlaylistMeta(title = title, thumbnail = row.thumbnail, id = playlistId)
+        Unit
+    }
+
     // Caché de catálogo ----------------------------------------------------
 
     override suspend fun saveTrack(track: Track) = withContext(io) {

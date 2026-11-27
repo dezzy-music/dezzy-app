@@ -198,7 +198,8 @@ fun DrawScope.drawEsfera(t: Float, bands: FloatArray, loud: Float, sphereColor: 
         val orbR = baseR * (1.30f + k * 0.22f)
         val tilt = 0.30f + k * 0.10f
         val baseA = t * speed * dir + k * 2.1f
-        val treble = bands[40 + k * 6]
+        // Agudos: zona alta del espectro, proporcional al número de bandas.
+        val treble = bands[(bands.size * (0.62f + k * 0.09f)).toInt().coerceIn(0, bands.lastIndex)]
         for (j in 0 until 7) {
             val a = baseA - dir * j * 0.05f * (1f + loud)
             val fade = 1f - j / 7f

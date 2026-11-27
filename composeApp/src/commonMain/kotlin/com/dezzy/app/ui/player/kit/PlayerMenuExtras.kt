@@ -42,6 +42,9 @@ import kotlin.math.roundToInt
 /** Abre el visualizador a pantalla completa (lo fija el enrutador del reproductor). */
 val LocalOpenVisualizer = staticCompositionLocalOf<() -> Unit> { {} }
 
+/** Abre la pantalla siempre activa (la fija el enrutador del reproductor). */
+val LocalOpenAod = staticCompositionLocalOf<() -> Unit> { {} }
+
 /** Subtítulo de la fila «Voz / Instrumental»: «Original», «Más voz» o «Instrumental», + « · DSP». */
 fun vocalMixSubtitle(mix: Float): String {
     val label = when {

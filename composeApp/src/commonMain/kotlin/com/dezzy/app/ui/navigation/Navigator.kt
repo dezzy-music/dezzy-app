@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME("Inicio", Icons.Outlined.Home, Icons.Filled.Home),
     SEARCH("Buscar", Icons.Outlined.Search, Icons.Filled.Search),
-    LIBRARY("Tu biblioteca", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
+    LIBRARY("Tu biblioteca", com.dezzy.app.ui.components.DezzyIcons.Library, com.dezzy.app.ui.components.DezzyIcons.LibraryFilled),
     TOGETHER("Salas", Icons.Outlined.Groups, Icons.Filled.Groups),
 }
 

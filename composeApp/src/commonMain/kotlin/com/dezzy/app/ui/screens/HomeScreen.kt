@@ -37,6 +37,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BarChart
@@ -187,7 +189,8 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                 todayMinutes = (todaySeconds / 60).toInt(),
                 onNotifications = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) },
                 avatarUrl = avatarUrl,
-                onAccount = { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) },
+                // Como en la app actual: el avatar abre Ajustes y no hay engranaje aparte.
+                onAccount = { ctx.navigator.push(Screen.Settings()) },
                 onSettings = { ctx.navigator.push(Screen.Settings()) },
             )
         }
@@ -337,12 +340,13 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
     val subtitle = if (streakDays > 0) {
         "$streakDays ${if (streakDays == 1) "día" else "días"} de racha"
     } else "¿Qué escuchamos hoy?"
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(greeting, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick = onNotifications) { Icon(Icons.Rounded.Notifications, "Novedades") }
+        Spacer(Modifier.size(4.dp))
         if (avatarUrl != null) {
             CoverImage(avatarUrl, Modifier.size(36.dp).clickable(onClick = onAccount), CircleShape, sizePx = 108, contentDescription = "Cuenta")
         } else {
@@ -351,7 +355,6 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.Person, "Cuenta", tint = MaterialTheme.colorScheme.onPrimaryContainer) }
         }
-        IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Ajustes") }
     }
 }
 
@@ -549,10 +552,10 @@ private fun DezzyToolsSection(
 ) {
     SectionHeader("Herramientas Dezzy", action = "Más", onAction = onMore)
     val tools = listOf(
-        Triple(Icons.Rounded.Casino, "Sorpréndeme", surprise?.let { "Te tocó: ${it.title}" } ?: "Una canción al azar de tu música") to onSurprise,
-        Triple(Icons.Rounded.Insights, "Estadísticas", "Tus artistas y minutos") to onStats,
-        Triple(Icons.Rounded.Public, "Mapa musical", "Sonidos por país") to onMap,
-        Triple(Icons.Rounded.Today, "Tu año en música", "Tu resumen personal") to onYear,
+        Triple(Icons.Rounded.Shuffle, "Sorpréndeme", surprise?.let { "Te tocó: ${it.title}" } ?: "Una canción al azar de tu música") to onSurprise,
+        Triple(Icons.Rounded.BarChart, "Estadísticas", "Tus artistas y minutos") to onStats,
+        Triple(Icons.Outlined.Language, "Mapa musical", "Sonidos por país") to onMap,
+        Triple(Icons.Rounded.AutoAwesome, "Tu año en música", "Tu resumen personal") to onYear,
     )
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tools.chunked(2).forEach { row ->

@@ -276,6 +276,23 @@ internal fun LyricsContent(
             }
         }
 
+        // Aviso cuando la traducción no cambia nada: la letra ya está en ese idioma.
+        val sameLanguage = (translation as? TranslationState.Ready)?.lines?.let { l -> l.isNotEmpty() && l.all { it == null } } == true
+        if (sameLanguage) {
+            Box(Modifier.fillMaxWidth().padding(bottom = 10.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "La letra ya está en ese idioma",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0xFFE5484D))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -472,7 +489,13 @@ private fun LyricLine(
                     } else {
                         ((pos - w.startMs).toFloat() / (w.endMs - w.startMs)).coerceIn(0f, 1f)
                     }
-                    withStyle(SpanStyle(color = color.copy(alpha = 0.38f + 0.62f * p))) { append(w.text) }
+                    // Palabra que suena en cian; las ya cantadas, plenas; las que faltan, tenues.
+                    val wc = when {
+                        p <= 0f -> color.copy(alpha = 0.38f)
+                        p >= 1f -> color
+                        else -> LyricsWordHighlight
+                    }
+                    withStyle(SpanStyle(color = wc)) { append(w.text) }
                 }
             }
             Text(
@@ -497,3 +520,6 @@ private fun LyricLine(
         }
     }
 }
+
+/** Color de la palabra que se está cantando (resaltado por palabra). */
+private val LyricsWordHighlight = Color(0xFF4DD9F0)

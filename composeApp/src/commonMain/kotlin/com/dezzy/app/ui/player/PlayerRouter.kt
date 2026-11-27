@@ -43,7 +43,14 @@ import com.dezzy.app.ui.player.kit.LocalBottomSheetPageState
 import com.dezzy.app.ui.player.kit.LocalMenuState
 import com.dezzy.app.ui.player.kit.LocalOpenPlayerStyleSelector
 import com.dezzy.app.ui.player.kit.LocalOpenSleepTimer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import com.dezzy.app.ui.player.aod.AodScreen
+import com.dezzy.app.ui.player.kit.LocalOpenAod
 import com.dezzy.app.ui.player.kit.LocalOpenVisualizer
+import com.dezzy.app.ui.player.kit.rememberPreference
+import com.dezzy.app.ui.screens.settings.prefs.AodInactivityMinutesKey
 import com.dezzy.app.ui.player.kit.MenuHost
 import com.dezzy.app.ui.player.kit.MenuState
 import com.dezzy.app.ui.player.kit.NavController
@@ -98,6 +105,17 @@ fun PlayerRouter(
     var showLyrics by remember { mutableStateOf(false) }
     val mediaMetadata by connection.mediaMetadata.collectAsState()
     val isPlaying by connection.isPlaying.collectAsState()
+    var showAod by remember { mutableStateOf(false) }
+    var lastTouch by remember { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
+    val aodMinutes by rememberPreference(AodInactivityMinutesKey, 0)
+
+    // Activación automática de la pantalla siempre activa tras N minutos sin toques.
+    LaunchedEffect(lastTouch, aodMinutes, isPlaying, sheet.isExpanded, mediaMetadata != null) {
+        if (aodMinutes > 0 && isPlaying && sheet.isExpanded && mediaMetadata != null && !showAod) {
+            delay(aodMinutes * 60_000L)
+            showAod = true
+        }
+    }
 
     // Cuenta atrás del temporizador (sólo cuando hay uno puesto).
     val sleepAt = state.sleepAtMillis
@@ -142,8 +160,21 @@ fun PlayerRouter(
         LocalOpenPlayerStyleSelector provides { showStyles = true },
         LocalOpenSleepTimer provides { showSleep = true },
         LocalOpenVisualizer provides { showVisualizer = true },
+        LocalOpenAod provides { showAod = true },
     ) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            lastTouch = Clock.System.now().toEpochMilliseconds()
+                        }
+                    }
+                },
+        ) {
             when (style) {
                 PlayerDesignStyle.V1 -> ClassicPlayer(
                     state = sheet, navController = navController,
@@ -228,6 +259,15 @@ fun PlayerRouter(
 
             if (showLyrics) {
                 LyricsScreen(playerConnection = connection, onClose = { showLyrics = false })
+            }
+
+            if (showAod) {
+                Box(Modifier.fillMaxSize().zIndex(10f)) {
+                    AodScreen(playerConnection = connection, onClose = {
+                        showAod = false
+                        lastTouch = Clock.System.now().toEpochMilliseconds()
+                    })
+                }
             }
         }
 

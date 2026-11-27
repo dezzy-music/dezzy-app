@@ -213,7 +213,7 @@ private fun LyricsHeader(
             Icon(Icons.Rounded.ExpandMore, "Cerrar", Modifier.size(24.dp), tint = color)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Reproduciendo", style = MaterialTheme.typography.titleMedium, color = color)
+            Text("Reproduciendo ahora", style = MaterialTheme.typography.titleMedium, color = color)
             Text(
                 title,
                 style = MaterialTheme.typography.bodyMedium,
