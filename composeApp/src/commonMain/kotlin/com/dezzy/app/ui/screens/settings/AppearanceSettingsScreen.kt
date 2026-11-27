@@ -5,6 +5,7 @@
 
 package com.dezzy.app.ui.screens.settings
 
+import com.dezzy.app.ui.player.kit.label
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
@@ -88,8 +89,6 @@ import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage as SettingsPageId
 import com.dezzy.app.ui.player.kit.CanvasMode
 import com.dezzy.app.ui.player.kit.CanvasModeKey
-import com.dezzy.app.ui.player.kit.MiniPlayerBackground
-import com.dezzy.app.ui.player.kit.MiniPlayerBackgroundKey
 import com.dezzy.app.ui.player.kit.MiniPlayerImageUriKey
 import com.dezzy.app.ui.player.kit.MiniPlayerStyle
 import com.dezzy.app.ui.player.kit.MiniPlayerStyleKey
@@ -206,11 +205,13 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var appFont by rememberEnumPreference(AppFontKey, AppFont.NUNITO)
     var customImageUri by rememberPreference(PlayerCustomImageUriKey, "")
     var customBrightness by rememberPreference(PlayerCustomBrightnessKey, 1f)
-    var miniBackground by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)
+    var miniBgStyle by rememberEnumPreference(
+        com.dezzy.app.ui.player.kit.MiniBackgroundStyleKey,
+        com.dezzy.app.ui.player.kit.MiniBackgroundStyle.DEZZY_STYLE,
+    )
+    var miniDynamic by rememberPreference(com.dezzy.app.ui.player.kit.MiniDynamicColorKey, true)
     var miniStyle by rememberEnumPreference(MiniPlayerStyleKey, MiniPlayerStyle.PILL)
-    var miniImageUri by rememberPreference(MiniPlayerImageUriKey, "")
     val pickPlayerImage = rememberOwnImagePicker(customImageUri) { customImageUri = it }
-    val pickMiniImage = rememberOwnImagePicker(miniImageUri) { miniImageUri = it }
 
     var randomAtStart by rememberPreference(ThemeRandomAtStartKey, false)
     var cornerRadius by rememberPreference(PlayerCornerRadiusKey, 16f)
@@ -402,10 +403,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     title = "Color dinámico en mini reproductor",
                     subtitle = "Usa el color dominante de la carátula como fondo",
                     icon = Icons.Rounded.Palette,
-                    checked = miniBackground == MiniPlayerBackground.COVER_COLOR,
-                    onCheckedChange = {
-                        miniBackground = if (it) MiniPlayerBackground.COVER_COLOR else MiniPlayerBackground.DEFAULT
-                    },
+                    checked = miniDynamic,
+                    onCheckedChange = { miniDynamic = it },
                 )
                 SettingsDivider()
                 SettingsRow(title = "Estilo del diseño del reproductor", icon = Icons.Rounded.PlayCircle)
@@ -418,27 +417,11 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 SettingsChoiceRow(
                     title = "Estilo de fondo del mini reproductor",
                     icon = Icons.Rounded.Gradient,
-                    options = MiniPlayerBackground.entries.toList(),
-                    selected = miniBackground,
-                    label = {
-                        when (it) {
-                            MiniPlayerBackground.DEFAULT -> "Dezzy Style"
-                            MiniPlayerBackground.COVER_COLOR -> "Color de la carátula"
-                            MiniPlayerBackground.TRANSPARENT -> "Transparente (cristal)"
-                            MiniPlayerBackground.IMAGE -> "Imagen propia"
-                        }
-                    },
-                    onSelect = { miniBackground = it },
+                    options = com.dezzy.app.ui.player.kit.MiniBackgroundStyle.entries.toList(),
+                    selected = miniBgStyle,
+                    label = { it.label() },
+                    onSelect = { miniBgStyle = it },
                 )
-                if (miniBackground == MiniPlayerBackground.IMAGE) {
-                    SettingsDivider()
-                    SettingsRow(
-                        title = "Imagen del minirreproductor",
-                        subtitle = if (miniImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
-                        icon = Icons.Rounded.Image,
-                        onClick = { pickMiniImage() },
-                    )
-                }
                 SettingsDivider()
                 PrefSwitchRow(
                     "Ocultar miniatura del reproductor",
@@ -808,15 +791,32 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     Icons.Rounded.Swipe,
                 )
                 SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Barra de navegación delgada",
+                var navPicker by remember { mutableStateOf(false) }
+                SettingsRow(
+                    title = "Estilo de la barra de navegación",
+                    subtitle = navStyleLabel(navStyle),
                     icon = Icons.Rounded.Apps,
-                    checked = navStyle == com.dezzy.app.ui.components.NavBarStyle.DOCK,
-                    onCheckedChange = {
-                        navStyle = if (it) com.dezzy.app.ui.components.NavBarStyle.DOCK
-                        else com.dezzy.app.ui.components.NavBarStyle.FULL
-                    },
+                    onClick = { navPicker = true },
                 )
+                if (navPicker) {
+                    AlertDialog(
+                        onDismissRequest = { navPicker = false },
+                        title = { Text("Estilo de la barra de navegación") },
+                        text = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                com.dezzy.app.ui.components.NavBarStyle.entries.forEach { style ->
+                                    NavStyleCard(
+                                        style = style,
+                                        selected = style == navStyle,
+                                        onClick = { navStyle = style; navPicker = false },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { navPicker = false }) { Text("Cancelar") } },
+                    )
+                }
                 SettingsDivider()
                 PrefStringChoiceRow(
                     title = "Tamaño de celda de la cuadrícula",
@@ -1218,5 +1218,83 @@ private fun SliderStyleCard(
                 )
             }
         }
+    }
+}
+
+private fun navStyleLabel(style: com.dezzy.app.ui.components.NavBarStyle): String = when (style) {
+    com.dezzy.app.ui.components.NavBarStyle.FULL -> "Completa"
+    com.dezzy.app.ui.components.NavBarStyle.SLIM -> "Delgada"
+    com.dezzy.app.ui.components.NavBarStyle.DOCK -> "Flotante"
+}
+
+/** Tarjeta con un dibujo de la barra para el selector de estilo de navegación. */
+@Composable
+private fun NavStyleCard(
+    style: com.dezzy.app.ui.components.NavBarStyle,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = MaterialTheme.colorScheme
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(c.surfaceContainerHigh)
+            .border(if (selected) 2.dp else 1.dp, if (selected) c.primary else c.outlineVariant, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(10.dp)).background(c.surface),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            val dot = @Composable { on: Boolean ->
+                Box(
+                    Modifier.size(width = 12.dp, height = 6.dp).clip(RoundedCornerShape(3.dp))
+                        .background(if (on) c.primary else c.onSurfaceVariant.copy(alpha = 0.5f)),
+                )
+            }
+            when (style) {
+                com.dezzy.app.ui.components.NavBarStyle.FULL -> Row(
+                    Modifier.fillMaxWidth().height(26.dp).background(c.surfaceContainer),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    repeat(4) { i ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            dot(i == 0)
+                            Spacer(Modifier.height(3.dp))
+                            Box(Modifier.size(width = 10.dp, height = 2.dp).background(c.onSurfaceVariant.copy(alpha = 0.5f)))
+                        }
+                    }
+                }
+                com.dezzy.app.ui.components.NavBarStyle.SLIM -> Row(
+                    Modifier.fillMaxWidth().height(16.dp).background(c.surfaceContainer),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { repeat(4) { i -> dot(i == 0) } }
+                com.dezzy.app.ui.components.NavBarStyle.DOCK -> Row(
+                    Modifier.padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        Modifier.height(18.dp).clip(RoundedCornerShape(9.dp)).background(c.surfaceContainerHighest)
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) { repeat(3) { i -> dot(i == 0) } }
+                    Box(Modifier.size(18.dp).clip(CircleShape).background(c.primaryContainer))
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            navStyleLabel(style),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selected) c.primary else c.onSurfaceVariant,
+        )
     }
 }

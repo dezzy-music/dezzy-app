@@ -155,3 +155,43 @@ fun FullNavBar(
         }
     }
 }
+
+/** Barra delgada: ancho completo, sólo iconos con indicador en píldora, más baja que la completa. */
+@Composable
+fun SlimNavBar(
+    selected: Tab,
+    onSelect: (Tab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(colors.surfaceContainer)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .height(52.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Tab.entries.forEach { tab ->
+            val on = tab == selected
+            Box(
+                Modifier
+                    .size(width = 56.dp, height = 32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (on) colors.secondaryContainer else Color.Transparent)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(tab) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (on) tab.selectedIcon else tab.icon,
+                    contentDescription = tab.label,
+                    tint = if (on) colors.onSecondaryContainer else colors.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}

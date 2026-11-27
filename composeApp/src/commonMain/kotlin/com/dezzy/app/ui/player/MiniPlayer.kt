@@ -53,9 +53,17 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import com.dezzy.app.ui.player.kit.ArtPalette
-import com.dezzy.app.ui.player.kit.MiniPlayerBackground
-import com.dezzy.app.ui.player.kit.MiniPlayerBackgroundKey
-import com.dezzy.app.ui.player.kit.MiniPlayerImageUriKey
+import com.dezzy.app.ui.player.kit.MiniBackgroundStyle
+import com.dezzy.app.ui.player.kit.MiniBackgroundStyleKey
+import com.dezzy.app.ui.player.kit.MiniDynamicColorKey
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.SolidColor
 import com.dezzy.app.ui.player.kit.loadArtPalette
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPreference
@@ -89,27 +97,46 @@ fun MiniPlayer(
     val shape = RoundedCornerShape(if (isBar) 20.dp else 16.dp)
     var drag by remember { mutableFloatStateOf(0f) }
 
-    val bgMode by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)
-    val imageUri by rememberPreference(MiniPlayerImageUriKey, "")
-    val useImage = bgMode == MiniPlayerBackground.IMAGE && imageUri.isNotBlank()
+    val bgStyle by rememberEnumPreference(MiniBackgroundStyleKey, MiniBackgroundStyle.DEZZY_STYLE)
+    val dynamicColor by rememberPreference(MiniDynamicColorKey, true)
     var palette by remember { mutableStateOf<ArtPalette?>(null) }
-    LaunchedEffect(track.thumbnail, bgMode, isBar) {
-        palette = if (bgMode == MiniPlayerBackground.COVER_COLOR || isBar) loadArtPalette(track.thumbnail, 16) else null
-    }
+    LaunchedEffect(track.thumbnail) { palette = loadArtPalette(track.thumbnail, 16) }
     val playerConnection = LocalPlayerConnection.current
     val liked by (playerConnection?.currentSongLiked ?: remember { MutableStateFlow(false) }).collectAsState()
-    val barGradient = isBar && !useImage && bgMode != MiniPlayerBackground.TRANSPARENT
-    val coverColor = palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) }
-    val bgColor = when {
-        bgMode == MiniPlayerBackground.COVER_COLOR && coverColor != null -> lerp(coverColor, Color.Black, 0.45f)
-        bgMode == MiniPlayerBackground.TRANSPARENT -> Color.White.copy(alpha = 0.06f)
-        useImage -> Color.Black
-        else -> colors.surfaceContainerHigh
+    val dominant = palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) }
+    val second = palette?.let { Color(it.getVibrantColor(it.getMutedColor(0xFF202020.toInt())) or 0xFF000000.toInt()) }
+    // Color base: el de la carátula si «Color dinámico» está activo; si no, el del tema.
+    val tint = if (dynamicColor && dominant != null) dominant else colors.primary
+    val glow = rememberInfiniteTransition(label = "miniGlow")
+    val glowPhase by glow.animateFloat(
+        0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing), RepeatMode.Reverse), label = "glowPhase",
+    )
+    val bgBrush: Brush = when (bgStyle) {
+        MiniBackgroundStyle.DEFAULT -> SolidColor(
+            if (dynamicColor && dominant != null) lerp(dominant, Color.Black, 0.45f) else colors.surfaceContainerHigh,
+        )
+        MiniBackgroundStyle.BLUR -> SolidColor(Color.Black.copy(alpha = 0.35f))
+        MiniBackgroundStyle.GRADIENT -> Brush.horizontalGradient(
+            listOf(lerp(tint, Color.Black, 0.15f), lerp(second ?: tint, Color.Black, 0.55f)),
+        )
+        MiniBackgroundStyle.GLOW_ANIMATED -> Brush.horizontalGradient(
+            listOf(
+                Color(0xFF101010),
+                lerp(tint, Color.Black, 0.25f + 0.35f * glowPhase),
+                Color(0xFF101010),
+            ),
+            startX = -400f + 800f * glowPhase,
+            endX = 600f + 800f * glowPhase,
+        )
+        MiniBackgroundStyle.DEZZY_STYLE -> Brush.horizontalGradient(
+            listOf(Color(0xFF121212), lerp(dominant ?: Color(0xFF303030), Color.Black, 0.2f)),
+        )
     }
-    val customLook = bgMode != MiniPlayerBackground.DEFAULT && (bgMode != MiniPlayerBackground.COVER_COLOR || coverColor != null)
-    val contentColor = if (barGradient || (customLook && bgMode != MiniPlayerBackground.TRANSPARENT)) Color.White else colors.onSurface
-    val barDominant = coverColor ?: palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) } ?: Color(0xFF303030)
-    val barBrush = Brush.horizontalGradient(listOf(Color(0xFF121212), lerp(barDominant, Color.Black, 0.2f)))
+    val customLook = bgStyle != MiniBackgroundStyle.DEFAULT || (dynamicColor && dominant != null)
+    val contentColor = if (customLook) Color.White else colors.onSurface
+    val glowBorder = if (bgStyle == MiniBackgroundStyle.GLOW_ANIMATED) {
+        Modifier.border(1.dp, tint.copy(alpha = 0.35f + 0.45f * glowPhase), shape)
+    } else Modifier
 
     CompositionLocalProvider(LocalContentColor provides contentColor) {
     Box(
@@ -117,9 +144,9 @@ fun MiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = if (isBar) 12.dp else 8.dp, vertical = 4.dp)
             .clip(shape)
-            .background(bgColor)
-            .then(if (barGradient) Modifier.background(barBrush) else Modifier)
-            .dezzyStyledSurface(shape)
+            .then(if (bgStyle == MiniBackgroundStyle.DEFAULT && !customLook) Modifier.dezzyStyledSurface(shape) else Modifier)
+            .background(bgBrush)
+            .then(glowBorder)
             .clickable(onClick = onExpand)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -131,14 +158,14 @@ fun MiniPlayer(
                 ) { _, amount -> drag += amount }
             },
     ) {
-        if (useImage) {
+        if (bgStyle == MiniBackgroundStyle.BLUR) {
             AsyncImage(
-                model = imageUri,
+                model = track.thumbnail,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
+                modifier = Modifier.matchParentSize().blur(28.dp),
             )
-            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
+            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.4f)))
         }
         if (isBar) {
             Row(

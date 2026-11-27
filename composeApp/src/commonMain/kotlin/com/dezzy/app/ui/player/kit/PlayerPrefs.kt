@@ -55,6 +55,17 @@ enum class IpodThemeMode { DYNAMIC, CLASSIC }
 /** Fondo del minirreproductor. */
 enum class MiniPlayerBackground { DEFAULT, COVER_COLOR, TRANSPARENT, IMAGE }
 
+/** «Estilo de fondo del mini reproductor» de la app actual (5 opciones, en su orden). */
+enum class MiniBackgroundStyle { DEFAULT, BLUR, GRADIENT, GLOW_ANIMATED, DEZZY_STYLE }
+
+fun MiniBackgroundStyle.label(): String = when (this) {
+    MiniBackgroundStyle.DEFAULT -> "Default"
+    MiniBackgroundStyle.BLUR -> "Blur"
+    MiniBackgroundStyle.GRADIENT -> "Gradient"
+    MiniBackgroundStyle.GLOW_ANIMATED -> "Glow Animated"
+    MiniBackgroundStyle.DEZZY_STYLE -> "Dezzy Style"
+}
+
 /** Estilo del minirreproductor: píldora actual o tarjeta ancha (BAR). */
 enum class MiniPlayerStyle { PILL, BAR }
 
@@ -73,6 +84,8 @@ val PlayerCustomContrastKey = floatPreferencesKey("playerCustomContrast")
 val PlayerCustomBrightnessKey = floatPreferencesKey("playerCustomBrightness")
 val MiniPlayerBackgroundKey = stringPreferencesKey("miniPlayerBackground")
 val MiniPlayerStyleKey = stringPreferencesKey("miniPlayerStyle")
+val MiniBackgroundStyleKey = stringPreferencesKey("miniBackgroundStyle")
+val MiniDynamicColorKey = booleanPreferencesKey("miniDynamicColor")
 val MiniPlayerImageUriKey =stringPreferencesKey("miniPlayerImageUri")
 val LyricsBackgroundKey = stringPreferencesKey("lyricsBackground")
 val LyricsBgImageUriKey = stringPreferencesKey("lyricsBgImageUri")

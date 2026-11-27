@@ -173,10 +173,10 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
                         if (wide) {
                             Box(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
                         } else {
-                            if (navBarStyle == NavBarStyle.DOCK) {
-                                FloatingNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
-                            } else {
-                                FullNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                            when (navBarStyle) {
+                                NavBarStyle.DOCK -> FloatingNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                                NavBarStyle.SLIM -> com.dezzy.app.ui.components.SlimNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                                NavBarStyle.FULL -> FullNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
                             }
                         }
                     }
