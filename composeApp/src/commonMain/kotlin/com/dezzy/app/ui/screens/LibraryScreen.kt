@@ -30,7 +30,17 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.PersonSearch
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
@@ -111,6 +121,44 @@ fun LibraryScreen(ctx: ScreenContext) {
     val savedAlbums by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SavedAlbumsKey) }.collectAsState(null)
     val subscribedArtists by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey) }.collectAsState(null)
     var creating by remember { mutableStateOf(false) }
+    // Filtros y orden de las pestañas Álbumes, Artistas y Canciones (como en la app actual).
+    var songFilter by rememberSaveable { mutableIntStateOf(0) }
+    var albumFilter by rememberSaveable { mutableIntStateOf(1) }
+    var artistFilter by rememberSaveable { mutableIntStateOf(0) }
+    var songSort by rememberSaveable { mutableIntStateOf(0) }
+    var albumSort by rememberSaveable { mutableIntStateOf(0) }
+    var artistSort by rememberSaveable { mutableIntStateOf(0) }
+    var songAsc by rememberSaveable { mutableStateOf(false) }
+    var albumAsc by rememberSaveable { mutableStateOf(false) }
+    var artistAsc by rememberSaveable { mutableStateOf(false) }
+    var itemsGrid by rememberSaveable { mutableStateOf(true) }
+    // «Tu biblioteca»: me gusta + canciones de tus listas, sin repetir.
+    val libraryTracks by androidx.compose.runtime.produceState<List<com.dezzy.app.core.model.Track>?>(null, playlists, favorites) {
+        val fav = favorites ?: return@produceState
+        val fromLists = playlists.flatMap { p -> runCatching { ctx.repository.getPlaylistById(p.id)?.tracks.orEmpty() }.getOrDefault(emptyList()) }
+        value = (fav + fromLists).filter { it.videoId != null }.distinctBy { it.videoId }
+    }
+    val downloadManager = koinInject<com.dezzy.app.feature.downloads.DownloadManager>()
+    val downloadState by downloadManager.state.collectAsState()
+    val downloadedTracks = remember(downloadState) {
+        downloadState.items.filter { it.status == com.dezzy.app.feature.downloads.DownloadStatus.DONE }.map { it.track }
+    }
+    // Artistas de las canciones de la biblioteca, con cuántas canciones tiene cada uno.
+    val libraryArtists = remember(libraryTracks) {
+        libraryTracks?.let { list ->
+            list.groupBy { it.artists.substringBefore(",").substringBefore(" & ").trim() }
+                .filterKeys { it.isNotEmpty() }
+                .map { (name, ts) ->
+                    com.dezzy.app.core.model.MusicItem(
+                        id = "name:$name",
+                        type = com.dezzy.app.core.model.MusicItemType.ARTIST,
+                        title = name,
+                        subtitle = "${ts.size} ${if (ts.size == 1) "canción" else "canciones"}",
+                        thumbnail = ts.first().thumbnail,
+                    )
+                }
+        }
+    }
     val accounts: AccountStore = koinInject()
     val sessions by accounts.sessions.collectAsState()
     val hasYouTube = SessionProvider.YOUTUBE in sessions
@@ -133,6 +181,7 @@ fun LibraryScreen(ctx: ScreenContext) {
         else -> playlists
     }
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { DezzyTopBar(ctx) }
         item {
@@ -262,34 +311,116 @@ fun LibraryScreen(ctx: ScreenContext) {
                 }
             }
             LibraryTab.SONGS -> {
-                val tracks = favorites
+                item(key = "songs:chips") {
+                    LibraryFilterChips(listOf("Me gustan", "Tu biblioteca", "Descargados"), songFilter) { songFilter = it }
+                }
+                val tracks = when (songFilter) {
+                    0 -> favorites
+                    1 -> libraryTracks
+                    else -> downloadedTracks
+                }?.let { list -> sortTracks(list, songSort, songAsc) }
+                item(key = "songs:sort") {
+                    LibrarySortRow(
+                        labels = TrackSortLabels, sort = songSort, ascending = songAsc,
+                        count = tracks?.let { "${it.size} ${if (it.size == 1) "canción" else "canciones"}" } ?: "",
+                        onSort = { songSort = it }, onToggleOrder = { songAsc = !songAsc },
+                    )
+                }
+                item(key = "songs:add") {
+                    Surface(
+                        onClick = { ctx.navigator.select(com.dezzy.app.ui.navigation.Tab.SEARCH) },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 8.dp),
+                    ) {
+                        Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Add, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Añadir", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 when {
                     tracks == null -> loadingRows()
-                    tracks.isEmpty() -> emptyRow("Todavía no tienes canciones que te gusten.")
-                    else -> itemsIndexed(tracks) { i, t ->
+                    tracks.isEmpty() -> item(key = "songs:empty") { LibraryEmptyState(Icons.Rounded.MusicNote, "Las canciones de la biblioteca aparecerán aquí") }
+                    else -> itemsIndexed(tracks, key = { i, t -> "s:$i:${t.videoId}" }) { i, t ->
                         TrackRow(t, onClick = { ctx.player.playTracks(tracks, i, "liked") }, playing = t.videoId == ctx.playingId)
                     }
                 }
             }
             LibraryTab.ALBUMS -> {
-                val list = savedAlbums
+                item(key = "albums:chips") {
+                    LibraryFilterChips(listOf("Me gustan", "Tu biblioteca", "Descargados"), albumFilter) { albumFilter = it }
+                }
+                val list = when (albumFilter) {
+                    0, 1 -> savedAlbums
+                    else -> emptyList()
+                }?.let { l -> sortItems(l, albumSort, albumAsc) }
+                item(key = "albums:sort") {
+                    LibrarySortRow(
+                        labels = ItemSortLabels, sort = albumSort, ascending = albumAsc,
+                        count = list?.let { "${it.size} ${if (it.size == 1) "álbum" else "álbumes"}" } ?: "",
+                        onSort = { albumSort = it }, onToggleOrder = { albumAsc = !albumAsc },
+                        gridView = itemsGrid, onToggleView = { itemsGrid = !itemsGrid },
+                    )
+                }
                 when {
                     list == null -> loadingRows()
-                    list.isEmpty() -> emptyRow("Todavía no has guardado álbumes. Pulsa ♥ en un álbum para tenerlo aquí.")
+                    list.isEmpty() -> item(key = "albums:empty") { LibraryEmptyState(Icons.Rounded.Album, "Los álbumes de la biblioteca aparecerán aquí") }
+                    itemsGrid -> items(list.chunked(2), key = { row -> "ar:" + row.first().id }) { row ->
+                        LibraryItemGridRow(row) { item -> LibraryAlbumCell(item, liked = albumFilter != 2, onPlay = { ctx.open(item) }) { ctx.open(item) } }
+                    }
                     else -> items(list, key = { "album:" + it.id }) { item -> ItemRow(item) { ctx.open(item) } }
                 }
             }
             LibraryTab.ARTISTS -> {
-                val list = subscribedArtists
+                item(key = "artists:chips") {
+                    LibraryFilterChips(listOf("Me gustan", "Tu biblioteca"), artistFilter) { artistFilter = it }
+                }
+                val list = (if (artistFilter == 0) subscribedArtists else libraryArtists)?.let { l -> sortItems(l, artistSort, artistAsc) }
+                item(key = "artists:sort") {
+                    LibrarySortRow(
+                        labels = ItemSortLabels, sort = artistSort, ascending = artistAsc,
+                        count = list?.let { "${it.size} ${if (it.size == 1) "artista" else "artistas"}" } ?: "",
+                        onSort = { artistSort = it }, onToggleOrder = { artistAsc = !artistAsc },
+                        gridView = itemsGrid, onToggleView = { itemsGrid = !itemsGrid },
+                    )
+                }
+                val openArtist: (com.dezzy.app.core.model.MusicItem) -> Unit = { item ->
+                    if (item.id.startsWith("name:")) ctx.scope.launch {
+                        ctx.client.findArtistId(item.title).getOrNull()?.let { ctx.navigator.push(Screen.Artist(it)) }
+                            ?: ctx.toast("No he encontrado a ${item.title}")
+                    } else ctx.open(item)
+                }
                 when {
                     list == null -> loadingRows()
-                    list.isEmpty() -> emptyRow("Todavía no sigues a ningún artista. Pulsa «Subscribir» en su página.")
-                    else -> items(list, key = { "artist:" + it.id }) { item -> ItemRow(item) { ctx.open(item) } }
+                    list.isEmpty() -> item(key = "artists:empty") { LibraryEmptyState(Icons.Rounded.PersonSearch, "Los artistas de la biblioteca aparecerán aquí") }
+                    itemsGrid -> items(list.chunked(2), key = { row -> "rr:" + row.first().id }) { row ->
+                        LibraryItemGridRow(row) { item -> LibraryArtistCell(item) { openArtist(item) } }
+                    }
+                    else -> items(list, key = { "artist:" + it.id }) { item -> ItemRow(item) { openArtist(item) } }
                 }
             }
             LibraryTab.GENRES -> Unit
         }
         item { Spacer(Modifier.size(24.dp)) }
+    }
+    // Canciones: aleatorio flotante encima del minirreproductor, como en la app actual.
+    if (tab == LibraryTab.SONGS) {
+        val shuffleList = when (songFilter) {
+            0 -> favorites
+            1 -> libraryTracks
+            else -> downloadedTracks
+        }.orEmpty()
+        if (shuffleList.isNotEmpty()) {
+            com.dezzy.app.ui.components.glass.DezzyFloatingActionButton(
+                onClick = { ctx.player.playTracks(shuffleList.shuffled(), 0, "liked") },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 12.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) { Icon(Icons.Rounded.Shuffle, "Aleatorio") }
+        }
+    }
     }
 
     if (creating) {
@@ -297,6 +428,158 @@ fun LibraryScreen(ctx: ScreenContext) {
             onDismiss = { creating = false },
             onCreate = { name -> ctx.scope.launch { ctx.repository.createPlaylist(name) } },
         )
+    }
+}
+
+private val TrackSortLabels = listOf("Fecha añadida", "Nombre", "Artista")
+private val ItemSortLabels = listOf("Fecha añadida", "Nombre")
+
+private fun sortTracks(list: List<com.dezzy.app.core.model.Track>, sort: Int, ascending: Boolean): List<com.dezzy.app.core.model.Track> {
+    val sorted = when (sort) {
+        1 -> list.sortedBy { it.title.lowercase() }
+        2 -> list.sortedBy { it.artists.lowercase() }
+        else -> list
+    }
+    // «Fecha añadida» llega del más reciente al más antiguo; los demás, de la A a la Z.
+    return if (sort == 0) (if (ascending) sorted.asReversed() else sorted) else (if (ascending) sorted else sorted.asReversed())
+}
+
+private fun sortItems(list: List<com.dezzy.app.core.model.MusicItem>, sort: Int, ascending: Boolean): List<com.dezzy.app.core.model.MusicItem> {
+    val sorted = if (sort == 1) list.sortedBy { it.title.lowercase() } else list
+    return if (sort == 0) (if (ascending) sorted.asReversed() else sorted) else (if (ascending) sorted else sorted.asReversed())
+}
+
+/** Chips de filtro: el elegido en verde con ✓, los demás en gris. */
+@Composable
+private fun LibraryFilterChips(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        labels.forEachIndexed { i, label ->
+            val on = i == selected
+            Surface(
+                onClick = { onSelect(i) },
+                shape = CircleShape,
+                color = if (on) Color(0xFF1ED760) else MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = if (on) Color.Black else MaterialTheme.colorScheme.onSurface,
+            ) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (on) {
+                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/** «Fecha añadida ↓ · N elementos · ⊞»: orden (menú), sentido (flecha), recuento y vista. */
+@Composable
+private fun LibrarySortRow(
+    labels: List<String>,
+    sort: Int,
+    ascending: Boolean,
+    count: String,
+    onSort: (Int) -> Unit,
+    onToggleOrder: () -> Unit,
+    gridView: Boolean? = null,
+    onToggleView: () -> Unit = {},
+) {
+    var menu by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            Text(
+                labels[sort.coerceIn(0, labels.lastIndex)],
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { menu = true }.padding(vertical = 12.dp),
+            )
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                labels.forEachIndexed { i, l -> DropdownMenuItem(text = { Text(l) }, onClick = { onSort(i); menu = false }) }
+            }
+        }
+        IconButton(onClick = onToggleOrder) {
+            Icon(
+                if (ascending) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                if (ascending) "Ascendente" else "Descendente",
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        Text(count, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+        if (gridView != null) {
+            IconButton(onClick = onToggleView) {
+                Icon(if (gridView) Icons.Outlined.GridView else Icons.Rounded.ViewList, if (gridView) "Ver como lista" else "Ver como rejilla")
+            }
+        } else Spacer(Modifier.width(12.dp))
+    }
+}
+
+/** Vacío de pestaña: icono en un círculo y texto gris centrado. */
+@Composable
+private fun LibraryEmptyState(icon: ImageVector, text: String) {
+    Column(Modifier.fillMaxWidth().padding(top = 48.dp, start = 32.dp, end = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(96.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun LibraryItemGridRow(
+    row: List<com.dezzy.app.core.model.MusicItem>,
+    cell: @Composable (com.dezzy.app.core.model.MusicItem) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        row.forEach { item -> Box(Modifier.weight(1f)) { cell(item) } }
+        if (row.size == 1) Spacer(Modifier.weight(1f))
+    }
+}
+
+/** Celda de álbum: portada con ▶ abajo a la derecha, título y artista (♥ si te gusta). */
+@Composable
+private fun LibraryAlbumCell(item: com.dezzy.app.core.model.MusicItem, liked: Boolean, onPlay: () -> Unit, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
+            CoverImage(item.thumbnail, Modifier.fillMaxSize(), RoundedCornerShape(6.dp), sizePx = 480)
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(8.dp).size(36.dp).clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.55f)).clickable(onClick = onPlay),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.PlayArrow, "Reproducir", tint = Color.White, modifier = Modifier.size(22.dp)) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(item.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (liked) {
+                Icon(Icons.Rounded.Favorite, null, tint = Color(0xFFFF8A80), modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+            }
+            val artist = item.subtitle.split(" • ").firstOrNull { it.isNotBlank() && it != "Álbum" && it != "Album" && it.toIntOrNull() == null } ?: item.subtitle
+            Text(artist, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Celda de artista: foto redonda, nombre y recuento de canciones. */
+@Composable
+private fun LibraryArtistCell(item: com.dezzy.app.core.model.MusicItem, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick)) {
+        CoverImage(item.thumbnail, Modifier.fillMaxWidth().aspectRatio(1f), CircleShape, sizePx = 480)
+        Spacer(Modifier.height(8.dp))
+        Text(item.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 

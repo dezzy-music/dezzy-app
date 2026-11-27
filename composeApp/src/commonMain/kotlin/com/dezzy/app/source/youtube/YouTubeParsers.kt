@@ -16,6 +16,7 @@ import com.dezzy.app.core.model.Track
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -243,15 +244,25 @@ object YouTubeParsers {
         return if (items.isEmpty()) null else MusicSection(title = title, items = items)
     }
 
-    fun parseHomeSections(json: JsonObject): List<MusicSection> {
-        val sections = mutableListOf<MusicSection>()
-        val contents = json["contents"]?.jsonObject
+    /** `sectionListRenderer` de la portada, o `sectionListContinuation` en las páginas siguientes. */
+    private fun homeSectionList(json: JsonObject): JsonObject? =
+        json["contents"]?.jsonObject
             ?.get("singleColumnBrowseResultsRenderer")?.jsonObject
             ?.get("tabs")?.jsonArray?.getOrNull(0)?.jsonObject
             ?.get("tabRenderer")?.jsonObject
             ?.get("content")?.jsonObject
             ?.get("sectionListRenderer")?.jsonObject
-            ?.get("contents")?.jsonArray ?: return emptyList()
+            ?: json["continuationContents"]?.jsonObject?.get("sectionListContinuation")?.jsonObject
+
+    /** Token de la siguiente página de la portada, o null si no hay más. */
+    fun parseHomeContinuationToken(json: JsonObject): String? =
+        (homeSectionList(json)?.get("continuations")?.jsonArray?.firstOrNull() as? JsonObject)
+            ?.get("nextContinuationData")?.jsonObject
+            ?.get("continuation")?.jsonPrimitive?.contentOrNull
+
+    fun parseHomeSections(json: JsonObject): List<MusicSection> {
+        val sections = mutableListOf<MusicSection>()
+        val contents = homeSectionList(json)?.get("contents")?.jsonArray ?: return emptyList()
 
         for (section in contents) {
             val secObj = section as? JsonObject ?: continue

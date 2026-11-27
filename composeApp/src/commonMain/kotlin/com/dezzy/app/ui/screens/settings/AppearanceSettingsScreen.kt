@@ -548,8 +548,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onValueChangeFinished = { swipeSensitivity = it },
                 )
                 // Lo que ya había en Apariencia y no está en la app actual: al final del grupo.
-                // Sólo el estilo «Dezzy» (DezzyPlayer) dibuja este fondo; en los demás no haría nada.
-                if (playerStyle == PlayerDesignStyle.V5) {
+                // Siempre visible: lo usan el estilo «Dezzy» y la pantalla de letras.
+                run {
                     SettingsDivider()
                     SettingsChoiceRow(
                         title = "Fondo del reproductor",

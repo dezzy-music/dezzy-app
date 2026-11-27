@@ -351,7 +351,22 @@ class YouTubeMusicClient(
             put("browseId", YouTubeEndpoints.BROWSE_ID_HOME)
         })
 
-        YouTubeParsers.parseHomeSections(response)
+        // La portada llega por páginas: la primera trae pocas estanterías y el resto viene en continuaciones.
+        val sections = YouTubeParsers.parseHomeSections(response).toMutableList()
+        var token = YouTubeParsers.parseHomeContinuationToken(response)
+        var pages = 0
+        while (token != null && pages < HOME_MAX_PAGES) {
+            val c = token.encodeURLParameter()
+            val page = runCatching {
+                post("${YouTubeEndpoints.BROWSE_URL}&continuation=$c&ctoken=$c&type=next", buildJsonObject {
+                    put("context", buildContext(gl = gl))
+                })
+            }.getOrNull() ?: break
+            sections += YouTubeParsers.parseHomeSections(page)
+            token = YouTubeParsers.parseHomeContinuationToken(page)
+            pages++
+        }
+        sections.distinctBy { it.title }
     }
 
     suspend fun search(query: String, filterParam: String? = null, gl: String? = null): Result<SearchResult> = runCatching {
@@ -508,3 +523,6 @@ class YouTubeMusicClient(
 
 /** Tope de páginas de 100 pistas por lista (10 000 canciones). */
 private const val MAX_PLAYLIST_PAGES = 100
+
+/** Páginas extra de la portada que se piden como máximo (cada una trae unas pocas estanterías). */
+private const val HOME_MAX_PAGES = 6

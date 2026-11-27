@@ -55,3 +55,5 @@ actual fun rememberMediaPicker(onPicked: (uri: String, mime: String?) -> Unit): 
 /** En escritorio el vídeo de fondo no se reproduce (no hay reproductor de vídeo propio todavía). */
 @Composable
 actual fun WallpaperVideo(uri: String, modifier: Modifier) = Unit
+
+actual fun coil3.request.ImageRequest.Builder.readableBitmap(): coil3.request.ImageRequest.Builder = this

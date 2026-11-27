@@ -5,6 +5,7 @@
 
 package com.dezzy.app.ui.screens.personalize
 
+import coil3.request.allowHardware
 import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.view.LayoutInflater
@@ -118,3 +119,6 @@ actual fun WallpaperVideo(uri: String, modifier: Modifier) {
         modifier = modifier,
     )
 }
+
+actual fun coil3.request.ImageRequest.Builder.readableBitmap(): coil3.request.ImageRequest.Builder =
+    allowHardware(false)

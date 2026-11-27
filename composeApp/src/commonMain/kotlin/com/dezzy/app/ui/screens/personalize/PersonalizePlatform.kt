@@ -33,3 +33,6 @@ internal fun extensionForMime(mime: String?, isVideo: Boolean): String = when (m
     "video/mp4" -> "mp4"
     else -> if (isVideo) "mp4" else "jpg"
 }
+
+/** Pide a Coil un bitmap que se pueda leer (sin bitmap de hardware), para medir su luminosidad. */
+expect fun coil3.request.ImageRequest.Builder.readableBitmap(): coil3.request.ImageRequest.Builder

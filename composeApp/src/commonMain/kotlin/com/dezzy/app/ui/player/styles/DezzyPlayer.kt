@@ -247,84 +247,8 @@ fun DezzyPlayer(
         modifier = modifier.fillMaxSize(),
     ) {
 
-        // Layer 1 — background:
-        if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 1. Highly blurred background
-                AsyncImage(
-                    model = ImageRequest.Builder(platformContext)
-                        .data(mediaMetadata?.thumbnailUrl)
-                        .size(128, 128)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .playerBlur(150.dp, disableBlur, blurScale)
-                )
-
-                // 2. Clean artwork/video in top 65% with vertical fade
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.65f)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.00f to Color.Black,
-                                        0.75f to Color.Black,
-                                        0.92f to Color.Black.copy(alpha = 0.4f),
-                                        1.00f to Color.Transparent,
-                                    )
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                ) {
-                    if (videoModeActive && videoPlayer != null) {
-                        VideoSurface(player = videoPlayer, active = true, modifier = Modifier.fillMaxSize())
-                    } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(platformContext)
-                                .data(mediaMetadata?.thumbnailUrl)
-                                .size(coil3.size.Size.ORIGINAL)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        if (anyCanvasActive && hasCanvas) {
-                            CanvasArtworkPlayer(
-                                primaryUrl  = primaryCanvasUrl,
-                                fallbackUrl = fallbackCanvasUrl,
-                                isPlaying   = isPlaying,
-                                modifier    = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-
-                // 3. Dark gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.05f),
-                                    Color.Black.copy(alpha = 0.4f)
-                                )
-                            )
-                        )
-                )
-            }
-        } else if (playerStyle == PlayerDesignStyle.LIVE_MESH) {
+        // Fondo «malla» que sigue «Fondo del reproductor» (Degradado, Resplandor, Coloreado, Personalizado).
+        val meshBackground: @Composable () -> Unit = {
             val infiniteTransition = rememberInfiniteTransition(label = "liveMeshRotation")
 
             val anchorRotation by infiniteTransition.animateFloat(
@@ -554,6 +478,89 @@ fun DezzyPlayer(
                     }
                 }
             }
+        }
+
+        // Layer 1 — background:
+        if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // 1. Fondo: la portada muy desenfocada, o el «Fondo del reproductor» elegido.
+                if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
+                    meshBackground()
+                } else AsyncImage(
+                    model = ImageRequest.Builder(platformContext)
+                        .data(mediaMetadata?.thumbnailUrl)
+                        .size(128, 128)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .playerBlur(150.dp, disableBlur, blurScale)
+                )
+
+                // 2. Clean artwork/video in top 65% with vertical fade
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.65f)
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.00f to Color.Black,
+                                        0.75f to Color.Black,
+                                        0.92f to Color.Black.copy(alpha = 0.4f),
+                                        1.00f to Color.Transparent,
+                                    )
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
+                ) {
+                    if (videoModeActive && videoPlayer != null) {
+                        VideoSurface(player = videoPlayer, active = true, modifier = Modifier.fillMaxSize())
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(platformContext)
+                                .data(mediaMetadata?.thumbnailUrl)
+                                .size(coil3.size.Size.ORIGINAL)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        if (anyCanvasActive && hasCanvas) {
+                            CanvasArtworkPlayer(
+                                primaryUrl  = primaryCanvasUrl,
+                                fallbackUrl = fallbackCanvasUrl,
+                                isPlaying   = isPlaying,
+                                modifier    = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+
+                // 3. Dark gradient overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.05f),
+                                    Color.Black.copy(alpha = 0.4f)
+                                )
+                            )
+                        )
+                )
+            }
+        } else if (playerStyle == PlayerDesignStyle.LIVE_MESH || playerBackground != PlayerBackgroundStyle.DEFAULT) {
+            meshBackground()
         } else if (isLandscape) {
             // Landscape background: Highly blurred backdrop
             if (hasCanvas) {
