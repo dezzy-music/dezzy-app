@@ -117,7 +117,7 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             if (peer == null) return@collect
             com.dezzy.app.feature.social.P2PDeepLinks.pending.value = null
             navigator.select(com.dezzy.app.ui.navigation.Tab.TOGETHER)
-            if (peer.isNotBlank()) navigator.push(com.dezzy.app.ui.navigation.Screen.P2PChat(peer))
+            if (peer.isNotBlank() && com.dezzy.app.ui.screens.social.SocialVisibility.FRIENDS_AND_MESSAGES) navigator.push(com.dezzy.app.ui.navigation.Screen.P2PChat(peer))
         }
     }
     androidx.compose.runtime.LaunchedEffect(connectBridge) { connectBridge.toasts.collect { toast(it) } }

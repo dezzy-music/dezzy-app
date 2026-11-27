@@ -110,7 +110,7 @@ fun SocialSettingsScreen(ctx: ScreenContext) {
                     SettingsDivider()
                     SettingsRow(
                         title = "Cerrar sesión",
-                        subtitle = "Quita la cuenta y los chats de este dispositivo",
+                        subtitle = if (SocialVisibility.FRIENDS_AND_MESSAGES) "Quita la cuenta y los chats de este dispositivo" else "Quita la cuenta de este dispositivo",
                         icon = Icons.AutoMirrored.Rounded.Logout,
                         onClick = { confirmSignOut = true },
                     )

@@ -58,6 +58,9 @@ class StreamUrlResolver(
     private val probeTrust = mutableMapOf<String, Long>()
     private var lastWinner: String? = null
 
+    /** «Cliente de reproducción» elegido en Ajustes: sale primero en la carrera (null = automático). */
+    @kotlin.concurrent.Volatile var preferredClient: String? = null
+
     private val preloadSlots = Semaphore(BACKGROUND_SLOTS)
 
     private val _resolved = kotlinx.coroutines.flow.MutableStateFlow<Map<String, StreamAudio>>(emptyMap())
@@ -169,7 +172,8 @@ class StreamUrlResolver(
     private suspend fun resolveFresh(videoId: String, quality: AudioQuality, retried: Boolean): StreamAudio {
         val pot = sessionAndToken()
         val errors = mutableListOf<String>()
-        val clients = stateMutex.withLock { lastWinner }
+        val first = preferredClient?.takeIf { it in CLIENTS } ?: stateMutex.withLock { lastWinner }
+        val clients = first
             ?.let { winner -> listOf(winner) + CLIENTS.filter { it != winner } }
             ?: CLIENTS
         val winner = race(clients, errors) { client -> tryClient(videoId, client, pot, quality) }

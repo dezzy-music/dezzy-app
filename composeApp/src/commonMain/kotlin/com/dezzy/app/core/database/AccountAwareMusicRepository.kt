@@ -13,6 +13,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -27,8 +28,20 @@ class AccountAwareMusicRepository(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** «Auto descargar al dar me gusta». Se buscan en Koin al usarse para no crear un ciclo de dependencias. */
+    private suspend fun autoDownloadLiked(track: Track) {
+        val koin = org.koin.mp.KoinPlatform.getKoin()
+        val prefs = koin.getOrNull<com.dezzy.app.core.prefs.DezzyPreferences>() ?: return
+        val enabled = runCatching {
+            prefs.value(com.dezzy.app.ui.screens.settings.prefs.AutoDownloadOnLikeKey, false).first()
+        }.getOrDefault(false)
+        if (!enabled) return
+        koin.getOrNull<com.dezzy.app.feature.downloads.DownloadManager>()?.enqueue(listOf(track))
+    }
+
     override suspend fun setFavorite(track: Track, favorite: Boolean) {
         inner.setFavorite(track, favorite)
+        if (favorite) scope.launch { autoDownloadLiked(track) }
         val videoId = track.videoId ?: return
         scope.launch {
             try {

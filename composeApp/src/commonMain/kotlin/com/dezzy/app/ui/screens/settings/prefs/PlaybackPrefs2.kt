@@ -12,7 +12,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 // Reproductor y audio
 val PlaybackClientKey = stringPreferencesKey("playbackClient")
 val MeteredNetworkKey = booleanPreferencesKey("treatNetworkAsMetered")
-val HistoryDurationKey = intPreferencesKey("historyDurationDays")
+/** Segundos escuchados para que una canción cuente en el historial. */
+val HistoryDurationKey = intPreferencesKey("historyDurationSeconds")
 val AudioOffloadKey = booleanPreferencesKey("audioOffload")
 val ProgressiveSeekKey = booleanPreferencesKey("progressiveSeek")
 val CastVideoKey = booleanPreferencesKey("castVideo")

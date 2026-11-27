@@ -364,7 +364,10 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
 @Composable
 private fun HomeFilterChips(selected: HomeFilter, spotifyVisible: Boolean, onSelect: (HomeFilter) -> Unit) {
     // «Spotify» sólo aparece con sesión y «Usar para la pantalla de inicio» activo.
-    val visible = HomeFilter.entries.filter { it != HomeFilter.SPOTIFY || spotifyVisible }
+    val visible = HomeFilter.entries.filter {
+        (it != HomeFilter.SPOTIFY || spotifyVisible) &&
+            (it != HomeFilter.COMMUNITY || com.dezzy.app.ui.screens.social.SocialVisibility.FRIENDS_AND_MESSAGES)
+    }
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(visible) { f ->
             FilterChip(

@@ -91,13 +91,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-private enum class SocialTab(val label: String) {
+private enum class SocialTab(val label: String, val social: Boolean = false) {
     ROOMS("Salas"),
-    FRIENDS("Amigos"),
+    FRIENDS("Amigos", social = true),
     MAP("Mapa"),
     NEARBY("Cerca"),
-    COMMUNITY("Comunidad"),
+    COMMUNITY("Comunidad", social = true),
 }
+
+private val visibleSocialTabs = SocialTab.entries.filter { !it.social || SocialVisibility.FRIENDS_AND_MESSAGES }
 
 /** Pestaña Social: amigos y chats, mapa, radar «Cerca» y comunidad. Sin cuenta, da la bienvenida. */
 @Composable
@@ -164,12 +166,14 @@ private fun SocialHome(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                IconButton(onClick = { if (mine != null) addFriend = true else tab = SocialTab.FRIENDS }) { Icon(Icons.Rounded.Search, "Buscar personas") }
+                if (SocialVisibility.FRIENDS_AND_MESSAGES) {
+                    IconButton(onClick = { if (mine != null) addFriend = true else tab = SocialTab.FRIENDS }) { Icon(Icons.Rounded.Search, "Buscar personas") }
+                }
                 IconButton(onClick = { roomsVersion++ }) { Icon(Icons.Rounded.Refresh, "Actualizar") }
                 IconButton(onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SOCIAL)) }) {
                     Icon(Icons.Rounded.Settings, "Ajustes de la red social")
                 }
-                if (mine != null) {
+                if (mine != null && SocialVisibility.FRIENDS_AND_MESSAGES) {
                     P2PAvatar(
                         mine,
                         36.dp,
@@ -178,7 +182,7 @@ private fun SocialHome(
                 }
             }
             DezzySingleChoiceSegmentedRow(
-                items = SocialTab.entries,
+                items = visibleSocialTabs,
                 selected = tab,
                 onSelect = { tab = it },
                 label = { it.label },
@@ -195,7 +199,7 @@ private fun SocialHome(
                 }
             }
         }
-        if (mine != null) when (tab) {
+        if (mine != null && SocialVisibility.FRIENDS_AND_MESSAGES) when (tab) {
             SocialTab.FRIENDS -> DezzyExtendedFloatingActionButton(
                 text = { Text("Añadir amigo") },
                 icon = { Icon(Icons.Rounded.PersonAdd, null) },
@@ -457,7 +461,7 @@ private fun MapTab(ctx: ScreenContext) {
             items(list, key = { it.pubkey }) { l ->
                 val user = profiles[l.pubkey] ?: P2PUser(l.pubkey)
                 Row(
-                    Modifier.fillMaxWidth().clickable { ctx.navigator.push(Screen.P2PProfile(l.pubkey)) }.padding(horizontal = 20.dp, vertical = 8.dp),
+                    Modifier.fillMaxWidth().clickable(enabled = SocialVisibility.FRIENDS_AND_MESSAGES) { ctx.navigator.push(Screen.P2PProfile(l.pubkey)) }.padding(horizontal = 20.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     P2PAvatar(user, 44.dp)

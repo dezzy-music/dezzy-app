@@ -44,7 +44,8 @@ class DezzyPlaybackService : MediaSessionService() {
     /** Se quitó la app de recientes: si no suena nada, el servicio se va. */
     override fun onTaskRemoved(rootIntent: Intent?) {
         val p = session?.player
-        if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
+        if (player.stopOnTaskClear) player.pause()
+        if (p == null || player.stopOnTaskClear || !p.playWhenReady || p.mediaItemCount == 0) {
             player.releaseService()
             stopSelf()
         }

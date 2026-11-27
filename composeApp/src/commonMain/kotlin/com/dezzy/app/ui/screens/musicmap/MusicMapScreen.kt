@@ -847,7 +847,9 @@ private fun PersonSheet(
                 Spacer(Modifier.width(8.dp))
                 Text("Escuchar")
             }
-            FilledTonalButton(onClick = onProfile, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Ver perfil") }
+            if (com.dezzy.app.ui.screens.social.SocialVisibility.FRIENDS_AND_MESSAGES) {
+                FilledTonalButton(onClick = onProfile, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Ver perfil") }
+            }
         }
     }
 }

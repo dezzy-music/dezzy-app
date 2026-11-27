@@ -230,7 +230,7 @@ private fun NearbyPersonSheet(ctx: ScreenContext, user: com.dezzy.app.feature.so
             Text(user.fingerprint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (user.about.isNotBlank()) Text(user.about, fontSize = 14.sp)
             Spacer(Modifier.size(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (SocialVisibility.FRIENDS_AND_MESSAGES) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DezzyOutlinedButton(onClick = { onDismiss(); ctx.navigator.push(Screen.P2PProfile(user.pubkey)) }) { Text("Ver perfil") }
                 DezzyButton(onClick = { onDismiss(); ctx.navigator.push(Screen.P2PChat(user.pubkey)) }) { Text("Mensaje") }
             }

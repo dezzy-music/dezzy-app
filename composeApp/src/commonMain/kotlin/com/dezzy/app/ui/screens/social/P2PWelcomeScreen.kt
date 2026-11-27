@@ -161,12 +161,17 @@ private fun WelcomeIntro(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            "Chatea con tus amigos, mira qué escuchan y comparte canciones. Todo cifrado y sin teléfono ni correo.",
+            if (SocialVisibility.FRIENDS_AND_MESSAGES) "Chatea con tus amigos, mira qué escuchan y comparte canciones. Todo cifrado y sin teléfono ni correo."
+            else "Mira quién escucha Dezzy cerca de ti y qué suena en el mapa. Sin teléfono ni correo.",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        FeatureRow(Icons.Rounded.Chat, "Mensajes cifrados", "Sólo tú y tu amigo podéis leerlos.")
-        FeatureRow(Icons.Rounded.Headphones, "Escuchando ahora", "Ve lo que suena en la música de tus amigos.")
+        if (SocialVisibility.FRIENDS_AND_MESSAGES) {
+            FeatureRow(Icons.Rounded.Chat, "Mensajes cifrados", "Sólo tú y tu amigo podéis leerlos.")
+            FeatureRow(Icons.Rounded.Headphones, "Escuchando ahora", "Ve lo que suena en la música de tus amigos.")
+        } else {
+            FeatureRow(Icons.Rounded.Headphones, "Cerca de ti", "Ve quién usa Dezzy cerca y qué está escuchando.")
+        }
         FeatureRow(Icons.Rounded.VpnKey, "Tu cuenta son 12 palabras", "Guárdalas: con ellas la recuperas en cualquier móvil.")
         OutlinedTextField(
             value = name,

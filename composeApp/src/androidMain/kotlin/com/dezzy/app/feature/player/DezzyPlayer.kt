@@ -12,6 +12,16 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import com.dezzy.app.feature.audio.DezzyEqManager
 import com.dezzy.app.feature.audio.HiResAudioProcessorChain
+import com.dezzy.app.feature.audio.DezzyBiquadAudioProcessor
+import android.os.PowerManager
+import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
+import com.dezzy.app.ui.screens.settings.prefs.AudioOffloadKey
+import com.dezzy.app.ui.screens.settings.prefs.HistoryDurationKey
+import com.dezzy.app.ui.screens.settings.prefs.KeepCpuAwakeKey
+import com.dezzy.app.ui.screens.settings.prefs.MeteredNetworkKey
+import com.dezzy.app.ui.screens.settings.prefs.PlaybackClientKey
+import com.dezzy.app.ui.screens.settings.prefs.ProgressiveSeekKey
+import com.dezzy.app.ui.screens.settings.prefs.StopMusicOnTaskClearKey
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -98,7 +108,24 @@ class DezzyPlayer(
 
     /** Con datos móviles (red medida) manda la calidad de «datos móviles»; si no, la normal. */
     private val quality: AudioQuality
-        get() = if (isMeteredNetwork() && mobileQuality != AudioQuality.AUTO) mobileQuality else normalQuality
+        get() = when {
+            !isMeteredNetwork() -> normalQuality
+            mobileQuality != AudioQuality.AUTO -> mobileQuality
+            // «Tratar la red como de uso medido»: en redes medidas se prefiere la calidad baja.
+            preferLowOnMetered -> AudioQuality.LOW
+            else -> normalQuality
+        }
+    @Volatile private var preferLowOnMetered = false
+    private var offload = false
+    private var hiResActive = false
+    private var keepCpuAwake = false
+    private var progressiveSeek = false
+    /** Segundos escuchados para que una canción entre en el historial (0 = al empezar). */
+    private var historyThresholdS = 30
+
+    /** «Detener la música al finalizar la tarea»: lo lee el servicio al quitar la app de recientes. */
+    @Volatile internal var stopOnTaskClear = false
+        private set
     private var crossfadeMs = 0L
     private var normalize = false
     private var autoSkip = true
@@ -247,7 +274,7 @@ class DezzyPlayer(
         scope.launch {
             prefs.value(SkipSilenceKey, false).collect {
                 skipSilence = it
-                exo?.skipSilenceEnabled = it
+                exo?.skipSilenceEnabled = it && !hiResActive
             }
         }
         scope.launch {
@@ -255,6 +282,15 @@ class DezzyPlayer(
                 autoplayEnabled = enabled
                 _state.update { it.copy(autoplay = enabled) }
             }
+        }
+        scope.launch { prefs.value(MeteredNetworkKey, false).collect { preferLowOnMetered = it } }
+        scope.launch { prefs.value(AudioOffloadKey, false).collect { offload = it; applyOffload() } }
+        scope.launch { prefs.value(KeepCpuAwakeKey, false).collect { keepCpuAwake = it; updateCpuLock() } }
+        scope.launch { prefs.value(ProgressiveSeekKey, false).collect { progressiveSeek = it } }
+        scope.launch { prefs.value(StopMusicOnTaskClearKey, false).collect { stopOnTaskClear = it } }
+        scope.launch { prefs.value(HistoryDurationKey, 30).collect { historyThresholdS = it.coerceAtLeast(0) } }
+        scope.launch {
+            prefs.value(PlaybackClientKey, "Android VR").collect { resolver.preferredClient = clientFor(it) }
         }
         scope.launch { queue.state.collect { q -> _state.update { it.copy(queue = q) } } }
         scope.launch {
@@ -568,6 +604,22 @@ class DezzyPlayer(
         _state.update { it.copy(error = null) }
         val track = queue.state.value.current?.track ?: return
         listenVideoId = track.videoId
+        historyTrack = track
+        historyListenedMs = 0L
+        maybeAddToHistory()
+    }
+
+    // Historial: la canción entra cuando se han escuchado los segundos elegidos (o media canción si es más corta).
+    private var historyTrack: Track? = null
+    private var historyListenedMs = 0L
+    private var lastTickAt = 0L
+
+    private fun maybeAddToHistory() {
+        val track = historyTrack ?: return
+        val duration = exo?.let(::knownDuration) ?: 0L
+        val needed = (historyThresholdS * 1000L).let { if (duration > 0) min(it, duration / 2) else it }
+        if (historyListenedMs < needed) return
+        historyTrack = null
         if (!pauseHistory && saveListenHistory) scope.launch { runCatching { repository.addToHistory(track) } }
     }
 
@@ -575,10 +627,16 @@ class DezzyPlayer(
         if (ticker?.isActive == true) return
         ticker = scope.launch {
             var lastPublish = 0L
+            lastTickAt = System.currentTimeMillis()
             while (isActive) {
                 val player = exo ?: break
                 val now = System.currentTimeMillis()
                 listen.tick(now, player.isPlaying)
+                if (player.isPlaying && historyTrack != null) {
+                    historyListenedMs += (now - lastTickAt).coerceIn(0L, 1_000L)
+                    maybeAddToHistory()
+                }
+                lastTickAt = now
                 listen.takeFull()?.let(::writeListen)
                 updateFade()
                 if (now - lastPublish >= PUBLISH_EVERY_MS) {
@@ -738,6 +796,11 @@ class DezzyPlayer(
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) handleEnded()
             publishPlayer()
+            updateCpuLock()
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            updateCpuLock()
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -745,8 +808,12 @@ class DezzyPlayer(
         }
     }
 
-    /** Salida float y la cadena Dezzy (EQ C++20, sub-bass, virtualizer, preamp, limitador). */
-    private fun hiResRenderersFactory(): DefaultRenderersFactory =
+    /**
+     * La cadena dezzy_dsp (EQ C++20, sub-bass, virtualizer, voz/instrumental, preamp, limitador) va
+     * SIEMPRE. El «Motor Hi-Res» sólo cambia a salida float de 32 bits (sin «Omitir silencio»);
+     * sin él, el DSP trabaja en 16 bits delante de la cadena normal de Media3 (silencio y Sonic).
+     */
+    private fun dezzyRenderersFactory(hiRes: Boolean): DefaultRenderersFactory =
         object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
                 context: Context,
@@ -755,9 +822,51 @@ class DezzyPlayer(
             ): AudioSink = DefaultAudioSink.Builder(context)
                 .setEnableFloatOutput(enableFloatOutput)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessorChain(HiResAudioProcessorChain())
+                .setAudioProcessorChain(
+                    if (hiRes) HiResAudioProcessorChain()
+                    else DefaultAudioSink.DefaultAudioProcessorChain(DezzyBiquadAudioProcessor()),
+                )
                 .build()
-        }.setEnableAudioFloatOutput(true)
+        }.setEnableAudioFloatOutput(hiRes)
+
+    /** «Offload de audio»: decodificación por hardware si el dispositivo puede (salta el DSP). */
+    private fun applyOffload() {
+        val player = exo ?: return
+        val mode = if (offload && !hiResActive) AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
+        else AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
+        if (player.trackSelectionParameters.audioOffloadPreferences.audioOffloadMode == mode) return
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setAudioOffloadPreferences(AudioOffloadPreferences.Builder().setAudioOffloadMode(mode).build())
+            .build()
+    }
+
+    // «Keep CPU awake»: un wake lock parcial mientras haya que sonar (también entre canciones y al cargar).
+    private var cpuLock: PowerManager.WakeLock? = null
+
+    private fun updateCpuLock() {
+        val want = keepCpuAwake && (exo?.playWhenReady == true || drivingVideo?.playWhenReady == true)
+        val lock = cpuLock ?: if (want) {
+            (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Dezzy:playback")
+                .apply { setReferenceCounted(false) }
+                .also { cpuLock = it }
+        } else return
+        if (want && !lock.isHeld) lock.acquire(CPU_LOCK_MAX_MS)
+        else if (!want && lock.isHeld) lock.release()
+    }
+
+    // «Búsqueda progresiva»: saltos seguidos en el mismo sentido suman 5 s cada vez.
+    private var lastSeekAt = 0L
+    private var lastSeekDir = 0
+    private var seekStreak = 0
+
+    internal fun seekStep(direction: Int): Long {
+        val now = System.currentTimeMillis()
+        seekStreak = if (progressiveSeek && direction == lastSeekDir && now - lastSeekAt < PROGRESSIVE_WINDOW_MS) seekStreak + 1 else 0
+        lastSeekAt = now
+        lastSeekDir = direction
+        return SEEK_STEP_MS + seekStreak * PROGRESSIVE_EXTRA_MS
+    }
 
     private fun buildPlayer(): ExoPlayer {
         val http = OkHttpDataSource.Factory(OkHttpClient()).setUserAgent(HttpClientFactory.DEFAULT_USER_AGENT)
@@ -775,18 +884,22 @@ class DezzyPlayer(
             .build()
         DezzyEqManager.initAndLoad(prefs)
         val hiRes = DezzyEqManager.readHiResEnabledBlocking(prefs)
-        val builder = if (hiRes) ExoPlayer.Builder(context, hiResRenderersFactory()) else ExoPlayer.Builder(context)
-        return builder
+        hiResActive = hiRes
+        return ExoPlayer.Builder(context, dezzyRenderersFactory(hiRes))
             .setMediaSourceFactory(DefaultMediaSourceFactory(source))
             .setAudioAttributes(attributes, true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
+            .setSeekForwardIncrementMs(SEEK_STEP_MS)
+            .setSeekBackIncrementMs(SEEK_STEP_MS)
             .build()
             .also {
                 it.addListener(listener)
-                it.skipSilenceEnabled = skipSilence
+                it.skipSilenceEnabled = skipSilence && !hiRes
                 it.playbackParameters = PlaybackParameters(userSpeed, userPitch)
                 appliedVolume = -1f
+                exo = it
+                applyOffload()
             }
     }
 
@@ -897,12 +1010,14 @@ class DezzyPlayer(
             if (drivingVideo != null) seekTo(positionMs) else super.seekTo(mediaItemIndex, positionMs)
         }
         override fun seekBack() {
-            val vp = drivingVideo ?: return super.seekBack()
-            seekTo((vp.currentPosition - vp.seekBackIncrement).coerceAtLeast(0))
+            val position = drivingVideo?.currentPosition ?: currentPosition
+            this@DezzyPlayer.seekTo((position - seekStep(-1)).coerceAtLeast(0))
+            if (drivingVideo != null) notifySessionSeek()
         }
         override fun seekForward() {
-            val vp = drivingVideo ?: return super.seekForward()
-            seekTo(vp.currentPosition + vp.seekForwardIncrement)
+            val position = drivingVideo?.currentPosition ?: currentPosition
+            this@DezzyPlayer.seekTo(position + seekStep(1))
+            if (drivingVideo != null) notifySessionSeek()
         }
 
         override fun getAvailableCommands(): Player.Commands =
@@ -941,6 +1056,18 @@ class DezzyPlayer(
         const val SAVE_EVERY_MS = 4_000L
         const val PUBLISH_EVERY_MS = 500L
         const val PREFETCH_COUNT = 2
+        const val SEEK_STEP_MS = 10_000L
+        const val PROGRESSIVE_EXTRA_MS = 5_000L
+        const val PROGRESSIVE_WINDOW_MS = 1_500L
+        const val CPU_LOCK_MAX_MS = 6 * 60 * 60 * 1000L
+
+        /** «Cliente de reproducción» → cliente que sale primero en la carrera del resolvedor (null = automático). */
+        fun clientFor(label: String): String? = when (label) {
+            "Web Remix" -> "YTMUSIC"
+            "iOS" -> "IOS"
+            "TV" -> "TV_SIMPLY"
+            else -> null
+        }
 
         fun parseQuality(value: String): AudioQuality =
             AudioQuality.entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: AudioQuality.AUTO

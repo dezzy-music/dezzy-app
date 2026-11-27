@@ -154,9 +154,9 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsChoiceRow(
                     title = "Duración del historial",
                     icon = Icons.Rounded.Schedule,
-                    options = listOf(7, 30, 60, 90, 365),
+                    options = listOf(0, 10, 20, 30, 60),
                     selected = historyDays,
-                    label = { "$it" },
+                    label = { if (it == 0) "Al empezar" else "$it s" },
                     onSelect = { historyDays = it },
                 )
                 SettingsDivider()
