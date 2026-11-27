@@ -12,6 +12,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.rounded.Shuffle
@@ -147,6 +150,12 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
     val sessions by accounts.sessions.collectAsState()
     val avatarUrl = sessions[SessionProvider.YOUTUBE]?.avatarUrl
 
+    val favorites by ctx.repository.getFavorites().collectAsState(emptyList())
+    val favoriteIds = remember(favorites) { favorites.mapNotNull { it.videoId }.toSet() }
+    val similarSeeds = remember(history) {
+        history.map { it.artists.substringBefore(",").substringBefore(" & ").trim() }
+            .filter { it.isNotEmpty() }.distinct().take(3)
+    }
     val streak by produceState(0, history.size) { value = ctx.repository.listenStreakDays(offsetMs) }
     val todaySeconds by produceState(0L, history.size) { value = ctx.repository.todayListenSeconds(offsetMs) }
 
@@ -244,11 +253,11 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
 
         // «Exclusivo de inicio»: en esta parte sólo van las estanterías de Spotify.
         if (!exclusive && (picks.isNotEmpty() || quickPicks is Load.Loading && seedId != null)) {
-            item(key = "qp:h") { SectionHeader("Selecciones rápidas", strapline = "Empieza una radio") }
+            item(key = "qp:h") { SectionHeader("Selecciones rápidas") }
             when (quickPicks) {
                 Load.Loading -> loadingRows(4)
                 is Load.Failed -> errorRow(quickPicks.message)
-                is Load.Done -> item(key = "qp") { TrackCarousel(picks.take(10), ctx, "radio", large = true) }
+                is Load.Done -> item(key = "qp") { QuickPicksCarousel(picks.take(10), ctx) }
             }
         }
 
@@ -274,17 +283,17 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         if (history.size > 1) {
             val keep = history.drop(1).distinctBy { it.videoId }.take(20)
             item(key = "kl:h") { SectionHeader("Sigue escuchando") }
-            item(key = "kl") { TrackCarousel(keep, ctx, "history") }
+            item(key = "kl") { KeepListeningGrid(keep, ctx, favoriteIds) }
         }
 
         if (!exclusive && sessions[SessionProvider.YOUTUBE] != null && ytPlaylists.isNotEmpty()) {
             val account = sessions[SessionProvider.YOUTUBE]?.name
             item(key = "ytpl:h") {
-                SectionHeader(
-                    "Tus playlists de YouTube",
-                    strapline = account,
-                    action = "Ver todo",
-                    onAction = { ctx.navigator.push(Screen.AccountPlaylists) },
+                HomeAvatarHeader(
+                    label = "Tus playlists de YouTube",
+                    title = account ?: "YouTube",
+                    thumbnail = avatarUrl,
+                    onClick = { ctx.navigator.push(Screen.AccountPlaylists) },
                 )
             }
             item(key = "ytpl") {
@@ -294,26 +303,21 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                             CoverImage(p.thumbnail, Modifier.size(140.dp), RoundedCornerShape(12.dp), sizePx = 420)
                             Spacer(Modifier.height(6.dp))
                             Text(p.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val info = when {
+                                p.id == "LM" || p.id == "VLLM" -> "Lista creada automáticamente"
+                                p.trackCount > 0 -> "${p.trackCount} ${if (p.trackCount == 1) "pista" else "pistas"}"
+                                else -> null
+                            }
+                            info?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
                         }
                     }
                 }
             }
         }
 
-        val similar = picks.drop(10).take(20)
-        if (!exclusive && similar.isNotEmpty() && history.firstOrNull() != null) {
-            item(key = "sim:h") { SectionHeader("Similar a ${history.first().artists.substringBefore(",")}") }
-            item(key = "sim") { TrackCarousel(similar, ctx, "similar") }
-        }
-
-        if (mostPlayed.isNotEmpty()) {
-            item(key = "sd:h") { SectionHeader("Marcación rápida", strapline = "Lo que más escuchas") }
-            item(key = "sd") { TrackCarousel(mostPlayed, ctx, "speed") }
-        }
-
-        if (forgotten.isNotEmpty()) {
-            item(key = "ff:h") { SectionHeader("Favoritos olvidados", strapline = "Hace tiempo que no suenan") }
-            item(key = "ff") { TrackCarousel(forgotten, ctx, "forgotten") }
+        // «Similar a <artista>»: hasta tres artistas recientes, cada uno con una estantería de su ficha.
+        if (!exclusive) similarSeeds.forEach { name ->
+            item(key = "sim:$name") { SimilarToSection(name, ctx) }
         }
 
         // Sin historial todavía: las estanterías de YouTube Music llenan el inicio.
@@ -337,9 +341,10 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
         hour < 19 -> "Buenas tardes"
         else -> "Buenas noches"
     }
+    val minutes = if (todayMinutes > 0) "$todayMinutes min hoy" else null
     val subtitle = if (streakDays > 0) {
-        "$streakDays ${if (streakDays == 1) "día" else "días"} de racha"
-    } else "¿Qué escuchamos hoy?"
+        "$streakDays ${if (streakDays == 1) "día" else "días"} de racha" + (minutes?.let { ", $it" } ?: "")
+    } else minutes ?: "¿Qué escuchamos hoy?"
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(greeting, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -580,6 +585,165 @@ private fun ToolTile(icon: ImageVector, title: String, subtitle: String, onClick
 }
 
 // ── Carrusel de canciones ───────────────────────────────────────────────────────────────────
+
+/**
+ * «Selecciones rápidas»: la tarjeta de delante es grande (título y artista encima) y las siguientes
+ * son tiras estrechas; al arrastrar, la siguiente crece mientras la de delante se encoge.
+ */
+@Composable
+private fun QuickPicksCarousel(tracks: List<Track>, ctx: ScreenContext) {
+    if (tracks.isEmpty()) return
+    val large = 244.dp
+    val small = 40.dp
+    val gap = 8.dp
+    val start = 16.dp
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val stepPx = with(density) { (large + gap).toPx() }
+    val maxPos = (tracks.size - 1).toFloat()
+    var pos by remember(tracks) { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var fling by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val drag = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
+        pos = (pos - delta / stepPx).coerceIn(0f, maxPos)
+    }
+    androidx.compose.ui.layout.Layout(
+        content = {
+            tracks.forEachIndexed { i, t ->
+                androidx.compose.foundation.layout.BoxWithConstraints(
+                    Modifier.clip(RoundedCornerShape(24.dp)).clickable { ctx.player.playTracks(tracks, i, "radio") },
+                ) {
+                    CoverImage(t.thumbnail, Modifier.fillMaxSize(), RoundedCornerShape(0.dp), sizePx = 720)
+                    if (maxWidth > 150.dp) {
+                        Box(
+                            Modifier.fillMaxSize().background(
+                                Brush.verticalGradient(0.55f to androidx.compose.ui.graphics.Color.Transparent, 1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f)),
+                            ),
+                        )
+                        Column(Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
+                            Text(t.title, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(t.artists, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth().height(276.dp)
+            .clipToBounds()
+            .draggable(
+                    drag,
+                    androidx.compose.foundation.gestures.Orientation.Horizontal,
+                    onDragStarted = { fling?.cancel() },
+                    onDragStopped = { v ->
+                        val target = (pos - v / stepPx * 0.3f).let { kotlin.math.round(it) }.coerceIn(0f, maxPos)
+                        fling = scope.launch {
+                            androidx.compose.animation.core.animate(pos, target) { value, _ -> pos = value }
+                        }
+                    },
+            ),
+    ) { measurables, constraints ->
+        val h = constraints.maxHeight
+        val largePx = large.toPx()
+        val smallPx = small.toPx()
+        val gapPx = gap.toPx()
+        val p = pos
+        val placed = ArrayList<Pair<androidx.compose.ui.layout.Placeable, Int>>()
+        var x = start.toPx()
+        measurables.forEachIndexed { i, m ->
+            val d = i - p
+            val w = when {
+                d <= -1f -> 0f
+                d < 0f -> largePx * (1f + d)
+                d < 1f -> largePx + (smallPx - largePx) * d
+                else -> smallPx
+            }
+            if (w >= 1f && x < constraints.maxWidth) {
+                val wi = w.toInt()
+                placed += m.measure(androidx.compose.ui.unit.Constraints.fixed(wi, h)) to x.toInt()
+                x += w + gapPx
+            }
+        }
+        layout(constraints.maxWidth, h) { placed.forEach { (pl, px) -> pl.place(px, 0) } }
+    }
+}
+
+/** «Sigue escuchando»: rejilla horizontal de dos filas, ▶ sobre la portada y ♥ si es favorita. */
+@Composable
+private fun KeepListeningGrid(tracks: List<Track>, ctx: ScreenContext, favoriteIds: Set<String>) {
+    val side = 128.dp
+    androidx.compose.foundation.lazy.grid.LazyHorizontalGrid(
+        rows = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+        modifier = Modifier.fillMaxWidth().height((side + 52.dp) * 2 + 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(tracks.size, key = { i -> "$i:${tracks[i].videoId}" }) { i ->
+            val t = tracks[i]
+            Column(Modifier.width(side).clip(RoundedCornerShape(12.dp)).clickable { ctx.player.playTracks(tracks, i, "history") }) {
+                Box(Modifier.size(side), contentAlignment = Alignment.Center) {
+                    CoverImage(t.thumbnail, Modifier.size(side), RoundedCornerShape(10.dp), sizePx = 384)
+                    Box(
+                        Modifier.size(36.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.PlayArrow, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp)) }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(t.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (t.videoId in favoriteIds) {
+                        Icon(Icons.Rounded.Favorite, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(t.artists, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** Cabecera con imagen: etiqueta pequeña, nombre grande y → (playlists de la cuenta, «Similar a»). */
+@Composable
+private fun HomeAvatarHeader(label: String, title: String, thumbnail: String?, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 20.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (thumbnail != null) {
+            CoverImage(thumbnail, Modifier.size(48.dp), CircleShape, sizePx = 144)
+        } else {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Text(title.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(Icons.AutoMirrored.Rounded.ArrowForward, null)
+    }
+}
+
+/** «Similar a <artista>»: cabecera con su foto y una estantería de su ficha (canciones, artistas o listas). */
+@Composable
+private fun SimilarToSection(name: String, ctx: ScreenContext) {
+    val artist by produceState<com.dezzy.app.core.model.Artist?>(null, name) {
+        value = runCatching {
+            val id = ctx.client.findArtistId(name).getOrNull() ?: return@runCatching null
+            ctx.client.getArtist(id).getOrNull()
+        }.getOrNull()
+    }
+    val a = artist ?: return
+    val shelves = a.shelves.filter { it.items.isNotEmpty() }
+    if (shelves.isEmpty()) return
+    val shelf = shelves[(a.id.hashCode() and Int.MAX_VALUE) % shelves.size]
+    Column {
+        HomeAvatarHeader("Similar a", a.name, a.thumbnail) { ctx.navigator.push(Screen.Artist(a.id)) }
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(shelf.items, key = { it.type.name + it.id }) { com.dezzy.app.ui.components.ItemCard(it, onClick = { ctx.open(it) }, size = 140.dp) }
+        }
+    }
+}
 
 @Composable
 private fun TrackCarousel(tracks: List<Track>, ctx: ScreenContext, source: String, large: Boolean = false) {
