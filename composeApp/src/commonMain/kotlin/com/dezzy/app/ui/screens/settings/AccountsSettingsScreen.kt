@@ -24,6 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Whatshot
+import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Hub
@@ -189,7 +196,7 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                         !spotify.isValid -> "Vuelve a iniciar sesión"
                         else -> "Importa playlists y tu biblioteca"
                     },
-                    icon = Icons.Rounded.MusicNote,
+                    icon = Icons.AutoMirrored.Rounded.Login,
                     badge = spotify != null && !spotify.isValid,
                     onClick = { open(SettingsPage.SPOTIFY) },
                     trailing = { ConnectChip(spotify != null) { open(SettingsPage.SPOTIFY) } },
@@ -198,7 +205,7 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Discord",
                     subtitle = "Muestra lo que escuchas en tu per…",
-                    icon = Icons.Rounded.Hub,
+                    icon = Icons.Rounded.SportsEsports,
                     onClick = { open(SettingsPage.DISCORD) },
                     trailing = { ConnectChip(discordState.signedIn) { open(SettingsPage.DISCORD) } },
                 )
@@ -206,7 +213,7 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Last.fm",
                     subtitle = "Registra tus escuchas (scrobbli…",
-                    icon = Icons.Rounded.GraphicEq,
+                    icon = Icons.Rounded.MusicNote,
                     onClick = { open(SettingsPage.SCROBBLING) },
                     trailing = { ConnectChip(lastFmState.session != null) { open(SettingsPage.SCROBBLING) } },
                 )
@@ -214,7 +221,7 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "ListenBrainz",
                     subtitle = "Registro abierto de escuchas",
-                    icon = Icons.Rounded.Sensors,
+                    icon = Icons.Rounded.Headphones,
                     onClick = { open(SettingsPage.SCROBBLING) },
                     trailing = { ConnectChip(lbState.account != null) { open(SettingsPage.SCROBBLING) } },
                 )
@@ -225,35 +232,29 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Vincular escritorio",
                     subtitle = "Pasa tus cuentas a Dezzy en el ordenador con un QR",
-                    icon = Icons.Rounded.Sensors,
+                    icon = Icons.Rounded.DesktopWindows,
                     onClick = { open(SettingsPage.DESKTOP_LINK) },
                 )
                 SettingsDivider()
                 SettingsRow(
                     title = "Escuchar juntos",
                     subtitle = "Salas para escuchar en sincronía con amigos",
-                    icon = Icons.Rounded.Hub,
+                    icon = Icons.Rounded.Whatshot,
                     onClick = { ctx.navigator.push(Screen.Together()) },
                 )
                 SettingsDivider()
                 SettingsRow(
                     title = "Descarga lossless",
                     subtitle = "FLAC y alta resolución",
-                    icon = Icons.Rounded.MusicNote,
+                    icon = Icons.Rounded.Download,
                     onClick = { open(SettingsPage.LOSSLESS) },
                 )
                 SettingsDivider()
                 SettingsRow(
                     title = "Todas las integraciones",
                     subtitle = "Discord, Last.fm, ListenBrainz y otras",
-                    icon = Icons.Rounded.GraphicEq,
+                    icon = Icons.Rounded.Extension,
                     onClick = { open(SettingsPage.SCROBBLING) },
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = "Red social",
-                    icon = Icons.Rounded.Hub,
-                    onClick = { open(SettingsPage.SOCIAL) },
                 )
             }
         }
@@ -262,25 +263,32 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Inicio de sesión avanzado",
                     subtitle = "Editar cookie, visitor data y datos de la cuenta",
-                    icon = Icons.AutoMirrored.Rounded.Login,
+                    icon = Icons.Rounded.Key,
                     onClick = { showAdvanced = true },
                 )
                 if (youtube != null) {
                     SettingsDivider()
+                    // Como en la app actual: tarjeta con el icono en un círculo rojo y el texto en negrita.
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .heightIn(min = 64.dp)
+                            .settingsCard()
                             .clickable { confirmSignOut = true }
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.Logout, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.error)
+                        Box(
+                            Modifier.size(40.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Color(0xFFB3141B)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.AutoMirrored.Rounded.Logout, null, Modifier.size(22.dp), tint = androidx.compose.ui.graphics.Color.White)
+                        }
                         Text(
                             "Cerrar sesión de YouTube",
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
                             modifier = Modifier.weight(1f),
                         )
                     }
