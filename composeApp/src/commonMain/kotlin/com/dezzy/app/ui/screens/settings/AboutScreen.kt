@@ -128,6 +128,7 @@ internal fun AboutScreen(ctx: ScreenContext) {
         clipboard.setText(AnnotatedString(versionLabel))
         ctx.toast("Versión copiada")
     }
+    val (checkingUpdates, checkUpdates) = rememberUpdateCheck(ctx)
 
     SettingsPage(title = "Acerca de Dezzy", onBack = { ctx.navigator.back() }) {
         item(key = "about:board") {
@@ -205,7 +206,7 @@ internal fun AboutScreen(ctx: ScreenContext) {
                             modifier = span(3),
                             fill = Acid,
                             content = Ink,
-                            onClick = { ctx.pending("Buscar actualizaciones", "11") },
+                            onClick = checkUpdates,
                             onLongClick = copyVersion,
                         ) {
                             Column {
@@ -388,31 +389,11 @@ internal fun AboutScreen(ctx: ScreenContext) {
 
         item(key = "about:updates") {
             SettingsGroup {
-                val http: io.ktor.client.HttpClient = org.koin.compose.koinInject()
-                val uri = LocalUriHandler.current
-                var checking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
                 SettingsRow(
                     title = "Buscar actualizaciones",
-                    subtitle = if (checking) "Buscando…" else "Versión instalada: ${com.dezzy.app.core.AppVersionName}",
+                    subtitle = if (checkingUpdates) "Buscando…" else "Versión instalada: ${com.dezzy.app.core.AppVersionName}",
                     icon = Icons.Rounded.ArrowOutward,
-                    onClick = {
-                        if (!checking) {
-                            checking = true
-                            ctx.scope.launch {
-                                runCatching { com.dezzy.app.core.fetchLatestRelease(http) }
-                                    .onSuccess { latest ->
-                                        if (com.dezzy.app.core.isNewerVersion(latest.version, com.dezzy.app.core.AppVersionName)) {
-                                            ctx.toast("Hay una versión nueva: ${latest.version}")
-                                            runCatching { uri.openUri(latest.url) }
-                                        } else {
-                                            ctx.toast("Ya tienes la última versión")
-                                        }
-                                    }
-                                    .onFailure { ctx.toast("No se pudo comprobar si hay actualizaciones") }
-                                checking = false
-                            }
-                        }
-                    },
+                    onClick = checkUpdates,
                 )
             }
         }
@@ -596,6 +577,32 @@ private fun LinkSquare(
                 lineHeight = 26.sp,
             )
             Text(label, style = mono(8.sp), maxLines = 1, overflow = TextOverflow.Clip)
+        }
+    }
+}
+
+/** Devuelve (buscando, acción): comprueba la última release y abre su página si es más nueva. */
+@Composable
+private fun rememberUpdateCheck(ctx: ScreenContext): Pair<Boolean, () -> Unit> {
+    val http: io.ktor.client.HttpClient = org.koin.compose.koinInject()
+    val uri = LocalUriHandler.current
+    var checking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    return checking to {
+        if (!checking) {
+            checking = true
+            ctx.scope.launch {
+                runCatching { com.dezzy.app.core.fetchLatestRelease(http) }
+                    .onSuccess { latest ->
+                        if (com.dezzy.app.core.isNewerVersion(latest.version, AppVersionName)) {
+                            ctx.toast("Hay una versión nueva: ${latest.version}")
+                            runCatching { uri.openUri(latest.url) }
+                        } else {
+                            ctx.toast("Ya tienes la última versión")
+                        }
+                    }
+                    .onFailure { ctx.toast("No se pudo comprobar si hay actualizaciones") }
+                checking = false
+            }
         }
     }
 }
