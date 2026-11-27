@@ -13,7 +13,12 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
+import com.dezzy.app.core.AppVersionName
 import com.dezzy.app.core.prefs.DezzyPreferences
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.DefaultRequest
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import com.dezzy.app.source.spotify.SpotifyFeatures
 import com.dezzy.app.feature.lyrics.LyricsManager
 import com.dezzy.app.source.spotify.SpotifyImporter
@@ -29,7 +34,18 @@ import org.koin.compose.koinInject
 fun App() {
     setSingletonImageLoaderFactory { context ->
         ImageLoader.Builder(context)
-            .components { add(KtorNetworkFetcherFactory()) }
+            .components {
+                // OpenStreetMap exige un User-Agent propio para las teselas del Mapa musical.
+                add(
+                    KtorNetworkFetcherFactory(
+                        httpClient = {
+                            HttpClient {
+                                install(DefaultRequest) { header(HttpHeaders.UserAgent, "Dezzy/$AppVersionName (Android)") }
+                            }
+                        },
+                    ),
+                )
+            }
             .crossfade(true)
             .build()
     }

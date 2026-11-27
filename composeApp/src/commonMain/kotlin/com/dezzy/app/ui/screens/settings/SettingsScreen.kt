@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Search
@@ -131,6 +132,10 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.EQUALIZER -> "Ecualizador"
     SettingsPage.DESKTOP_LINK -> "Vincular escritorio"
     SettingsPage.SOCIAL -> "Red social"
+    SettingsPage.DJ -> "DJ Dezzy"
+    SettingsPage.DJ_VOICE -> "Voz del DJ"
+    SettingsPage.APP_ICON -> "Icono de la app"
+    SettingsPage.WALLPAPER -> "Fondos de pantalla"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */
@@ -163,6 +168,7 @@ internal fun SettingsScreen(ctx: ScreenContext) {
         SettingsEntry("Apariencia", "Tema del sistema, color dinámico", Icons.Rounded.Palette) { open(SettingsPage.APPEARANCE) },
         SettingsEntry("Reproductor y audio", "Calidad alta, normalizar volumen", Icons.Rounded.PlayCircle) { open(SettingsPage.PLAYER) },
         SettingsEntry("Letras e IA", "Traducción, alineación y animación", Icons.Rounded.Lyrics) { open(SettingsPage.LYRICS) },
+        SettingsEntry("DJ Dezzy", "Gustos, voz y tu clave de Gemini", Icons.Rounded.AutoAwesome) { open(SettingsPage.DJ) },
         SettingsEntry("Contenido", "${languageName(language)}, ${countryName(country)}", Icons.Rounded.Language) { open(SettingsPage.CONTENT) },
     )
     val group2 = listOf(

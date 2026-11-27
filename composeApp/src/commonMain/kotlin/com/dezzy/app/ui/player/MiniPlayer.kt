@@ -25,12 +25,27 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.dezzy.app.ui.player.kit.ArtPalette
+import com.dezzy.app.ui.player.kit.MiniPlayerBackground
+import com.dezzy.app.ui.player.kit.MiniPlayerBackgroundKey
+import com.dezzy.app.ui.player.kit.MiniPlayerImageUriKey
+import com.dezzy.app.ui.player.kit.loadArtPalette
+import com.dezzy.app.ui.player.kit.rememberEnumPreference
+import com.dezzy.app.ui.player.kit.rememberPreference
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,12 +73,31 @@ fun MiniPlayer(
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(16.dp)
     var drag by remember { mutableFloatStateOf(0f) }
+
+    val bgMode by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)
+    val imageUri by rememberPreference(MiniPlayerImageUriKey, "")
+    val useImage = bgMode == MiniPlayerBackground.IMAGE && imageUri.isNotBlank()
+    var palette by remember { mutableStateOf<ArtPalette?>(null) }
+    LaunchedEffect(track.thumbnail, bgMode) {
+        palette = if (bgMode == MiniPlayerBackground.COVER_COLOR) loadArtPalette(track.thumbnail, 16) else null
+    }
+    val coverColor = palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) }
+    val bgColor = when {
+        bgMode == MiniPlayerBackground.COVER_COLOR && coverColor != null -> lerp(coverColor, Color.Black, 0.45f)
+        bgMode == MiniPlayerBackground.TRANSPARENT -> Color.White.copy(alpha = 0.06f)
+        useImage -> Color.Black
+        else -> colors.surfaceContainerHigh
+    }
+    val customLook = bgMode != MiniPlayerBackground.DEFAULT && (bgMode != MiniPlayerBackground.COVER_COLOR || coverColor != null)
+    val contentColor = if (customLook && bgMode != MiniPlayerBackground.TRANSPARENT) Color.White else colors.onSurface
+
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
     Box(
         modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clip(shape)
-            .background(colors.surfaceContainerHigh)
+            .background(bgColor)
             .dezzyStyledSurface(shape)
             .clickable(onClick = onExpand)
             .pointerInput(Unit) {
@@ -76,6 +110,15 @@ fun MiniPlayer(
                 ) { _, amount -> drag += amount }
             },
     ) {
+        if (useImage) {
+            AsyncImage(
+                model = imageUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
+        }
         Column {
             Row(
                 Modifier.fillMaxWidth().height(60.dp).padding(start = 8.dp, end = 4.dp),
@@ -88,7 +131,7 @@ fun MiniPlayer(
                     Text(
                         track.artists,
                         style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant,
+                        color = if (customLook) contentColor.copy(alpha = 0.7f) else colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -110,5 +153,6 @@ fun MiniPlayer(
             val fraction = if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
             ThinProgress(fraction, Modifier.padding(horizontal = 12.dp))
         }
+    }
     }
 }

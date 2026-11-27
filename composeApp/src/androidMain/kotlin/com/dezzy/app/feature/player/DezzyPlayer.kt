@@ -102,6 +102,8 @@ class DezzyPlayer(
     private var normalize = false
     private var autoSkip = true
     private var pauseHistory = false
+    private var saveListenHistory = true
+    private var skipSilence = false
     private var persistentQueue = true
 
     // Volumen -----------------------------------------------------------------
@@ -212,6 +214,13 @@ class DezzyPlayer(
         scope.launch { prefs.normalizeVolume.collect { normalize = it; applyVolume() } }
         scope.launch { prefs.autoSkip.collect { autoSkip = it } }
         scope.launch { prefs.pauseHistory.collect { pauseHistory = it } }
+        scope.launch { prefs.value(SaveListenHistoryKey, true).collect { saveListenHistory = it } }
+        scope.launch {
+            prefs.value(SkipSilenceKey, false).collect {
+                skipSilence = it
+                exo?.skipSilenceEnabled = it
+            }
+        }
         scope.launch { queue.state.collect { q -> _state.update { it.copy(queue = q) } } }
         scope.launch {
             restoreQueue()
@@ -517,7 +526,7 @@ class DezzyPlayer(
         _state.update { it.copy(error = null) }
         val track = queue.state.value.current?.track ?: return
         listenVideoId = track.videoId
-        if (!pauseHistory) scope.launch { runCatching { repository.addToHistory(track) } }
+        if (!pauseHistory && saveListenHistory) scope.launch { runCatching { repository.addToHistory(track) } }
     }
 
     private fun startTicker() {
@@ -565,6 +574,7 @@ class DezzyPlayer(
     // Tiempo escuchado -------------------------------------------------------------
 
     private fun writeListen(segment: ListenAccumulator.Segment) {
+        if (!saveListenHistory) return
         val videoId = listenVideoId ?: return
         scope.launch(Dispatchers.IO) {
             runCatching { db.dezzyQueries.addListen(videoId, segment.startedAtMillis, segment.seconds) }
@@ -732,6 +742,7 @@ class DezzyPlayer(
             .build()
             .also {
                 it.addListener(listener)
+                it.skipSilenceEnabled = skipSilence
                 appliedVolume = -1f
             }
     }

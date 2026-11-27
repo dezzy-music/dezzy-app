@@ -8,6 +8,8 @@ package com.dezzy.app.ui.player.kit
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.dezzy.app.core.database.MusicRepository
 import com.dezzy.app.core.model.Track
+import com.dezzy.app.feature.personalize.SongMod
+import com.dezzy.app.feature.personalize.withMods
 import com.dezzy.app.feature.lyrics.LyricsManager
 import com.dezzy.app.feature.lyrics.LyricsState
 import com.dezzy.app.feature.lyrics.toLrc
@@ -23,6 +25,7 @@ import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.navigation.Tab
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -175,6 +178,8 @@ class PlayerConnection(
     private val scope: CoroutineScope,
     /** Aviso corto abajo. */
     val toast: (String) -> Unit,
+    /** Mods de canción (título, artista, carátula) que se aplican a lo que ven todos los reproductores. */
+    private val mods: Flow<Map<String, SongMod>> = flowOf(emptyMap()),
     /** Abre la pantalla de una función que llega en otra fase. */
     val pending: (title: String, phase: String) -> Unit,
 ) {
@@ -182,8 +187,9 @@ class PlayerConnection(
     val player = PlayerFacade(controller)
     val service = PlayerServiceCompat(controller, scope)
 
-    val mediaMetadata: StateFlow<MediaMetadata?> = state.map { it.queue.current?.track?.toMediaMetadata() }
-        .distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, state.value.queue.current?.track?.toMediaMetadata())
+    val mediaMetadata: StateFlow<MediaMetadata?> =
+        combine(state.map { it.queue.current?.track }.distinctUntilChanged(), mods) { t, m -> t?.withMods(m)?.toMediaMetadata() }
+            .distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, state.value.queue.current?.track?.toMediaMetadata())
     val isPlaying: StateFlow<Boolean> = state.map { it.isPlaying }.distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, state.value.isPlaying)
     val playbackState: StateFlow<Int> = state.map { it.playbackStateInt() }.distinctUntilChanged()
@@ -199,8 +205,9 @@ class PlayerConnection(
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, Player.REPEAT_MODE_OFF)
     val queueTitle: StateFlow<String?> = state.map { it.queue.source?.substringAfter(':')?.ifBlank { null } }
         .distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, null)
-    val queueWindows: StateFlow<List<QueueWindow>> = state.map { s -> s.queue.items }.distinctUntilChanged()
-        .map { items -> items.map { QueueWindow(QueueMediaItem(it.track.toMediaMetadata())) } }
+    val queueWindows: StateFlow<List<QueueWindow>> = combine(state.map { s -> s.queue.items }.distinctUntilChanged(), mods) { items, m ->
+        items.map { QueueWindow(QueueMediaItem(it.track.withMods(m).toMediaMetadata())) }
+    }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
     val currentWindowIndex: StateFlow<Int> = state.map { it.queue.index }.distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, -1)
@@ -311,11 +318,12 @@ class NavController(
             route == "settings/storage" -> go(Screen.Settings(SettingsPage.STORAGE))
             route == "settings/about" -> go(Screen.Settings(SettingsPage.ABOUT))
             route == "settings/accounts" -> go(Screen.Settings(SettingsPage.ACCOUNTS))
+            route == "settings/equalizer" -> go(Screen.Settings(SettingsPage.EQUALIZER))
             route == "settings/spotify" -> go(Screen.Settings(SettingsPage.SPOTIFY))
             route == "login" -> go(Screen.Settings(SettingsPage.YOUTUBE_LOGIN))
             route == "spotify_login" -> go(Screen.Settings(SettingsPage.SPOTIFY_LOGIN))
-            route == "dj_dezzy" -> go(Screen.Pending("DJ Dezzy", "10"))
-            route.startsWith("songdna/") -> go(Screen.Pending("Song DNA", "10"))
+            route == "dj_dezzy" -> go(Screen.Dj)
+            route.startsWith("songdna/") -> go(Screen.SongDna(id))
             else -> go(Screen.Pending(route, "posterior"))
         }
     }

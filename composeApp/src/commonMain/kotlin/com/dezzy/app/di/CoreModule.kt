@@ -37,11 +37,15 @@ import com.dezzy.app.feature.audio.audioModule
 import com.dezzy.app.feature.connect.connectModule
 import com.dezzy.app.feature.social.socialModule
 import com.dezzy.app.feature.together.togetherModule
+import com.dezzy.app.feature.dj.djModule
+import com.dezzy.app.feature.stats.statsModule
+import com.dezzy.app.feature.personalize.personalizeModule
+import com.dezzy.app.feature.musicmap.musicMapModule
 import com.dezzy.app.feature.scrobble.scrobbleModule
 import com.dezzy.app.source.spotify.spotifyFeaturesModule
 
 val coreModule: Module = module {
-    includes(scrobbleModule, discordModule, spotifyFeaturesModule, lyricsModule, canvasModule, downloadsModule, losslessModule, audioModule, connectModule, socialModule, togetherModule)
+    includes(scrobbleModule, discordModule, spotifyFeaturesModule, lyricsModule, canvasModule, downloadsModule, losslessModule, audioModule, connectModule, socialModule, togetherModule, djModule, statsModule, personalizeModule, musicMapModule)
     single { HttpClientFactory.create() }
     single { DezzyDatabase(get()) }
     single { DezzyPreferences(get()) }

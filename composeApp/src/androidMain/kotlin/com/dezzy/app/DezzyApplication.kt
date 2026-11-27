@@ -31,5 +31,6 @@ class DezzyApplication : Application() {
         koin.get<com.dezzy.app.feature.social.P2PSocial>().start()
         koin.get<com.dezzy.app.feature.social.P2PNowPlayingBridge>().start()
         koin.get<com.dezzy.app.feature.together.TogetherSession>().start()
+        koin.get<com.dezzy.app.feature.dj.DjSkipBridge>().start()
     }
 }

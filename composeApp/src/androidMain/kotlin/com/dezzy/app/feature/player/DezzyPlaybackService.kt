@@ -11,6 +11,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.dezzy.app.core.prefs.DezzyPreferences
 import org.koin.android.ext.android.inject
 
 /**
@@ -22,10 +23,13 @@ import org.koin.android.ext.android.inject
 class DezzyPlaybackService : MediaSessionService() {
 
     private val player: DezzyPlayer by inject()
+    private val prefs: DezzyPreferences by inject()
     private var session: MediaSession? = null
+    private var deviceBehaviors: AudioDeviceBehaviors? = null
 
     override fun onCreate() {
         super.onCreate()
+        deviceBehaviors = AudioDeviceBehaviors(this, player, prefs).also { it.start() }
         val builder = MediaSession.Builder(this, player.sessionPlayer)
         packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
             builder.setSessionActivity(
@@ -47,6 +51,8 @@ class DezzyPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        deviceBehaviors?.stop()
+        deviceBehaviors = null
         player.onServiceDestroyed()
         session?.release()
         session = null

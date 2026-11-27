@@ -63,12 +63,25 @@ sealed interface Screen {
     data class Together(val joinCode: String? = null) : Screen
     data object TogetherChat : Screen
     data object TogetherDashboard : Screen
+
+    // Fase 10: lo de Dezzy
+    data object Dj : Screen
+    data object Stats : Screen
+    data object YearInMusic : Screen
+    data object TimeMachine : Screen
+    data class SongDna(val videoId: String) : Screen
+    data object MusicMap : Screen
+    data class Charts(val countryCode: String? = null) : Screen
+    data class SongStats(val videoId: String) : Screen
+    data object NewReleases : Screen
+    data object LibraryGenres : Screen
 }
 
 enum class SettingsPage {
     MAIN, APPEARANCE, PLAYER, PRIVACY, STORAGE, ABOUT,
     ACCOUNTS, CONTENT, YOUTUBE_LOGIN, SPOTIFY, SPOTIFY_LOGIN, SPOTIFY_IMPORT,
     SCROBBLING, DISCORD, LYRICS, LOSSLESS, EQUALIZER, DESKTOP_LINK, SOCIAL,
+    DJ, DJ_VOICE, APP_ICON, WALLPAPER,
 }
 
 /**

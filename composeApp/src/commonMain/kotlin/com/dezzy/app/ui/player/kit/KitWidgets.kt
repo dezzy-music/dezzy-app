@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Info
@@ -564,6 +565,7 @@ fun ColumnScope.PlayerMenu(
     val openSleep = LocalOpenSleepTimer.current
     var addToPlaylist by remember { mutableStateOf(false) }
     var share by remember { mutableStateOf(false) }
+    var modDialog by remember { mutableStateOf(false) }
     Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         CoverImage(mediaMetadata.thumbnailUrl, Modifier.size(48.dp), RoundedCornerShape(8.dp))
         Spacer(Modifier.width(12.dp))
@@ -603,8 +605,14 @@ fun ColumnScope.PlayerMenu(
         SheetRow(Icons.Rounded.Share, "Compartir", null, onClick = { share = true })
         SheetRow(Icons.Rounded.Bedtime, "Temporizador", null, onClick = { onDismiss(); openSleep() })
         SheetRow(Icons.Rounded.Palette, "Estilo del reproductor", null, onClick = { onDismiss(); openStyles() })
-        SheetRow(Icons.Rounded.Equalizer, "Ecualizador", null, onClick = { onDismiss(); connection.pending("Ecualizador", "4") })
+        SheetRow(Icons.Rounded.Equalizer, "Ecualizador", null, onClick = { onDismiss(); navController.navigate("settings/equalizer") })
+        SheetRow(Icons.Rounded.Edit, "Personalizar canción", null, onClick = { modDialog = true })
         SheetRow(Icons.Rounded.Info, "Detalles", null, onClick = onShowDetailsDialog)
+    }
+    if (modDialog) {
+        // El diálogo trabaja con la canción ORIGINAL (la de la cola), no con la ya modificada.
+        val original = connection.controller.state.value.queue.current?.track ?: mediaMetadata.track
+        com.dezzy.app.ui.screens.personalize.SongModDialog(original, onDismiss = { modDialog = false; onDismiss() })
     }
     AddToPlaylistDialog(
         isVisible = addToPlaylist,

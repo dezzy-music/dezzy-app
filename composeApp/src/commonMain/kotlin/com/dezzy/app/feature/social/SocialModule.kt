@@ -34,5 +34,5 @@ val socialModule: Module = module {
     single { P2PMap(get(), { get<P2PSocial>() }) }
     single { P2PNearby(get(), get(), get(), { get<P2PSocial>() }) }
     single { DesktopLink(get(), get(), get(), get(), get()) }
-    single { P2PNowPlayingBridge(get(), get()) }
+    single { P2PNowPlayingBridge(get(), get(), get()) }
 }

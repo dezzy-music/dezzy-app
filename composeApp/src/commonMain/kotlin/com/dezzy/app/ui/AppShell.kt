@@ -111,8 +111,9 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
             navigator.push(com.dezzy.app.ui.navigation.Screen.Together(code.ifBlank { null }))
         }
     }
+    val songMods: com.dezzy.app.feature.personalize.SongMods = koinInject()
     val connection = remember(player, client, repository) {
-        PlayerConnection(player, repository, client, scope, toast) { title, phase ->
+        PlayerConnection(player, repository, client, scope, toast, songMods.all) { title, phase ->
             expanded = false
             navigator.push(Screen.Pending(title, phase))
         }
@@ -124,7 +125,9 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
     PlatformBackHandler(enabled = !expanded && navigator.canGoBack) { navigator.back() }
 
     CompositionLocalProvider(LocalPlayerConnection provides connection) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(colors.surface)) {
+    val hasWallpaper = com.dezzy.app.ui.screens.personalize.rememberHasAppWallpaper()
+    BoxWithConstraints(Modifier.fillMaxSize().background(if (hasWallpaper) androidx.compose.ui.graphics.Color.Transparent else colors.surface)) {
+        com.dezzy.app.ui.screens.personalize.AppWallpaper(Modifier.fillMaxSize())
         val wide = maxWidth >= 600.dp
         Row(Modifier.fillMaxSize()) {
             if (wide) {

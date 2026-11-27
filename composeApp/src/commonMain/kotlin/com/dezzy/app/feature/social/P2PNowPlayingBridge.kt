@@ -5,6 +5,7 @@
 
 package com.dezzy.app.feature.social
 
+import com.dezzy.app.feature.musicmap.MusicMapLocation
 import com.dezzy.app.feature.player.PlayerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 class P2PNowPlayingBridge(
     private val player: PlayerController,
     private val presence: P2PPresence,
+    private val musicMapLocation: MusicMapLocation,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
@@ -40,7 +42,7 @@ class P2PNowPlayingBridge(
                 }
                 .distinctUntilChanged()
                 .debounce(2_000)
-                .collect { presence.onNowPlaying(it) }
+                .collect { presence.onNowPlaying(it, musicMapLocation.sharedLocation()) }
         }
     }
 }

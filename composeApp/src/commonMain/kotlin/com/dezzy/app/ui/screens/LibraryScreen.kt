@@ -113,7 +113,7 @@ fun LibraryScreen(ctx: ScreenContext) {
         LibraryPill("Me gusta", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
         LibraryPill("Historial", Icons.Rounded.History, colors.secondaryContainer, colors.onSecondaryContainer) { ctx.navigator.push(Screen.History) },
         LibraryPill("Descargas", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
-        LibraryPill("Estadísticas", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.pending("Estadísticas", "10") },
+        LibraryPill("Estadísticas", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
     )
 
     LazyColumn(Modifier.fillMaxSize()) {
@@ -143,7 +143,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                     Tab(
                         selected = t == tab,
                         onClick = {
-                            if (t == LibraryTab.GENRES) ctx.pending("Géneros de tu biblioteca", "10")
+                            if (t == LibraryTab.GENRES) ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.LibraryGenres)
                             else tab = t
                         },
                         text = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },

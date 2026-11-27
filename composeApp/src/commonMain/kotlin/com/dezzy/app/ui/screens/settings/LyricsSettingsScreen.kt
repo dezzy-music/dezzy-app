@@ -7,6 +7,15 @@ package com.dezzy.app.ui.screens.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Animation
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Wallpaper
+import com.dezzy.app.ui.player.kit.LyricsBackground
+import com.dezzy.app.ui.player.kit.LyricsBackgroundKey
+import com.dezzy.app.ui.player.kit.LyricsBgBlurKey
+import com.dezzy.app.ui.player.kit.LyricsBgDimKey
+import com.dezzy.app.ui.player.kit.LyricsBgImageUriKey
 import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatSize
 import androidx.compose.material.icons.rounded.Timer
@@ -37,6 +46,12 @@ internal fun LyricsSettingsScreen(ctx: ScreenContext) {
     var scale by rememberPreference(LyricsTextScaleKey, 1f)
     var offset by rememberPreference(LyricsSyncOffsetKey, 0)
 
+    var bgMode by rememberEnumPreference(LyricsBackgroundKey, LyricsBackground.SAME_AS_PLAYER)
+    var bgImage by rememberPreference(LyricsBgImageUriKey, "")
+    var bgBlur by rememberPreference(LyricsBgBlurKey, 0f)
+    var bgDim by rememberPreference(LyricsBgDimKey, 0.4f)
+    val pickBgImage = rememberOwnImagePicker(bgImage) { bgImage = it }
+
     SettingsPage("Letras e IA", onBack = { ctx.navigator.back() }) {
         item(key = "translate") {
             SettingsGroup("Traducción") {
@@ -49,6 +64,54 @@ internal fun LyricsSettingsScreen(ctx: ScreenContext) {
                     onSelect = { lang = it },
                     subtitle = null,
                 )
+            }
+        }
+        item(key = "background") {
+            SettingsGroup("Fondo de las letras") {
+                SettingsChoiceRow(
+                    title = "Fondo",
+                    icon = Icons.Rounded.Wallpaper,
+                    options = LyricsBackground.entries.toList(),
+                    selected = bgMode,
+                    label = {
+                        when (it) {
+                            LyricsBackground.SAME_AS_PLAYER -> "Igual que el reproductor"
+                            LyricsBackground.COVER_GRADIENT -> "Degradado de la carátula"
+                            LyricsBackground.SOLID -> "Color sólido"
+                            LyricsBackground.IMAGE -> "Imagen propia"
+                        }
+                    },
+                    onSelect = { bgMode = it },
+                )
+                if (bgMode == LyricsBackground.IMAGE) {
+                    SettingsDivider()
+                    SettingsRow(
+                        title = "Imagen de fondo",
+                        subtitle = if (bgImage.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
+                        icon = Icons.Rounded.Image,
+                        onClick = { pickBgImage() },
+                    )
+                    SettingsDivider()
+                    SettingsSliderRow(
+                        title = "Desenfoque",
+                        icon = Icons.Rounded.BlurOn,
+                        value = bgBlur,
+                        valueRange = 0f..40f,
+                        steps = 7,
+                        valueLabel = { it.roundToInt().toString() },
+                        onValueChangeFinished = { bgBlur = it },
+                    )
+                    SettingsDivider()
+                    SettingsSliderRow(
+                        title = "Atenuación",
+                        icon = Icons.Rounded.Contrast,
+                        value = bgDim,
+                        valueRange = 0f..0.9f,
+                        steps = 8,
+                        valueLabel = { "${(it * 100).roundToInt()} %" },
+                        onValueChangeFinished = { bgDim = it },
+                    )
+                }
             }
         }
         item(key = "look") {

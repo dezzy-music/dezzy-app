@@ -18,6 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.dezzy.app.feature.player.SaveListenHistoryKey
+import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
 import kotlinx.coroutines.launch
 
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 internal fun PrivacySettingsScreen(ctx: ScreenContext) {
     val pauseHistory by ctx.prefs.pauseHistory.collectAsState(false)
     var confirmClear by remember { mutableStateOf(false) }
+    var saveListen by rememberPreference(SaveListenHistoryKey, true)
 
     SettingsPage(title = "Privacidad", onBack = { ctx.navigator.back() }) {
         item(key = "history") {
@@ -46,7 +49,13 @@ internal fun PrivacySettingsScreen(ctx: ScreenContext) {
         }
         item(key = "stats") {
             SettingsGroup("Datos") {
-                SettingsPendingRow("Escuchas para estadísticas", "10", ctx, icon = Icons.Rounded.Insights)
+                SettingsSwitchRow(
+                    title = "Guardar historial de escucha",
+                    subtitle = "Escuchas y tiempo escuchado para las estadísticas",
+                    icon = Icons.Rounded.Insights,
+                    checked = saveListen,
+                    onCheckedChange = { saveListen = it },
+                )
             }
         }
     }

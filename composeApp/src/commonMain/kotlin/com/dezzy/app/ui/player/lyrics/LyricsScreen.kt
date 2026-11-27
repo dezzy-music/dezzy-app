@@ -62,7 +62,16 @@ import com.dezzy.app.ui.components.glass.DezzyIconButton as IconButton
 import com.dezzy.app.ui.navigation.PlatformBackHandler
 import com.dezzy.app.ui.player.canvas.AiCanvasScreen
 import com.dezzy.app.ui.player.canvas.LyricsShareSheet
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import com.dezzy.app.ui.player.kit.ArtPalette
+import com.dezzy.app.ui.player.kit.LyricsBackground
+import com.dezzy.app.ui.player.kit.LyricsBackgroundKey
+import com.dezzy.app.ui.player.kit.LyricsBgBlurKey
+import com.dezzy.app.ui.player.kit.LyricsBgDimKey
+import com.dezzy.app.ui.player.kit.LyricsBgImageUriKey
+import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.player.kit.Player
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyleKey
@@ -92,19 +101,34 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
 
     PlatformBackHandler(enabled = true) { if (showCanvas) showCanvas = false else onClose() }
 
-    // Fondo: degradado con los colores de la carátula, salvo en el estilo por defecto.
+    // Fondo propio de las letras (independiente del reproductor).
+    val lyricsBg by rememberEnumPreference(LyricsBackgroundKey, LyricsBackground.SAME_AS_PLAYER)
+    val bgImageUri by rememberPreference(LyricsBgImageUriKey, "")
+    val bgBlur by rememberPreference(LyricsBgBlurKey, 0f)
+    val bgDim by rememberPreference(LyricsBgDimKey, 0.4f)
+    val useImage = lyricsBg == LyricsBackground.IMAGE && bgImageUri.isNotBlank()
+
+    // Degradado con los colores de la carátula, salvo en el estilo por defecto.
+    val followsPlayer = lyricsBg == LyricsBackground.SAME_AS_PLAYER
+    val plain = (followsPlayer && bgStyle == PlayerBackgroundStyle.DEFAULT) ||
+        (lyricsBg == LyricsBackground.IMAGE && !useImage)
     var palette by remember { mutableStateOf<ArtPalette?>(null) }
-    LaunchedEffect(meta?.thumbnailUrl, bgStyle) {
-        palette = if (bgStyle == PlayerBackgroundStyle.DEFAULT) null else loadArtPalette(meta?.thumbnailUrl, 16)
+    LaunchedEffect(meta?.thumbnailUrl, plain, useImage) {
+        palette = if (plain || useImage) null else loadArtPalette(meta?.thumbnailUrl, 16)
     }
     val surface = MaterialTheme.colorScheme.surface
-    val background = if (bgStyle == PlayerBackgroundStyle.DEFAULT) {
+    val background = if (plain || useImage) {
         Brush.verticalGradient(listOf(surface, surface))
     } else {
         val top = palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) } ?: Color(0xFF303030)
-        Brush.verticalGradient(listOf(top, lerp(top, Color.Black, 0.65f)))
+        if (lyricsBg == LyricsBackground.SOLID) {
+            val solid = lerp(top, Color.Black, 0.35f)
+            Brush.verticalGradient(listOf(solid, solid))
+        } else {
+            Brush.verticalGradient(listOf(top, lerp(top, Color.Black, 0.65f)))
+        }
     }
-    val textColor = if (bgStyle == PlayerBackgroundStyle.DEFAULT) MaterialTheme.colorScheme.onBackground else Color.White
+    val textColor = if (plain) MaterialTheme.colorScheme.onBackground else Color.White
     val landscape = isLandscape()
 
     Box(
@@ -113,6 +137,15 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
             .background(background)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
+        if (useImage) {
+            AsyncImage(
+                model = bgImageUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(bgBlur.dp),
+            )
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = bgDim)))
+        }
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
             LyricsHeader(
                 title = meta?.title.orEmpty(),

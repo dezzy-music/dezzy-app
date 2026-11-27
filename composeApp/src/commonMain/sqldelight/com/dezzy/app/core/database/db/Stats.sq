@@ -1,0 +1,48 @@
+-- Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+-- Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+--
+-- Consultas de Estadísticas (fase 10). Sólo lee play_event, listen_event, track y favorite
+-- (tablas de Dezzy.sq); no crea tablas. Las marcas de tiempo son epoch ms reales y el
+-- primer parámetro de las que agrupan es el desplazamiento de la hora local en ms.
+
+-- Segundos escuchados por día local.
+statsListenByDay:
+SELECT (started_at + :offset) / 86400000 AS day, coalesce(sum(seconds), 0) AS seconds
+FROM listen_event
+WHERE started_at >= :fromMs AND started_at < :toMs
+GROUP BY day
+ORDER BY day;
+
+-- Segundos escuchados por hora del día local (0 a 23).
+statsListenByHour:
+SELECT ((started_at + :offset) / 3600000) % 24 AS hour, coalesce(sum(seconds), 0) AS seconds
+FROM listen_event
+WHERE started_at >= :fromMs AND started_at < :toMs
+GROUP BY hour
+ORDER BY hour;
+
+-- Todos los días locales con algo escuchado, del más reciente al más viejo (rachas).
+statsListenDays:
+SELECT DISTINCT (started_at + :offset) / 86400000 AS day FROM listen_event ORDER BY day DESC;
+
+-- Reproducciones por canción en un periodo (para tops de canciones, artistas y álbumes).
+statsTrackPlays:
+SELECT track.video_id, track.title, track.artists, track.album, track.thumbnail, track.duration_seconds,
+       count(*) AS plays, max(play_event.played_at) AS last_played
+FROM play_event JOIN track ON track.video_id = play_event.video_id
+WHERE play_event.played_at >= :fromMs AND play_event.played_at < :toMs
+GROUP BY track.video_id
+ORDER BY plays DESC, last_played DESC;
+
+statsPlayCount:
+SELECT count(*) FROM play_event WHERE played_at >= :fromMs AND played_at < :toMs;
+
+statsFavoritesAdded:
+SELECT count(*) FROM favorite WHERE liked_at >= :fromMs AND liked_at < :toMs;
+
+-- Primera actividad guardada (para «Todo» y para saber qué años ofrecer).
+statsFirstListen:
+SELECT min(started_at) FROM listen_event;
+
+statsFirstPlay:
+SELECT min(played_at) FROM play_event;

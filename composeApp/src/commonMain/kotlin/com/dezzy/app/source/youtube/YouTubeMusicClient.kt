@@ -420,4 +420,39 @@ class YouTubeMusicClient(
             emptyList()
         }
     }
+
+    /** Listas oficiales de éxitos de un país (`ZZ` = mundial), tal como las devuelve YouTube Music. */
+    suspend fun getChartPlaylists(countryCode: String): Result<List<ChartPlaylist>> = runCatching {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext(hl = "en", gl = countryCode))
+            put("browseId", YouTubeEndpoints.BROWSE_ID_CHARTS)
+            put("params", YouTubeEndpoints.CHARTS_PARAMS)
+            putJsonObject("formData") {
+                putJsonArray("selectedValues") {
+                    add(JsonPrimitive(countryCode))
+                }
+            }
+        })
+        YouTubeCharts.parsePlaylists(response)
+    }
+
+    /** Id de la playlist que hace de top del país, o null si YouTube no tiene top para él. */
+    suspend fun getChartPlaylistId(countryCode: String): Result<String?> = runCatching {
+        YouTubeCharts.pickTop(countryCode, getChartPlaylists(countryCode).getOrThrow())?.id
+    }
+
+    /** Las canciones del top de un país (como máximo [limit]). Vacío si no hay top. */
+    suspend fun getChartTracks(countryCode: String, limit: Int = 50): Result<List<Track>> = runCatching {
+        val id = getChartPlaylistId(countryCode).getOrThrow() ?: return@runCatching emptyList()
+        getPlaylist(id, gl = countryCode).getOrThrow().tracks.take(limit)
+    }
+
+    /** Páginas de «Explorar»: de ahí salen «Nuevos álbumes y sencillos» y otros carruseles de novedades. */
+    suspend fun getNewReleases(gl: String? = null): Result<List<MusicSection>> = runCatching {
+        val response = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+            put("context", buildContext(gl = gl))
+            put("browseId", "FEmusic_explore")
+        })
+        YouTubeParsers.parseHomeSections(response)
+    }
 }

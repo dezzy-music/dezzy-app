@@ -67,6 +67,19 @@ import com.dezzy.app.feature.canvas.CANVAS_ARTIST_DEFAULT
 import com.dezzy.app.feature.canvas.CANVAS_SONG_DEFAULT
 import com.dezzy.app.feature.canvas.CanvasArtistEnabledKey
 import com.dezzy.app.feature.canvas.CanvasSongEnabledKey
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import com.dezzy.app.feature.personalize.wallpaperFiles
+import com.dezzy.app.ui.player.kit.MiniPlayerBackground
+import com.dezzy.app.ui.player.kit.MiniPlayerBackgroundKey
+import com.dezzy.app.ui.player.kit.MiniPlayerImageUriKey
+import com.dezzy.app.ui.player.kit.PlayerCustomBrightnessKey
+import com.dezzy.app.ui.player.kit.PlayerCustomImageUriKey
+import com.dezzy.app.ui.screens.personalize.MediaKind
+import com.dezzy.app.ui.screens.personalize.extensionForMime
+import com.dezzy.app.ui.screens.personalize.rememberMediaPicker
+import com.dezzy.app.ui.theme.AppFont
+import com.dezzy.app.ui.theme.AppFontKey
 import com.dezzy.app.ui.player.kit.BlurRadiusKey
 import com.dezzy.app.ui.player.kit.DisableBlurKey
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
@@ -126,6 +139,14 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var canvasSong by rememberPreference(CanvasSongEnabledKey, CANVAS_SONG_DEFAULT)
     var canvasArtist by rememberPreference(CanvasArtistEnabledKey, CANVAS_ARTIST_DEFAULT)
 
+    var appFont by rememberEnumPreference(AppFontKey, AppFont.DEFAULT)
+    var customImageUri by rememberPreference(PlayerCustomImageUriKey, "")
+    var customBrightness by rememberPreference(PlayerCustomBrightnessKey, 1f)
+    var miniBackground by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)
+    var miniImageUri by rememberPreference(MiniPlayerImageUriKey, "")
+    val pickPlayerImage = rememberOwnImagePicker(customImageUri) { customImageUri = it }
+    val pickMiniImage = rememberOwnImagePicker(miniImageUri) { miniImageUri = it }
+
     var showStyleSelector by remember { mutableStateOf(false) }
 
     SettingsPage(title = "Apariencia", onBack = { ctx.navigator.back() }) {
@@ -172,15 +193,21 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
                 )
                 SettingsDivider()
-                SettingsPendingRow(
+                SettingsRow(
                     title = "Icono de la app",
-                    phase = "10",
-                    ctx = ctx,
                     subtitle = "Forma y colores del icono, en la app y en el launcher",
                     icon = Icons.Rounded.Apps,
+                    onClick = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.APP_ICON)) },
                 )
                 SettingsDivider()
-                SettingsPendingRow(title = "Fuente de la app", phase = "10", ctx = ctx, icon = Icons.Rounded.TextFields)
+                SettingsChoiceRow(
+                    title = "Fuente de la app",
+                    icon = Icons.Rounded.TextFields,
+                    options = AppFont.entries.toList(),
+                    selected = appFont,
+                    label = { it.label },
+                    onSelect = { appFont = it },
+                )
             }
         }
 
@@ -212,11 +239,49 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     )
                     if (playerBackground == PlayerBackgroundStyle.CUSTOM) {
                         SettingsDivider()
-                        SettingsPendingRow(title = "Fondo personalizado", phase = "10", ctx = ctx, icon = Icons.Rounded.Image)
+                        SettingsRow(
+                            title = "Fondo personalizado",
+                            subtitle = if (customImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
+                            icon = Icons.Rounded.Image,
+                            onClick = { pickPlayerImage() },
+                        )
+                        SettingsDivider()
+                        SettingsSliderRow(
+                            title = "Atenuación de la imagen",
+                            icon = Icons.Rounded.Contrast,
+                            value = customBrightness,
+                            valueRange = 0.2f..1f,
+                            steps = 7,
+                            valueLabel = { "${((1f - it) * 100).toInt()} %" },
+                            onValueChangeFinished = { customBrightness = it },
+                        )
                     }
                 }
                 SettingsDivider()
-                SettingsPendingRow(title = "Fondo del minirreproductor", phase = "10", ctx = ctx, icon = Icons.Rounded.Gradient)
+                SettingsChoiceRow(
+                    title = "Fondo del minirreproductor",
+                    icon = Icons.Rounded.Gradient,
+                    options = MiniPlayerBackground.entries.toList(),
+                    selected = miniBackground,
+                    label = {
+                        when (it) {
+                            MiniPlayerBackground.DEFAULT -> "Predeterminado"
+                            MiniPlayerBackground.COVER_COLOR -> "Color de la carátula"
+                            MiniPlayerBackground.TRANSPARENT -> "Transparente (cristal)"
+                            MiniPlayerBackground.IMAGE -> "Imagen propia"
+                        }
+                    },
+                    onSelect = { miniBackground = it },
+                )
+                if (miniBackground == MiniPlayerBackground.IMAGE) {
+                    SettingsDivider()
+                    SettingsRow(
+                        title = "Imagen del minirreproductor",
+                        subtitle = if (miniImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
+                        icon = Icons.Rounded.Image,
+                        onClick = { pickMiniImage() },
+                    )
+                }
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Desactivar el desenfoque",
@@ -307,9 +372,12 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
 
         item(key = "wallpapers") {
             SettingsGroup(label = "Fondos de pantalla") {
-                SettingsPendingRow(title = "Fondo de imagen", phase = "10", ctx = ctx, icon = Icons.Rounded.Image)
-                SettingsDivider()
-                SettingsPendingRow(title = "Fondo de vídeo", phase = "10", ctx = ctx, icon = Icons.Rounded.Videocam)
+                SettingsRow(
+                    title = "Fondo de imagen o vídeo",
+                    subtitle = "Vertical y horizontal, también desde Pinterest",
+                    icon = Icons.Rounded.Image,
+                    onClick = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.WALLPAPER)) },
+                )
             }
         }
     }
@@ -343,6 +411,29 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
             }
         }
     }
+}
+
+/**
+ * Selector de imagen de la galería: copia la elegida a la carpeta privada de la app, borra la copia
+ * anterior (si era propia) y avisa con la nueva URI `file://…`.
+ */
+@Composable
+internal fun rememberOwnImagePicker(current: String, onImported: (String) -> Unit): () -> Unit {
+    val files = remember { wallpaperFiles() }
+    val scope = rememberCoroutineScope()
+    val currentState = rememberUpdatedState(current)
+    val onImportedState = rememberUpdatedState(onImported)
+    val pick = rememberMediaPicker { uri, mime ->
+        scope.launch {
+            val imported = files.importPicked(uri, extensionForMime(mime, isVideo = false))
+            if (imported != null) {
+                val old = currentState.value
+                if (old.isNotBlank() && files.isOwnFile(old)) files.deleteOwnFile(old)
+                onImportedState.value(imported)
+            }
+        }
+    }
+    return { pick(MediaKind.IMAGE) }
 }
 
 private fun sliderStyleLabel(style: SliderStyle): String = when (style) {

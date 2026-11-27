@@ -6,13 +6,16 @@
 package com.dezzy.app.ui.screens.settings
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,6 +29,9 @@ import com.dezzy.app.feature.video.VideoPipEnabledKey
 import com.dezzy.app.feature.video.VideoQuality
 import com.dezzy.app.feature.video.VideoResizeMode
 import com.dezzy.app.feature.video.VideoResizeModeKey
+import com.dezzy.app.feature.player.PauseOnMuteKey
+import com.dezzy.app.feature.player.PlayOnBluetoothKey
+import com.dezzy.app.feature.player.SkipSilenceKey
 import com.dezzy.app.source.stream.AudioQuality
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
@@ -66,6 +72,9 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     var resizeMode by rememberEnumPreference(VideoResizeModeKey, VideoResizeMode.FIT)
     var keepMode by rememberPreference(VideoKeepModeOnSongChangeKey, true)
     var pip by rememberPreference(VideoPipEnabledKey, true)
+    var skipSilence by rememberPreference(SkipSilenceKey, false)
+    var pauseOnMute by rememberPreference(PauseOnMuteKey, false)
+    var playOnBluetooth by rememberPreference(PlayOnBluetoothKey, false)
 
     SettingsPage(title = "Reproductor y audio", onBack = { ctx.navigator.back() }) {
         item(key = "quality") {
@@ -120,7 +129,13 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                     onValueChangeFinished = { scope.launch { prefs.setCrossfadeSeconds(it.roundToInt()) } },
                 )
                 SettingsDivider()
-                SettingsPendingRow("Saltar silencios", "4", ctx)
+                SettingsSwitchRow(
+                    title = "Saltar silencios",
+                    subtitle = "Acorta los silencios dentro de las canciones",
+                    icon = Icons.Rounded.FastForward,
+                    checked = skipSilence,
+                    onCheckedChange = { skipSilence = it },
+                )
                 SettingsDivider()
                 SettingsRow(
                     title = "Ecualizador",
@@ -147,9 +162,21 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                     onCheckedChange = { scope.launch { prefs.setAutoSkip(it) } },
                 )
                 SettingsDivider()
-                SettingsPendingRow("Pausar al silenciar", "4", ctx)
+                SettingsSwitchRow(
+                    title = "Pausar al silenciar",
+                    subtitle = "Pausa si el volumen de medios llega a 0 y reanuda al subirlo",
+                    icon = Icons.Rounded.VolumeOff,
+                    checked = pauseOnMute,
+                    onCheckedChange = { pauseOnMute = it },
+                )
                 SettingsDivider()
-                SettingsPendingRow("Reproducir al conectar Bluetooth", "4", ctx)
+                SettingsSwitchRow(
+                    title = "Reproducir al conectar Bluetooth",
+                    subtitle = "Si hay cola, empieza a sonar al conectar auriculares o altavoz",
+                    icon = Icons.Rounded.Bluetooth,
+                    checked = playOnBluetooth,
+                    onCheckedChange = { playOnBluetooth = it },
+                )
             }
         }
         item(key = "video") {

@@ -9,6 +9,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import com.dezzy.app.ui.player.kit.rememberEnumPreference
 
 /** Tema raíz de Dezzy: color, tipografía y estilo de interfaz (normal, cristal líquido o Nothing). */
 @Composable
@@ -36,7 +38,8 @@ fun DezzyTheme(
         scheme = scheme.toPureBlack()
     }
 
-    val typography = if (interfaceTheme == AppInterfaceTheme.NOTHING) nothingTypography() else DezzyTypography
+    val appFont by rememberEnumPreference(AppFontKey, AppFont.DEFAULT)
+    val typography = if (interfaceTheme == AppInterfaceTheme.NOTHING) nothingTypography() else DezzyTypography.withAppFont(appFont)
 
     CompositionLocalProvider(
         LocalAppInterfaceTheme provides interfaceTheme,

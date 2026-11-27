@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Respaldo para Android < 8 (sin iconos adaptativos). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="oval"><solid android:color="@color/appicon_bg_1" /></shape></item>
+    <item android:drawable="@drawable/ic_appicon_fg_star_1" />
+</layer-list>

@@ -1,0 +1,62 @@
+-- Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+-- Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+--
+-- DJ Dezzy (fase 10). Guarda los saltos del oyente (el historial normal sólo ve lo que se
+-- escucha) y lee las tablas de Dezzy.sq para armar el perfil de gustos.
+-- Marcas de tiempo en milisegundos UTC reales (epoch).
+-- La tabla se crea también al arrancar DjStore (IF NOT EXISTS): la base ya existe en los móviles.
+
+CREATE TABLE IF NOT EXISTS dj_skip_event (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL,
+    artist TEXT,
+    skipped_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS dj_skip_event_at ON dj_skip_event(skipped_at);
+
+insertSkip:
+INSERT INTO dj_skip_event(video_id, artist, skipped_at) VALUES (?, ?, ?);
+
+skipsSince:
+SELECT video_id, artist, skipped_at FROM dj_skip_event WHERE skipped_at >= ?;
+
+pruneSkips:
+DELETE FROM dj_skip_event WHERE skipped_at < ?;
+
+clearSkips:
+DELETE FROM dj_skip_event;
+
+-- Reproducciones del último año (una fila por reproducción).
+tasteEvents:
+SELECT video_id, played_at FROM play_event WHERE played_at >= ? ORDER BY played_at;
+
+-- Canciones con me gusta.
+likedIds:
+SELECT video_id FROM favorite;
+
+isLiked:
+SELECT count(*) FROM favorite WHERE video_id = ?;
+
+tracksByIds:
+SELECT video_id, title, artists, album, thumbnail, duration_seconds FROM track WHERE video_id IN ?;
+
+-- Las que más sonaron (contexto para la IA cuando aún no hay perfil).
+topPlayed:
+SELECT track.video_id, track.title, track.artists, track.album, track.thumbnail, track.duration_seconds
+FROM track
+JOIN (
+    SELECT video_id, count(*) AS plays FROM play_event GROUP BY video_id
+) AS top ON top.video_id = track.video_id
+ORDER BY top.plays DESC
+LIMIT ?;
+
+-- Lo último que sonó, sin repetir.
+recentlyPlayed:
+SELECT track.video_id, track.title, track.artists, track.album, track.thumbnail, track.duration_seconds
+FROM track
+JOIN (
+    SELECT video_id, max(played_at) AS last_played FROM play_event GROUP BY video_id
+) AS last ON last.video_id = track.video_id
+ORDER BY last.last_played DESC
+LIMIT ?;

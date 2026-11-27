@@ -1,0 +1,49 @@
+-- Copyright (c) 2026 Dezzy (https://github.com/dezzy-music)
+-- Licensed under the PolyForm Strict License 1.0.0. See LICENSE.md.
+
+-- Mapa musical, rankings y estadísticas de éxitos (fase 10C).
+-- Caché local: tops por país, géneros de artistas y estadísticas de canciones. Cada fila lleva
+-- su fecha (epoch ms) y quien la lee decide cuánto vale. MusicMapStore también crea la tabla al
+-- arrancar (IF NOT EXISTS) por si la base ya existía antes de esta fase.
+CREATE TABLE IF NOT EXISTS music_map_cache (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL,
+    saved_at INTEGER NOT NULL
+);
+
+mapCacheValue:
+SELECT value FROM music_map_cache WHERE key = ?;
+
+mapCacheSavedAt:
+SELECT saved_at FROM music_map_cache WHERE key = ?;
+
+mapCachePut:
+INSERT OR REPLACE INTO music_map_cache(key, value, saved_at) VALUES (?, ?, ?);
+
+mapCacheDelete:
+DELETE FROM music_map_cache WHERE key = ?;
+
+mapCacheDeleteLike:
+DELETE FROM music_map_cache WHERE key LIKE ?;
+
+-- Canciones de la biblioteca (favoritas o con alguna reproducción) con un peso:
+-- una reproducción vale 1 y un favorito 3. Sirve para los géneros de tu biblioteca.
+mapLibraryTracks:
+SELECT track.video_id, track.title, track.artists, track.thumbnail,
+    coalesce((SELECT count(*) FROM play_event p WHERE p.video_id = track.video_id), 0)
+    + coalesce((SELECT count(*) FROM favorite f WHERE f.video_id = track.video_id), 0) * 3 AS weight
+FROM track
+WHERE track.video_id IN (SELECT video_id FROM favorite)
+   OR track.video_id IN (SELECT video_id FROM play_event)
+ORDER BY weight DESC
+LIMIT ?;
+
+-- Las canciones que más sonaron (para «Tus canciones en los rankings»).
+mapMostPlayed:
+SELECT track.video_id, track.title, track.artists, track.thumbnail, top.plays
+FROM track
+JOIN (
+    SELECT video_id, count(*) AS plays FROM play_event GROUP BY video_id
+) AS top USING (video_id)
+ORDER BY top.plays DESC
+LIMIT ?;

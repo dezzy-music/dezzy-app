@@ -192,8 +192,8 @@ private data class DiscoverEntry(
 private fun SearchHome(ctx: ScreenContext) {
     val moods = rememberLoad("moods") { ctx.client.getMoodsAndGenres() }
     val discover = listOf(
-        DiscoverEntry(Icons.Rounded.TrendingUp, "Éxitos", "Lo más escuchado", { ctx.pending("Éxitos", "10") }, highlighted = true),
-        DiscoverEntry(Icons.Rounded.NewReleases, "Novedades", "Álbumes y sencillos", { ctx.pending("Novedades", "10") }),
+        DiscoverEntry(Icons.Rounded.TrendingUp, "Éxitos", "Lo más escuchado", { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) }, highlighted = true),
+        DiscoverEntry(Icons.Rounded.NewReleases, "Novedades", "Álbumes y sencillos", { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) }),
         DiscoverEntry(Icons.Rounded.SlowMotionVideo, "Videos", "Los más vistos", { ctx.pending("Videos", "5d") }),
         DiscoverEntry(Icons.Rounded.Mic, "Reconocer", "¿Qué está sonando?", { ctx.pending("Reconocer música", "10") }),
     )

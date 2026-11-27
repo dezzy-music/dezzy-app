@@ -181,7 +181,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                 hour = hour,
                 streakDays = streak,
                 todayMinutes = (todaySeconds / 60).toInt(),
-                onNotifications = { ctx.pending("Novedades y lanzamientos", "10") },
+                onNotifications = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) },
                 avatarUrl = avatarUrl,
                 onAccount = { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) },
                 onSettings = { ctx.navigator.push(Screen.Settings()) },
@@ -257,9 +257,9 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                         ctx.player.playRadio(t, "radio:${t.title}")
                     } ?: ctx.toast("Escucha algo primero y te sorprendo")
                 },
-                onStats = { ctx.pending("Estadísticas", "10") },
-                onMap = { ctx.pending("Mapa musical", "10") },
-                onYear = { ctx.pending("Tu año en música", "10") },
+                onStats = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
+                onMap = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.MusicMap) },
+                onYear = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.YearInMusic) },
             )
         }
 
@@ -360,7 +360,7 @@ private fun SpotifyGreetingGrid(
                 }
             }
         }
-        add { m -> DjTile(m, djName, playingNow, hour) { ctx.pending("DJ Dezzy", "10") } }
+        add { m -> DjTile(m, djName, playingNow, hour) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Dj) } }
         pinned.forEachIndexed { i, p ->
             val slot = i + 1
             if (p != null) add { m ->
@@ -574,16 +574,16 @@ private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
             MenuRow(Icons.Rounded.Person, "Tu Cuenta y Espacio") { go { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) } }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             MenuGroup("Tu Actividad")
-            MenuRow(Icons.Rounded.NewReleases, "Novedades y Lanzamientos") { go { ctx.pending("Novedades y lanzamientos", "10") } }
+            MenuRow(Icons.Rounded.NewReleases, "Novedades y Lanzamientos") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) } }
             MenuRow(Icons.Rounded.History, "Historial de Reproducción") { go { ctx.navigator.push(Screen.History) } }
-            MenuRow(Icons.Rounded.BarChart, "Estadísticas de Escucha") { go { ctx.pending("Estadísticas", "10") } }
+            MenuRow(Icons.Rounded.BarChart, "Estadísticas de Escucha") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) } }
             MenuRow(Icons.Rounded.Download, "Mis Descargas") { go { ctx.navigator.push(Screen.Downloads) } }
             MenuGroup("Descubrimiento y Más")
-            MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy AI") { go { ctx.pending("DJ Dezzy", "10") } }
+            MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy AI") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Dj) } }
             MenuRow(Icons.Rounded.Groups, "Escuchar Juntos") { go { ctx.navigator.select(Tab.TOGETHER) } }
-            MenuRow(Icons.Rounded.Leaderboard, "Listas de Éxitos") { go { ctx.pending("Listas de éxitos", "10") } }
-            MenuRow(Icons.Rounded.Map, "Mapa Musical") { go { ctx.pending("Mapa musical", "10") } }
-            MenuRow(Icons.Rounded.Today, "Resumen del Año") { go { ctx.pending("Tu año en música", "10") } }
+            MenuRow(Icons.Rounded.Leaderboard, "Listas de Éxitos") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) } }
+            MenuRow(Icons.Rounded.Map, "Mapa Musical") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.MusicMap) } }
+            MenuRow(Icons.Rounded.Today, "Resumen del Año") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.YearInMusic) } }
             MenuRow(Icons.Rounded.GraphicEq, "Reconocer Música") { go { ctx.pending("Reconocer música", "10") } }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             MenuRow(Icons.Rounded.Settings, "Ajustes") { go { ctx.navigator.push(Screen.Settings()) } }

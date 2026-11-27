@@ -48,6 +48,12 @@ enum class SliderStyle { Standard, Wavy, Slim }
 enum class PlayerBackgroundStyle { DEFAULT, GRADIENT, GLOW, COLORING, CUSTOM }
 enum class AuroraMode { DYNAMIC, CUSTOM }
 enum class IpodThemeMode { DYNAMIC, CLASSIC }
+
+/** Fondo del minirreproductor. */
+enum class MiniPlayerBackground { DEFAULT, COVER_COLOR, TRANSPARENT, IMAGE }
+
+/** Fondo de la pantalla de letras (independiente del reproductor). */
+enum class LyricsBackground { SAME_AS_PLAYER, COVER_GRADIENT, SOLID, IMAGE }
 enum class CanvasMode { NONE, SPOTIFY, SPOTIFY_WITH_FALLBACK, APPLE, APPLE_WITH_FALLBACK }
 
 // ── Claves ───────────────────────────────────────────────────────────────────────────────────
@@ -59,7 +65,13 @@ val PlayerCustomImageUriKey = stringPreferencesKey("playerCustomImageUri")
 val PlayerCustomBlurKey = floatPreferencesKey("playerCustomBlur")
 val PlayerCustomContrastKey = floatPreferencesKey("playerCustomContrast")
 val PlayerCustomBrightnessKey = floatPreferencesKey("playerCustomBrightness")
-val BlurRadiusKey = floatPreferencesKey("blurRadius")
+val MiniPlayerBackgroundKey = stringPreferencesKey("miniPlayerBackground")
+val MiniPlayerImageUriKey = stringPreferencesKey("miniPlayerImageUri")
+val LyricsBackgroundKey = stringPreferencesKey("lyricsBackground")
+val LyricsBgImageUriKey = stringPreferencesKey("lyricsBgImageUri")
+val LyricsBgBlurKey = floatPreferencesKey("lyricsBgBlur")
+val LyricsBgDimKey = floatPreferencesKey("lyricsBgDim")
+val BlurRadiusKey =floatPreferencesKey("blurRadius")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val ShowCodecOnPlayerKey = booleanPreferencesKey("showCodecOnPlayer")
 val CanvasModeKey = stringPreferencesKey("canvasMode")
