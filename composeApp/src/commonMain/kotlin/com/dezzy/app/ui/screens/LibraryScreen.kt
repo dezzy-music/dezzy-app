@@ -108,6 +108,8 @@ fun LibraryScreen(ctx: ScreenContext) {
     val playlists by ctx.repository.getPlaylists().collectAsState(emptyList())
     val favorites by ctx.repository.getFavorites().collectAsState(null)
     var tab by remember { mutableStateOf(LibraryTab.PLAYLISTS) }
+    val savedAlbums by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SavedAlbumsKey) }.collectAsState(null)
+    val subscribedArtists by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey) }.collectAsState(null)
     var creating by remember { mutableStateOf(false) }
     val accounts: AccountStore = koinInject()
     val sessions by accounts.sessions.collectAsState()
@@ -120,9 +122,9 @@ fun LibraryScreen(ctx: ScreenContext) {
         LibraryPill("Descargado", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
         LibraryPill("Mi top", Icons.AutoMirrored.Rounded.TrendingUp, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
     )
-    // Orden y vista de la rejilla (de momento sólo en memoria de la sesión).
-    var sort by rememberSaveable { mutableStateOf(0) }
-    var gridView by rememberSaveable { mutableStateOf(true) }
+    // Orden y vista de la rejilla (se recuerdan entre sesiones).
+    var sort by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.library.LibrarySortKey, 0)
+    var gridView by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.library.LibraryGridViewKey, true)
     var sortMenu by remember { mutableStateOf(false) }
     val sortLabels = listOf("Orden personalizado", "Nombre (A-Z)", "Más canciones")
     val sortedPlaylists = when (sort) {
@@ -269,8 +271,23 @@ fun LibraryScreen(ctx: ScreenContext) {
                     }
                 }
             }
-            LibraryTab.ALBUMS, LibraryTab.ARTISTS, LibraryTab.GENRES ->
-                emptyRow("Llega en la fase 6b con la sincronización de la cuenta")
+            LibraryTab.ALBUMS -> {
+                val list = savedAlbums
+                when {
+                    list == null -> loadingRows()
+                    list.isEmpty() -> emptyRow("Todavía no has guardado álbumes. Pulsa ♥ en un álbum para tenerlo aquí.")
+                    else -> items(list, key = { "album:" + it.id }) { item -> ItemRow(item) { ctx.open(item) } }
+                }
+            }
+            LibraryTab.ARTISTS -> {
+                val list = subscribedArtists
+                when {
+                    list == null -> loadingRows()
+                    list.isEmpty() -> emptyRow("Todavía no sigues a ningún artista. Pulsa «Subscribir» en su página.")
+                    else -> items(list, key = { "artist:" + it.id }) { item -> ItemRow(item) { ctx.open(item) } }
+                }
+            }
+            LibraryTab.GENRES -> Unit
         }
         item { Spacer(Modifier.size(24.dp)) }
     }

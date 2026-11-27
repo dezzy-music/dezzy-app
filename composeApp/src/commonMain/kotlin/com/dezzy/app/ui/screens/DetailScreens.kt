@@ -88,6 +88,7 @@ import com.dezzy.app.ui.screens.detail.rememberCoverColor
 import com.dezzy.app.ui.screens.downloads.DownloadAllButton
 import com.dezzy.app.ui.screens.stats.openArtistByName
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 
 private fun albumTracks(a: Album): List<Track> =
@@ -196,7 +197,12 @@ private fun AlbumHeader(a: Album, tracks: List<Track>, ctx: ScreenContext, onMen
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.IconButton(onClick = {
-                        scope.launch { tracks.forEach { repository.setFavorite(it, !allLiked) } }
+                        scope.launch {
+                            tracks.forEach { repository.setFavorite(it, !allLiked) }
+                            val item = com.dezzy.app.core.model.MusicItem(a.id, com.dezzy.app.core.model.MusicItemType.ALBUM, a.title, listOfNotNull(a.artist.ifBlank { null }, a.year).joinToString(" • "), a.thumbnail)
+                            val saved = com.dezzy.app.ui.screens.library.parseLocalItems(ctx.prefs.value(com.dezzy.app.ui.screens.library.SavedAlbumsKey, "").first()).any { it.id == a.id }
+                            if (saved == allLiked) com.dezzy.app.ui.screens.library.toggleLocalItem(ctx.prefs, com.dezzy.app.ui.screens.library.SavedAlbumsKey, item)
+                        }
                         ctx.toast(if (allLiked) "Quitado de Me gusta" else "Álbum añadido a Me gusta")
                     }) {
                         Icon(
@@ -340,6 +346,8 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
     val link = "https://music.youtube.com/channel/$id"
     val source = "artist:${a.name}"
     var expanded by remember(id) { mutableStateOf(false) }
+    val subscribedList by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey) }.collectAsState(emptyList())
+    val subscribed = a.subscribed == true || subscribedList.any { it.id == id }
     Column(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(380.dp)) {
             CoverImage(a.thumbnail, Modifier.fillMaxSize(), RectangleShape, sizePx = 1080)
@@ -407,12 +415,18 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
-                        onClick = { ctx.toast("Suscribirse a artistas aún no está disponible") },
+                        onClick = {
+                            ctx.scope.launch {
+                                val item = com.dezzy.app.core.model.MusicItem(id, com.dezzy.app.core.model.MusicItemType.ARTIST, a.name, "Artista", a.thumbnail)
+                                val now = com.dezzy.app.ui.screens.library.toggleLocalItem(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey, item)
+                                ctx.toast(if (now) "Te has suscrito a ${a.name}" else "Ya no estás suscrito a ${a.name}")
+                            }
+                        },
                         shape = CircleShape,
                     ) {
-                        Icon(if (a.subscribed == true) Icons.Rounded.Check else Icons.Rounded.Add, null, Modifier.size(18.dp))
+                        Icon(if (subscribed) Icons.Rounded.Check else Icons.Rounded.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text(if (a.subscribed == true) "Suscrito" else "Subscribir")
+                        Text(if (subscribed) "Suscrito" else "Subscribir")
                     }
                     if (a.songs.isNotEmpty()) {
                         androidx.compose.material3.IconButton(onClick = { ctx.player.playRadio(a.songs.first(), "radio:${a.name}") }) {
