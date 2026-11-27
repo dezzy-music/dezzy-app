@@ -24,8 +24,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Refresh
@@ -70,6 +74,8 @@ import com.dezzy.app.feature.social.P2PPost
 import com.dezzy.app.feature.social.P2PPresence
 import com.dezzy.app.feature.social.P2PSocial
 import com.dezzy.app.feature.social.P2PUser
+import com.dezzy.app.ui.components.dezzyFilterChipColors
+import com.dezzy.app.ui.navigation.Tab
 import com.dezzy.app.ui.components.glass.DezzyButton
 import com.dezzy.app.ui.components.glass.DezzyExtendedFloatingActionButton
 import com.dezzy.app.ui.components.glass.DezzyFilterChip
@@ -138,7 +144,26 @@ private fun SocialHome(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             com.dezzy.app.ui.components.DezzyTopBar(ctx)
-            ScreenTitle(if (tab == SocialTab.ROOMS) "Juntos" else "Social", onBack = if (tab == SocialTab.ROOMS) null else ({ tab = SocialTab.ROOMS }), actions = {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { if (tab == SocialTab.ROOMS) ctx.navigator.select(Tab.HOME) else tab = SocialTab.ROOMS }) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Volver")
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (tab == SocialTab.ROOMS) "Juntos" else "Social",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (tab == SocialTab.ROOMS) Text(
+                        "Escucha en sincronía con otras personas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 IconButton(onClick = { if (mine != null) addFriend = true else tab = SocialTab.FRIENDS }) { Icon(Icons.Rounded.Search, "Buscar personas") }
                 IconButton(onClick = { roomsVersion++ }) { Icon(Icons.Rounded.Refresh, "Actualizar") }
                 IconButton(onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SOCIAL)) }) {
@@ -151,13 +176,7 @@ private fun SocialHome(
                         modifier = Modifier.padding(horizontal = 8.dp).clickable { ctx.navigator.push(Screen.P2PProfile(mine.pubkey)) },
                     )
                 }
-            })
-            if (tab == SocialTab.ROOMS) Text(
-                "Escucha en sincronía con otras personas",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            }
             DezzySingleChoiceSegmentedRow(
                 items = SocialTab.entries,
                 selected = tab,
@@ -219,7 +238,7 @@ private fun RoomsTab(ctx: ScreenContext, @Suppress("UNUSED_PARAMETER") version: 
         item {
             Text(
                 "Salas públicas",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
             )
@@ -231,7 +250,20 @@ private fun RoomsTab(ctx: ScreenContext, @Suppress("UNUSED_PARAMETER") version: 
                         selected = g == genre,
                         onClick = { genre = g },
                         label = { Text(g) },
-                        leadingIcon = if (g == genre) ({ Icon(Icons.Rounded.Check, null, Modifier.size(18.dp)) }) else null,
+                        leadingIcon = {
+                            Icon(
+                                when (g) {
+                                    "Todos" -> Icons.Rounded.Public
+                                    "Lofi" -> Icons.Rounded.Headphones
+                                    "Pop" -> Icons.Rounded.StarOutline
+                                    "Hip-Hop" -> Icons.Rounded.Mic
+                                    else -> Icons.Rounded.MusicNote
+                                },
+                                null,
+                                Modifier.size(18.dp),
+                            )
+                        },
+                        colors = dezzyFilterChipColors(),
                     )
                 }
             }

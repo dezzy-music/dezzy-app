@@ -370,6 +370,7 @@ private fun HomeFilterChips(selected: HomeFilter, spotifyVisible: Boolean, onSel
                 label = { Text(f.label) },
                 leadingIcon = if (f == selected) ({ Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }) else null,
                 shape = RoundedCornerShape(8.dp),
+                colors = com.dezzy.app.ui.components.dezzyFilterChipColors(),
             )
         }
     }

@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
-import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.filled.WatchLater
+import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.QueryStats
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,25 +61,25 @@ fun DezzyTopBar(ctx: ScreenContext) {
     ) {
         Text(
             "Dezzy",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = { devices = true }) { Icon(Icons.Rounded.Devices, "Dispositivos") }
-        IconButton(onClick = { ctx.navigator.push(Screen.History) }) { Icon(Icons.Rounded.History, "Historial") }
-        IconButton(onClick = { ctx.navigator.push(Screen.Stats) }) { Icon(Icons.Rounded.QueryStats, "Estadísticas") }
+        IconButton(onClick = { ctx.navigator.push(Screen.History) }) { Icon(Icons.Filled.WatchLater, "Historial") }
+        IconButton(onClick = { ctx.navigator.push(Screen.Stats) }) { Icon(Icons.Rounded.BarChart, "Estadísticas") }
         IconButton(onClick = { ctx.navigator.push(Screen.NewReleases) }) { Icon(Icons.Rounded.Notifications, "Novedades") }
         Box(Modifier.padding(start = 4.dp, end = 4.dp)) {
             if (avatarUrl != null) {
-                CoverImage(avatarUrl, Modifier.size(36.dp).clickable { ctx.navigator.push(Screen.Settings()) }, CircleShape, sizePx = 108, contentDescription = "Cuenta")
+                CoverImage(avatarUrl, Modifier.size(26.dp).clickable { ctx.navigator.push(Screen.Settings()) }, CircleShape, sizePx = 78, contentDescription = "Cuenta")
             } else {
                 Box(
-                    Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
+                    Modifier.size(26.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
                         .clickable { ctx.navigator.push(Screen.Settings()) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("D", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                    Text("D", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                 }
             }
         }

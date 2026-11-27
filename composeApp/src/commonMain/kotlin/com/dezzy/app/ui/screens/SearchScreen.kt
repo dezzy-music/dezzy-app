@@ -232,6 +232,7 @@ private fun SearchFilterChips(current: SearchFilter, onSelect: (SearchFilter) ->
                 leadingIcon = if (selected) {
                     { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
                 } else null,
+                colors = com.dezzy.app.ui.components.dezzyFilterChipColors(),
             )
         }
     }
@@ -637,6 +638,7 @@ private fun SearchSourceChips(
                         modifier = Modifier.size(FilterChipDefaults.IconSize),
                     )
                 },
+                colors = com.dezzy.app.ui.components.dezzyFilterChipColors(),
             )
         }
     }
