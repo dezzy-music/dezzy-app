@@ -59,10 +59,16 @@ import com.dezzy.app.ui.screens.ScreenContext
 
 /** Página de Ajustes: sin `onBack` es la principal (título grande); con `onBack`, barra con flecha. */
 @Composable
-internal fun SettingsPage(title: String, onBack: (() -> Unit)?, content: LazyListScope.() -> Unit) {
+internal fun SettingsPage(title: String, onBack: (() -> Unit)?, backAbove: (() -> Unit)? = null, content: LazyListScope.() -> Unit) {
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     Column(Modifier.fillMaxSize()) {
+        if (onBack == null && backAbove != null) {
+            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = backAbove) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás") }
+            }
+        }
         if (onBack != null) {
             Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -72,6 +78,7 @@ internal fun SettingsPage(title: String, onBack: (() -> Unit)?, content: LazyLis
                 Text(
                     title,
                     fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = 4.dp),
@@ -80,7 +87,7 @@ internal fun SettingsPage(title: String, onBack: (() -> Unit)?, content: LazyLis
         }
         LazyColumn(
             Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(top = if (onBack == null) top else 0.dp, bottom = bottom + 16.dp),
+            contentPadding = PaddingValues(top = if (onBack == null && backAbove == null) top else 0.dp, bottom = bottom + 16.dp),
         ) {
             if (onBack == null) {
                 item(key = "settings-title") {
@@ -88,6 +95,7 @@ internal fun SettingsPage(title: String, onBack: (() -> Unit)?, content: LazyLis
                         title,
                         fontSize = 32.sp,
                         lineHeight = 40.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp),
                     )
                 }
@@ -105,17 +113,18 @@ internal fun SettingsGroup(label: String? = null, content: @Composable ColumnSco
             Text(
                 label,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 6.dp),
             )
         }
+        // Como la app actual: cada fila es su propia tarjeta, separadas por un hueco fino.
         Column(
             Modifier
-                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                .clip(RoundedCornerShape(22.dp)),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             content = content,
         )
     }
@@ -123,36 +132,35 @@ internal fun SettingsGroup(label: String? = null, content: @Composable ColumnSco
 
 @Composable
 internal fun SettingsDivider() {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(start = 72.dp, end = 16.dp)
-            .height(1.dp)
-            .alpha(0.6f)
-            .background(MaterialTheme.colorScheme.outlineVariant),
-    )
+    // Las filas ya van separadas en tarjetas propias; no hace falta línea.
 }
+
+/** Fondo de tarjeta de cada fila de ajustes. */
+@Composable
+internal fun Modifier.settingsCard(): Modifier =
+    this.clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
 
 @Composable
 private fun SettingsIconCircle(icon: ImageVector) {
     Box(
-        Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+        Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 @Composable
 private fun RowTexts(title: String, subtitle: String?, modifier: Modifier) {
     Column(modifier) {
-        Text(title, fontSize = 16.sp, lineHeight = 22.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (subtitle != null) {
             Text(
                 subtitle,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -173,6 +181,7 @@ internal fun SettingsRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
+            .settingsCard()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -182,9 +191,6 @@ internal fun SettingsRow(
         RowTexts(title, subtitle, Modifier.weight(1f))
         if (badge) Box(Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
         if (trailing != null) trailing()
-        else if (onClick != null) {
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
@@ -201,6 +207,7 @@ internal fun SettingsSwitchRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
+            .settingsCard()
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -276,7 +283,7 @@ internal fun SettingsSliderRow(
     onValueChangeFinished: (Float) -> Unit,
 ) {
     var draft by remember(value) { mutableStateOf(value) }
-    Column(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 10.dp)) {
+    Column(Modifier.fillMaxWidth().heightIn(min = 64.dp).settingsCard().padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             if (icon != null) SettingsIconCircle(icon)
             RowTexts(title, valueLabel(draft), Modifier.weight(1f))

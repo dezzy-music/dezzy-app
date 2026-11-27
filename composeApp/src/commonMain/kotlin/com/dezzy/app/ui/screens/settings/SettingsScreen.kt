@@ -238,7 +238,7 @@ internal fun SettingsScreen(ctx: ScreenContext) {
         SettingsEntry("Acerca de", "Dezzy $AppVersionName", Icons.Rounded.Info) { open(SettingsPage.ABOUT) },
     )
 
-    SettingsPage(title = "Ajustes", onBack = null) {
+    SettingsPage(title = "Ajustes", onBack = null, backAbove = { ctx.navigator.back() }) {
         item(key = "search") { SettingsSearchField(query) { query = it } }
         val q = normalize(query.trim())
         if (q.isEmpty()) {
@@ -318,7 +318,7 @@ private fun SettingsAccountCard(session: UserSession?, onClick: () -> Unit) {
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFFF1EEF7))
+            .background(Color(0xFFDCDCDC))
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,

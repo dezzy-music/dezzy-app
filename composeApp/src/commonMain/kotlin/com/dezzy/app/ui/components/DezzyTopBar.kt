@@ -72,11 +72,11 @@ fun DezzyTopBar(ctx: ScreenContext) {
         IconButton(onClick = { ctx.navigator.push(Screen.NewReleases) }) { Icon(Icons.Rounded.Notifications, "Novedades") }
         Box(Modifier.padding(start = 4.dp, end = 4.dp)) {
             if (avatarUrl != null) {
-                CoverImage(avatarUrl, Modifier.size(26.dp).clickable { ctx.navigator.push(Screen.Settings()) }, CircleShape, sizePx = 78, contentDescription = "Cuenta")
+                CoverImage(avatarUrl, Modifier.size(26.dp).clickable { ctx.navigator.push(Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.ACCOUNTS)) }, CircleShape, sizePx = 78, contentDescription = "Cuenta")
             } else {
                 Box(
                     Modifier.size(26.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { ctx.navigator.push(Screen.Settings()) },
+                        .clickable { ctx.navigator.push(Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.ACCOUNTS)) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("D", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)

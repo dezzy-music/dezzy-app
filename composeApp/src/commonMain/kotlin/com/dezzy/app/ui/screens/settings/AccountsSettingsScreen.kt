@@ -19,6 +19,11 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Hub
@@ -96,7 +101,12 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Ajustes",
                     subtitle = "Apariencia, reproducción, descargas y privacidad",
-                    onClick = { ctx.navigator.back() },
+                    icon = Icons.Rounded.Settings,
+                    onClick = {
+                        val st = ctx.navigator.stack
+                        if (st.size >= 2 && st[st.size - 2] == Screen.Settings()) ctx.navigator.back()
+                        else ctx.navigator.push(Screen.Settings())
+                    },
                 )
             }
         }
@@ -105,8 +115,9 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
                 if (youtube != null) {
                     AccountProfileRow(
                         name = youtube.name ?: "Cuenta de YouTube Music",
-                        handle = youtube.handle ?: "YouTube Music",
+                        handle = "YouTube Music",
                         avatarUrl = youtube.avatarUrl,
+                        trailing = { ConnectChip(connected = youtube.isValid) { open(SettingsPage.YOUTUBE_LOGIN) } },
                     )
                     if (!youtube.isValid) {
                         SettingsDivider()
@@ -332,34 +343,44 @@ internal fun AccountsSettingsScreen(ctx: ScreenContext) {
 /** Botón [Conectado]/[Conectar] de la derecha de un servicio. */
 @Composable
 private fun ConnectChip(connected: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (connected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    ) {
         Text(
             if (connected) "Conectado" else "Conectar",
-            color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (connected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
 /** Fila con el avatar de la cuenta, su nombre y @handle. */
 @Composable
-internal fun AccountProfileRow(name: String, handle: String?, avatarUrl: String?) {
+internal fun AccountProfileRow(name: String, handle: String?, avatarUrl: String?, trailing: (@Composable () -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 64.dp).settingsCard().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        CoverImage(avatarUrl, Modifier.size(48.dp), CircleShape, sizePx = 144)
+        CoverImage(avatarUrl, Modifier.size(40.dp), CircleShape, sizePx = 120)
         Column(Modifier.weight(1f)) {
-            Text(name, fontSize = 16.sp, lineHeight = 22.sp, maxLines = 1)
+            Text(name, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             if (!handle.isNullOrBlank()) {
                 Text(
                     if (handle.startsWith("@")) handle else if (handle == "YouTube Music") handle else "@$handle",
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                     maxLines = 1,
                 )
             }
         }
+        trailing?.invoke()
     }
 }

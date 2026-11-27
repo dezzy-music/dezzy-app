@@ -190,7 +190,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
                 onNotifications = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) },
                 avatarUrl = avatarUrl,
                 // Como en la app actual: el avatar abre Ajustes y no hay engranaje aparte.
-                onAccount = { ctx.navigator.push(Screen.Settings()) },
+                onAccount = { ctx.navigator.push(Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.ACCOUNTS)) },
                 onSettings = { ctx.navigator.push(Screen.Settings()) },
             )
         }
