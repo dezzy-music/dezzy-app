@@ -104,6 +104,10 @@ fun TabContent(
             SettingsPage.WALLPAPER -> com.dezzy.app.ui.screens.personalize.WallpaperSettingsScreen(ctx)
             SettingsPage.COLOR_PALETTE -> com.dezzy.app.ui.screens.settings.ColorPaletteScreen(ctx)
             SettingsPage.THEME_CREATOR -> com.dezzy.app.ui.screens.settings.ThemeCreatorScreen(ctx)
+            SettingsPage.BACKUP -> com.dezzy.app.ui.screens.settings.BackupSettingsScreen(ctx)
+            SettingsPage.PO_TOKEN -> com.dezzy.app.ui.screens.settings.PoTokenSettingsScreen(ctx)
+            SettingsPage.EXPERIMENTS -> com.dezzy.app.ui.screens.settings.ExperimentsSettingsScreen(ctx)
+            SettingsPage.AOD -> com.dezzy.app.ui.screens.settings.AodSettingsScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         Screen.Downloads -> DownloadsScreen(ctx)

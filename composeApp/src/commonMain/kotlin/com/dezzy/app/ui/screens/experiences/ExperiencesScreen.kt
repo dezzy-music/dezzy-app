@@ -126,7 +126,7 @@ fun ExperiencesScreen(ctx: ScreenContext) {
             key = "year",
             icon = Icons.Rounded.AutoAwesome,
             title = "Tu año en música",
-            subtitle = "Tu resumen de este año",
+            subtitle = "Tu resumen ${com.dezzy.app.feature.stats.StatsDates.currentYear()}",
             tone = ExperienceTone.Primary,
             onClick = { ctx.navigator.push(Screen.YearInMusic) },
         ),

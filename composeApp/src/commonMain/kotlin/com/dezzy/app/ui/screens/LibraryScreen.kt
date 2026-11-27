@@ -34,7 +34,8 @@ import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.SaveAlt
@@ -57,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +72,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dezzy.app.core.model.Playlist
 import com.dezzy.app.ui.components.CoverImage
+import com.dezzy.app.ui.components.DezzyTopBar
 import com.dezzy.app.ui.components.TrackRow
 import com.dezzy.app.core.accounts.AccountStore
 import com.dezzy.app.core.model.SessionProvider
@@ -80,7 +83,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 private enum class LibraryTab(val label: String) {
-    PLAYLISTS("Listas"),
+    PLAYLISTS("Listas de reproducción"),
     ALBUMS("Álbumes"),
     ARTISTS("Artistas"),
     SONGS("Canciones"),
@@ -110,19 +113,23 @@ fun LibraryScreen(ctx: ScreenContext) {
 
     val colors = MaterialTheme.colorScheme
     val pills = listOf(
-        LibraryPill("Me gusta", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
-        LibraryPill("Historial", Icons.Rounded.History, colors.secondaryContainer, colors.onSecondaryContainer) { ctx.navigator.push(Screen.History) },
-        LibraryPill("Descargas", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
-        LibraryPill("Estadísticas", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
+        LibraryPill("Favorito", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
+        LibraryPill("Descargado", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
+        LibraryPill("Mi top", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
     )
+    // Orden y vista de la rejilla (de momento sólo en memoria de la sesión).
+    var sort by rememberSaveable { mutableStateOf(0) }
+    var gridView by rememberSaveable { mutableStateOf(true) }
+    var sortMenu by remember { mutableStateOf(false) }
+    val sortLabels = listOf("Orden personalizado", "Nombre (A-Z)", "Más canciones")
+    val sortedPlaylists = when (sort) {
+        1 -> playlists.sortedBy { it.title.lowercase() }
+        2 -> playlists.sortedByDescending { it.trackCount }
+        else -> playlists
+    }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            TopSpacer()
-            ScreenTitle("Biblioteca", actions = {
-                IconButton(onClick = { creating = true }) { Icon(Icons.Rounded.Add, "Crear lista") }
-            })
-        }
+        item { DezzyTopBar(ctx) }
         item {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -154,7 +161,37 @@ fun LibraryScreen(ctx: ScreenContext) {
 
         when (tab) {
             LibraryTab.PLAYLISTS -> {
-                // Tarjetas fijas + listas locales, en filas de dos (rejilla).
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box {
+                            Text(
+                                sortLabels[sort],
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable { sortMenu = true }.padding(vertical = 8.dp),
+                            )
+                            DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                                sortLabels.forEachIndexed { i, l ->
+                                    DropdownMenuItem(text = { Text(l) }, onClick = { sort = i; sortMenu = false })
+                                }
+                            }
+                        }
+                        Text(
+                            "${playlists.size} listas de reproducción",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                        )
+                        IconButton(onClick = { creating = true }) { Icon(Icons.Rounded.Add, "Crear lista") }
+                        IconButton(onClick = { gridView = !gridView }) {
+                            Icon(if (gridView) Icons.Rounded.ViewList else Icons.Rounded.GridView, if (gridView) "Ver como lista" else "Ver como rejilla")
+                        }
+                    }
+                }
+                // Tarjetas fijas + listas locales, en filas de dos (rejilla) o de una (lista).
                 val cards = buildList<@Composable (Modifier) -> Unit> {
                     add { m ->
                         LibraryCard(
@@ -164,19 +201,19 @@ fun LibraryScreen(ctx: ScreenContext) {
                             onClick = { ctx.navigator.push(Screen.Liked) },
                         )
                     }
-                    playlists.forEach { p ->
+                    sortedPlaylists.forEach { p ->
                         add { m ->
                             LibraryPlaylistGridItem(ctx, p, m)
                         }
                     }
                 }
-                items(cards.chunked(2)) { rowCards ->
+                items(cards.chunked(if (gridView) 2 else 1)) { rowCards ->
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         rowCards.forEach { it(Modifier.weight(1f)) }
-                        if (rowCards.size == 1) Spacer(Modifier.weight(1f))
+                        if (gridView && rowCards.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
                 item {

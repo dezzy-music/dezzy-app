@@ -167,6 +167,10 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
     val filter = if (filterState == HomeFilter.SPOTIFY && !spotifyOn) HomeFilter.FOR_YOU else filterState
     val home = if (filter == HomeFilter.MUSIC || (seedId == null && !exclusive)) rememberLoad("home") { ctx.client.getHome() } else null
 
+    val ytPlaylists by produceState(emptyList<com.dezzy.app.core.model.Playlist>(), sessions[SessionProvider.YOUTUBE]?.isValid) {
+        value = if (sessions[SessionProvider.YOUTUBE]?.isValid == true) runCatching { ctx.client.getLibraryPlaylists() }.getOrDefault(emptyList()) else emptyList()
+    }
+
     var showMore by remember { mutableStateOf(false) }
     var pinSlot by remember { mutableIntStateOf(0) }
     var surprise by remember { mutableStateOf<Track?>(null) }
@@ -188,7 +192,8 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
             )
         }
         item(key = "chips") {
-            HomeFilterChips(filter, spotifyVisible = spotifyOn) { f ->
+            val showChips by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.HomeCategoryChipsKey, true)
+            if (showChips) HomeFilterChips(filter, spotifyVisible = spotifyOn) { f ->
                 if (f == HomeFilter.COMMUNITY) ctx.navigator.select(Tab.TOGETHER) else filterState = f
             }
         }
@@ -236,13 +241,11 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
 
         // «Exclusivo de inicio»: en esta parte sólo van las estanterías de Spotify.
         if (!exclusive && (picks.isNotEmpty() || quickPicks is Load.Loading && seedId != null)) {
-            item(key = "qp:h") { SectionHeader("Selección rápida", strapline = "Empieza una radio") }
+            item(key = "qp:h") { SectionHeader("Selecciones rápidas", strapline = "Empieza una radio") }
             when (quickPicks) {
                 Load.Loading -> loadingRows(4)
                 is Load.Failed -> errorRow(quickPicks.message)
-                is Load.Done -> itemsIndexed(picks.take(8), key = { i, t -> "qp:$i:${t.videoId}" }) { i, t ->
-                    TrackRow(t, onClick = { ctx.player.playTracks(picks, i, "radio:${t.title}") }, playing = t.videoId == ctx.playingId)
-                }
+                is Load.Done -> item(key = "qp") { TrackCarousel(picks.take(10), ctx, "radio", large = true) }
             }
         }
 
@@ -265,15 +268,44 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
 
         // «Tus mixes» se oculta mientras no haya géneros: el clasificador llega en la fase 10.
 
+        if (history.size > 1) {
+            val keep = history.drop(1).distinctBy { it.videoId }.take(20)
+            item(key = "kl:h") { SectionHeader("Sigue escuchando") }
+            item(key = "kl") { TrackCarousel(keep, ctx, "history") }
+        }
+
+        if (!exclusive && sessions[SessionProvider.YOUTUBE] != null && ytPlaylists.isNotEmpty()) {
+            val account = sessions[SessionProvider.YOUTUBE]?.name
+            item(key = "ytpl:h") {
+                SectionHeader(
+                    "Tus playlists de YouTube",
+                    strapline = account,
+                    action = "Ver todo",
+                    onAction = { ctx.navigator.push(Screen.AccountPlaylists) },
+                )
+            }
+            item(key = "ytpl") {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(ytPlaylists.take(12), key = { it.id }) { p ->
+                        Column(Modifier.width(140.dp).clip(RoundedCornerShape(12.dp)).clickable { ctx.navigator.push(Screen.Playlist(p.id)) }) {
+                            CoverImage(p.thumbnail, Modifier.size(140.dp), RoundedCornerShape(12.dp), sizePx = 420)
+                            Spacer(Modifier.height(6.dp))
+                            Text(p.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+
+        val similar = picks.drop(10).take(20)
+        if (!exclusive && similar.isNotEmpty() && history.firstOrNull() != null) {
+            item(key = "sim:h") { SectionHeader("Similar a ${history.first().artists.substringBefore(",")}") }
+            item(key = "sim") { TrackCarousel(similar, ctx, "similar") }
+        }
+
         if (mostPlayed.isNotEmpty()) {
             item(key = "sd:h") { SectionHeader("Marcación rápida", strapline = "Lo que más escuchas") }
             item(key = "sd") { TrackCarousel(mostPlayed, ctx, "speed") }
-        }
-
-        if (history.size > 1) {
-            val keep = history.drop(1).distinctBy { it.videoId }.take(20)
-            item(key = "kl:h") { SectionHeader("Seguir escuchando") }
-            item(key = "kl") { TrackCarousel(keep, ctx, "history") }
         }
 
         if (forgotten.isNotEmpty()) {
@@ -302,8 +334,8 @@ private fun DezzyHomeTopBar(hour: Int, streakDays: Int, todayMinutes: Int, avata
         hour < 19 -> "Buenas tardes"
         else -> "Buenas noches"
     }
-    val subtitle = if (streakDays > 0 || todayMinutes > 0) {
-        "$streakDays ${if (streakDays == 1) "día" else "días"} de racha, $todayMinutes min hoy"
+    val subtitle = if (streakDays > 0) {
+        "$streakDays ${if (streakDays == 1) "día" else "días"} de racha"
     } else "¿Qué escuchamos hoy?"
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -546,13 +578,14 @@ private fun ToolTile(icon: ImageVector, title: String, subtitle: String, onClick
 // ── Carrusel de canciones ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TrackCarousel(tracks: List<Track>, ctx: ScreenContext, source: String) {
+private fun TrackCarousel(tracks: List<Track>, ctx: ScreenContext, source: String, large: Boolean = false) {
+    val side = if (large) 180.dp else 140.dp
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(tracks, key = { i, t -> "$i:${t.videoId}" }) { i, t ->
-            Column(Modifier.width(140.dp).clip(RoundedCornerShape(12.dp)).clickable { ctx.player.playTracks(tracks, i, source) }) {
-                CoverImage(t.thumbnail, Modifier.size(140.dp), RoundedCornerShape(12.dp), sizePx = 420)
+            Column(Modifier.width(side).clip(RoundedCornerShape(12.dp)).clickable { ctx.player.playTracks(tracks, i, source) }) {
+                CoverImage(t.thumbnail, Modifier.size(side), RoundedCornerShape(if (large) 20.dp else 12.dp), sizePx = if (large) 540 else 420)
                 Spacer(Modifier.height(6.dp))
-                Text(t.title, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(t.title, style = MaterialTheme.typography.bodyMedium, fontWeight = if (large) FontWeight.Bold else null, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(t.artists, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

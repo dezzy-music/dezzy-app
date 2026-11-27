@@ -26,8 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 enum class Tab(val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME("Inicio", Icons.Outlined.Home, Icons.Filled.Home),
     SEARCH("Buscar", Icons.Outlined.Search, Icons.Filled.Search),
-    LIBRARY("Biblioteca", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
-    TOGETHER("Juntos", Icons.Outlined.Groups, Icons.Filled.Groups),
+    LIBRARY("Tu biblioteca", Icons.Outlined.LibraryMusic, Icons.Filled.LibraryMusic),
+    TOGETHER("Salas", Icons.Outlined.Groups, Icons.Filled.Groups),
 }
 
 /** Pantallas que se apilan encima de una pestaña. */
@@ -87,6 +87,7 @@ enum class SettingsPage {
     SCROBBLING, DISCORD, LYRICS, LOSSLESS, EQUALIZER, DESKTOP_LINK, SOCIAL,
     DJ, DJ_VOICE, APP_ICON, WALLPAPER,
     COLOR_PALETTE, THEME_CREATOR,
+    BACKUP, PO_TOKEN, EXPERIMENTS, AOD,
 }
 
 /**

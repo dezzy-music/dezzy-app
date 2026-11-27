@@ -33,7 +33,10 @@ import com.dezzy.app.ui.player.lyrics.LyricsAnim
 import com.dezzy.app.ui.player.lyrics.LyricsAnimKey
 import com.dezzy.app.ui.player.lyrics.LyricsSyncOffsetKey
 import com.dezzy.app.ui.player.lyrics.LyricsTextScaleKey
+import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.screens.ScreenContext
+import com.dezzy.app.ui.screens.settings.prefs.*
 import kotlin.math.roundToInt
 
 private const val NO_TRANSLATION = ""
@@ -52,17 +55,85 @@ internal fun LyricsSettingsScreen(ctx: ScreenContext) {
     var bgDim by rememberPreference(LyricsBgDimKey, 0.4f)
     val pickBgImage = rememberOwnImagePicker(bgImage) { bgImage = it }
 
-    SettingsPage("Letras e IA", onBack = { ctx.navigator.back() }) {
-        item(key = "translate") {
-            SettingsGroup("Traducción") {
+    var tProvider by rememberPreference(LyricsTranslateProviderKey, "gemini")
+    var autoTranslate by rememberPreference(LyricsAutoTranslateKey, false)
+    var onlyIfDifferent by rememberPreference(LyricsTranslateOnlyIfDifferentKey, false)
+    var smartEmphasis by rememberPreference(LyricsSmartEmphasisKey, false)
+    var pLrcLib by rememberPreference(LyricsProviderLrcLibKey, true)
+    var pKuGou by rememberPreference(LyricsProviderKuGouKey, true)
+    var pBetter by rememberPreference(LyricsProviderBetterLyricsKey, true)
+    var pSimp by rememberPreference(LyricsProviderSimpMusicKey, true)
+    var preferred by rememberPreference(LyricsPreferredProviderKey, "LrcLib")
+    var romaJa by rememberPreference(LyricsRomanizeJapaneseKey, false)
+    var romaKo by rememberPreference(LyricsRomanizeKoreanKey, false)
+    var preload by rememberPreference(LyricsPreloadQueueKey, false)
+    var preloadCount by rememberPreference(LyricsPreloadCountKey, 1)
+
+    SettingsPage("Traducción de Letras", onBack = { ctx.navigator.back() }) {
+        item(key = "provider") {
+            SettingsGroup("Proveedor de traducción") {
                 SettingsChoiceRow(
-                    title = "Traducir a",
+                    title = "Proveedor",
+                    icon = Icons.Rounded.Translate,
+                    options = listOf("gemini"),
+                    selected = tProvider,
+                    label = { "Gemini (tu clave)" },
+                    onSelect = { tProvider = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Traducción sin conexión",
+                    subtitle = "No disponible en esta versión",
+                    icon = Icons.Rounded.Translate,
+                )
+            }
+        }
+        item(key = "auto-translate") {
+            SettingsGroup("Traducción Automática") {
+                SettingsSwitchRow(
+                    title = "Traducir automáticamente",
+                    subtitle = "Traducir letras en reproducción de forma automática",
+                    checked = autoTranslate,
+                    onCheckedChange = { autoTranslate = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Diferencia de idioma",
+                    subtitle = "Traducir solo si el idioma es diferente del de la interfaz",
+                    checked = onlyIfDifferent,
+                    onCheckedChange = { onlyIfDifferent = it },
+                )
+            }
+        }
+        item(key = "translate") {
+            SettingsGroup("Opciones de traducción") {
+                SettingsChoiceRow(
+                    title = "Idioma de destino",
                     icon = Icons.Rounded.Translate,
                     options = listOf(NO_TRANSLATION) + TRANSLATE_LANGUAGES.map { it.first },
                     selected = lang,
                     label = { code -> TRANSLATE_LANGUAGES.firstOrNull { it.first == code }?.second ?: "No traducir" },
                     onSelect = { lang = it },
-                    subtitle = null,
+                )
+            }
+        }
+        item(key = "ai-canvas") {
+            SettingsGroup("AI Canvas") {
+                SettingsSwitchRow(
+                    title = "Énfasis inteligente (IA)",
+                    subtitle = "Deja que la IA elija las palabras destacadas y el 'mood' del canvas tipográfico. Requiere API key configurada arriba.",
+                    checked = smartEmphasis,
+                    onCheckedChange = { smartEmphasis = it },
+                )
+            }
+        }
+        item(key = "dj") {
+            SettingsGroup("DJ Dezzy") {
+                SettingsRow(
+                    title = "DJ Dezzy",
+                    subtitle = "Cerebro, voz y personalidad de tu DJ",
+                    icon = Icons.Rounded.Translate,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.DJ)) },
                 )
             }
         }

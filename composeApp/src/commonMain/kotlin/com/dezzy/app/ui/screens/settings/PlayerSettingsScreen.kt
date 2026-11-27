@@ -17,10 +17,20 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.dezzy.app.feature.audio.AudioEffects
 import com.dezzy.app.feature.downloads.MobileDataQualityKey
 import com.dezzy.app.feature.video.VideoKeepModeOnSongChangeKey
@@ -35,11 +45,10 @@ import com.dezzy.app.feature.player.SkipSilenceKey
 import com.dezzy.app.source.stream.AudioQuality
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
-import com.dezzy.app.ui.player.kit.MiniPlayerStyle
-import com.dezzy.app.ui.player.kit.MiniPlayerStyleKey
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
+import com.dezzy.app.ui.screens.settings.prefs.*
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
@@ -77,11 +86,23 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     var skipSilence by rememberPreference(SkipSilenceKey, false)
     var pauseOnMute by rememberPreference(PauseOnMuteKey, false)
     var playOnBluetooth by rememberPreference(PlayOnBluetoothKey, false)
-    var miniStyle by rememberEnumPreference(MiniPlayerStyleKey, MiniPlayerStyle.PILL)
+    var client by rememberPreference(PlaybackClientKey, "Android VR")
+    var metered by rememberPreference(MeteredNetworkKey, false)
+    var historyDays by rememberPreference(HistoryDurationKey, 30)
+    var offload by rememberPreference(AudioOffloadKey, false)
+    var progressiveSeek by rememberPreference(ProgressiveSeekKey, false)
+    var castVideo by rememberPreference(CastVideoKey, false)
+    var autoDownloadLike by rememberPreference(AutoDownloadOnLikeKey, false)
+    var stopOnTask by rememberPreference(StopMusicOnTaskClearKey, false)
+    var cpuAwake by rememberPreference(KeepCpuAwakeKey, false)
+    var separators by rememberPreference(ArtistSeparatorsKey, ",;/&")
+    var externalDl by rememberPreference(ExternalDownloaderKey, false)
+    var dlPackage by rememberPreference(ExternalDownloaderPackageKey, "")
+    var packageDialog by remember { mutableStateOf(false) }
 
     SettingsPage(title = "Reproductor y audio", onBack = { ctx.navigator.back() }) {
         item(key = "quality") {
-            SettingsGroup("Calidad") {
+            SettingsGroup("Reproductor") {
                 SettingsChoiceRow(
                     title = "Calidad de audio",
                     icon = Icons.Rounded.HighQuality,
@@ -93,14 +114,91 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Motor de audio Hi-Res (32-bit float)",
-                    subtitle = when {
-                        !audioFx.processingSupported -> "El procesado de audio sólo funciona en Android"
-                        !audioFx.nativeAvailable -> "Usando el motor de respaldo"
-                        else -> "Se aplica al volver a abrir la app"
+                    subtitle = if (!audioFx.processingSupported) {
+                        "El procesado de audio sólo funciona en Android"
+                    } else {
+                        "Decodifica, ecualiza y envía el audio en coma flotante de 32 bits: conserva la resolución de FLAC de 24 bits y el ecualizador no recorta. Desactiva \"Omitir silencio\". Se aplica al reiniciar la app."
                     },
                     checked = audioFx.hiResEnabled,
                     onCheckedChange = audioEffects::setHiResEnabled,
                     enabled = audioFx.processingSupported,
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Cliente de reproducción",
+                    options = listOf("Android VR", "Web Remix", "iOS", "TV"),
+                    selected = client,
+                    label = { it },
+                    onSelect = { client = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Tratar la red como de uso medido",
+                    subtitle = "Si esta activada, la aplicación preferirá las transmisiones de baja calidad en redes de uso medido",
+                    checked = metered,
+                    onCheckedChange = { metered = it },
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Duración del historial",
+                    options = listOf(7, 30, 60, 90, 365),
+                    selected = historyDays,
+                    label = { "$it" },
+                    onSelect = { historyDays = it },
+                )
+                SettingsDivider()
+                SettingsSliderRow(
+                    title = "Fundido cruzado",
+                    icon = Icons.Rounded.Tune,
+                    value = crossfade.toFloat(),
+                    valueRange = 0f..12f,
+                    steps = 11,
+                    valueLabel = { if (it.roundToInt() == 0) "Crossfade disabled" else "${it.roundToInt()} s" },
+                    onValueChangeFinished = { scope.launch { prefs.setCrossfadeSeconds(it.roundToInt()) } },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Omitir silencio",
+                    icon = Icons.Rounded.FastForward,
+                    checked = skipSilence,
+                    onCheckedChange = { skipSilence = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Normalización de audio",
+                    icon = Icons.Rounded.VolumeUp,
+                    checked = normalize,
+                    onCheckedChange = { scope.launch { prefs.setNormalizeVolume(it) } },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Offload de audio",
+                    subtitle = "Permite que los dispositivos compatibles reproduzcan audio utilizando decodificación de hardware de bajo consumo. Algunas funciones de procesamiento de audio están desactivadas.",
+                    checked = offload,
+                    onCheckedChange = { offload = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Búsqueda progresiva",
+                    subtitle = "Si esta habilitado, añade 5 segundos extra de forma incremental en cada salto de búsqueda",
+                    checked = progressiveSeek,
+                    onCheckedChange = { progressiveSeek = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Pause when device volume is 0",
+                    subtitle = "Automatically pause music when muted and resume when unmuted",
+                    icon = Icons.Rounded.VolumeOff,
+                    checked = pauseOnMute,
+                    onCheckedChange = { pauseOnMute = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Auto-start on Bluetooth connect",
+                    subtitle = "Automatically resume playback when a Bluetooth audio device connects",
+                    icon = Icons.Rounded.Bluetooth,
+                    checked = playOnBluetooth,
+                    onCheckedChange = { playOnBluetooth = it },
                 )
                 SettingsDivider()
                 SettingsChoiceRow(
@@ -112,89 +210,10 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 )
             }
         }
-        item(key = "sound") {
-            SettingsGroup("Sonido") {
-                SettingsSwitchRow(
-                    title = "Normalizar el volumen",
-                    subtitle = "Mismo nivel entre canciones",
-                    icon = Icons.Rounded.VolumeUp,
-                    checked = normalize,
-                    onCheckedChange = { scope.launch { prefs.setNormalizeVolume(it) } },
-                )
-                SettingsDivider()
-                SettingsSliderRow(
-                    title = "Fundido entre canciones",
-                    icon = Icons.Rounded.Tune,
-                    value = crossfade.toFloat(),
-                    valueRange = 0f..12f,
-                    steps = 11,
-                    valueLabel = { if (it.roundToInt() == 0) "Desactivado" else "${it.roundToInt()} s" },
-                    onValueChangeFinished = { scope.launch { prefs.setCrossfadeSeconds(it.roundToInt()) } },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Saltar silencios",
-                    subtitle = "Acorta los silencios dentro de las canciones",
-                    icon = Icons.Rounded.FastForward,
-                    checked = skipSilence,
-                    onCheckedChange = { skipSilence = it },
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = "Ecualizador",
-                    subtitle = if (audioFx.eqEnabled) "Activado" else "Desactivado",
-                    icon = Icons.Rounded.GraphicEq,
-                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.EQUALIZER)) },
-                )
-            }
-        }
-        item(key = "behavior") {
-            SettingsGroup("Comportamiento") {
-                SettingsChoiceRow(
-                    title = "Estilo del minirreproductor",
-                    icon = Icons.Rounded.Queue,
-                    options = MiniPlayerStyle.entries.toList(),
-                    selected = miniStyle,
-                    label = { if (it == MiniPlayerStyle.PILL) "Píldora" else "Barra" },
-                    onSelect = { miniStyle = it },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Recordar la cola",
-                    subtitle = "Recupera lo que sonaba al volver a abrir",
-                    icon = Icons.Rounded.Queue,
-                    checked = persistentQueue,
-                    onCheckedChange = { scope.launch { prefs.setPersistentQueue(it) } },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Saltar canciones que fallan",
-                    icon = Icons.Rounded.SkipNext,
-                    checked = autoSkip,
-                    onCheckedChange = { scope.launch { prefs.setAutoSkip(it) } },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Pausar al silenciar",
-                    subtitle = "Pausa si el volumen de medios llega a 0 y reanuda al subirlo",
-                    icon = Icons.Rounded.VolumeOff,
-                    checked = pauseOnMute,
-                    onCheckedChange = { pauseOnMute = it },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Reproducir al conectar Bluetooth",
-                    subtitle = "Si hay cola, empieza a sonar al conectar auriculares o altavoz",
-                    icon = Icons.Rounded.Bluetooth,
-                    checked = playOnBluetooth,
-                    onCheckedChange = { playOnBluetooth = it },
-                )
-            }
-        }
         item(key = "video") {
-            SettingsGroup("Vídeo") {
+            SettingsGroup("Reproducción de video") {
                 SettingsChoiceRow(
-                    title = "Calidad máxima del vídeo",
+                    title = "Calidad máxima de video",
                     icon = Icons.Rounded.Movie,
                     options = VideoQuality.entries.toList(),
                     selected = videoQuality,
@@ -203,7 +222,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 )
                 SettingsDivider()
                 SettingsChoiceRow(
-                    title = "Ajuste de la imagen",
+                    title = "Ajuste del video",
                     icon = Icons.Rounded.Crop,
                     options = VideoResizeMode.entries.toList(),
                     selected = resizeMode,
@@ -218,17 +237,121 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 )
                 SettingsDivider()
                 SettingsSwitchRow(
-                    title = "Mantener el modo vídeo al cambiar de canción",
+                    title = "Mantener modo video",
+                    subtitle = "Seguir en modo video al cambiar de canción",
                     checked = keepMode,
                     onCheckedChange = { keepMode = it },
                 )
                 SettingsDivider()
                 SettingsSwitchRow(
-                    title = "Ventana flotante (PiP)",
+                    title = "Imagen en imagen",
+                    subtitle = "Seguir viendo el video en una ventana pequeña al salir de la app",
                     checked = pip,
                     onCheckedChange = { pip = it },
                 )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Castear video",
+                    subtitle = "Enviar el video musical (no solo el audio) al castear",
+                    checked = castVideo,
+                    onCheckedChange = { castVideo = it },
+                )
             }
         }
+        item(key = "queue") {
+            SettingsGroup("Cola") {
+                SettingsSwitchRow(
+                    title = "Cola persistente",
+                    subtitle = "Restaura tú ultima cola cuando se inicia la aplicación",
+                    icon = Icons.Rounded.Queue,
+                    checked = persistentQueue,
+                    onCheckedChange = { scope.launch { prefs.setPersistentQueue(it) } },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Auto descargar al dar me gusta",
+                    subtitle = "Descargar las canciones automáticamente al darle me gusta",
+                    checked = autoDownloadLike,
+                    onCheckedChange = { autoDownloadLike = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Omitir automáticamente la siguiente canción cuando ocurran errores",
+                    subtitle = "Asegúrate de que la reproducción no se interrumpa",
+                    icon = Icons.Rounded.SkipNext,
+                    checked = autoSkip,
+                    onCheckedChange = { scope.launch { prefs.setAutoSkip(it) } },
+                )
+            }
+        }
+        item(key = "misc") {
+            SettingsGroup("Varios") {
+                SettingsSwitchRow(
+                    title = "Detener la música al finalizar la tarea",
+                    checked = stopOnTask,
+                    onCheckedChange = { stopOnTask = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Keep CPU awake during playback",
+                    subtitle = "Prevents the system from interrupting music by holding a CPU wake lock",
+                    checked = cpuAwake,
+                    onCheckedChange = { cpuAwake = it },
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Símbolos para separar artistas",
+                    options = listOf(",;/&", ",", ";", "/", "&"),
+                    selected = separators,
+                    label = { s -> s.map { "\"$it\"" }.joinToString(" ") },
+                    onSelect = { separators = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Etiquetas de lista de reproducción",
+                    subtitle = "Crea y administra etiquetas para organizar las listas de reproducción",
+                    onClick = { ctx.toast("Las etiquetas de listas llegan en una próxima versión") },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "External Downloader",
+                    subtitle = "Download songs through an external app by package name",
+                    checked = externalDl,
+                    onCheckedChange = { externalDl = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Downloader App Package",
+                    subtitle = dlPackage.ifBlank { "Package name of the external downloader app (e.g. com.deniscerri.ytdl)" },
+                    onClick = if (externalDl) ({ packageDialog = true }) else null,
+                    trailing = { Spacer(Modifier.size(0.dp)) },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Ecualizador",
+                    subtitle = if (audioFx.eqEnabled) "Activado" else "Desactivado",
+                    icon = Icons.Rounded.GraphicEq,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.EQUALIZER)) },
+                )
+            }
+        }
+    }
+
+    if (packageDialog) {
+        var draft by remember { mutableStateOf(dlPackage) }
+        AlertDialog(
+            onDismissRequest = { packageDialog = false },
+            title = { Text("Downloader App Package") },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    singleLine = true,
+                    placeholder = { Text("com.deniscerri.ytdl") },
+                )
+            },
+            confirmButton = { TextButton(onClick = { dlPackage = draft.trim(); packageDialog = false }) { Text("Guardar") } },
+            dismissButton = { TextButton(onClick = { packageDialog = false }) { Text("Cancelar") } },
+        )
     }
 }

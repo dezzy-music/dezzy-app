@@ -24,6 +24,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.QrCode2
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Groups
@@ -81,6 +86,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 private enum class SocialTab(val label: String) {
+    ROOMS("Salas"),
     FRIENDS("Amigos"),
     MAP("Mapa"),
     NEARBY("Cerca"),
@@ -110,7 +116,8 @@ fun SocialHubScreen(ctx: ScreenContext) {
 @Composable
 private fun SocialHome(ctx: ScreenContext) {
     val social: P2PSocial = koinInject()
-    var tab by remember { mutableStateOf(SocialTab.FRIENDS) }
+    var tab by remember { mutableStateOf(SocialTab.ROOMS) }
+    var roomsVersion by remember { mutableStateOf(0) }
     var addFriend by remember { mutableStateOf(false) }
     var composer by remember { mutableStateOf(false) }
     var feedVersion by remember { mutableStateOf(0) }
@@ -119,10 +126,10 @@ private fun SocialHome(ctx: ScreenContext) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TopSpacer()
-            ScreenTitle("Social", actions = {
-                IconButton(onClick = { ctx.navigator.push(Screen.Together()) }) { Icon(Icons.Rounded.Headphones, "Escuchar juntos") }
+            com.dezzy.app.ui.components.DezzyTopBar(ctx)
+            ScreenTitle(if (tab == SocialTab.ROOMS) "Juntos" else "Social", onBack = if (tab == SocialTab.ROOMS) null else ({ tab = SocialTab.ROOMS }), actions = {
                 IconButton(onClick = { addFriend = true }) { Icon(Icons.Rounded.Search, "Buscar personas") }
+                IconButton(onClick = { roomsVersion++ }) { Icon(Icons.Rounded.Refresh, "Actualizar") }
                 IconButton(onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SOCIAL)) }) {
                     Icon(Icons.Rounded.Settings, "Ajustes de la red social")
                 }
@@ -134,6 +141,12 @@ private fun SocialHome(ctx: ScreenContext) {
                     )
                 }
             })
+            if (tab == SocialTab.ROOMS) Text(
+                "Escucha en sincronía con otras personas",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
             DezzySingleChoiceSegmentedRow(
                 items = SocialTab.entries,
                 selected = tab,
@@ -143,6 +156,7 @@ private fun SocialHome(ctx: ScreenContext) {
             )
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
+                    SocialTab.ROOMS -> RoomsTab(ctx, roomsVersion)
                     SocialTab.FRIENDS -> FriendsTab(ctx) { addFriend = true }
                     SocialTab.MAP -> MapTab(ctx)
                     SocialTab.NEARBY -> NearbyTab(ctx)
@@ -168,6 +182,81 @@ private fun SocialHome(ctx: ScreenContext) {
     }
     if (addFriend) P2PAddFriendSheet(ctx) { addFriend = false }
     if (composer) P2PComposerSheet(ctx, onDismiss = { composer = false }, onPosted = { feedVersion++ })
+}
+
+// ---------------------------------------------------------------- Salas
+
+/** «Juntos»: crear sala, unirse con código y salas públicas (aún sin listado público: estado vacío). */
+@Composable
+private fun RoomsTab(ctx: ScreenContext, @Suppress("UNUSED_PARAMETER") version: Int) {
+    val genres = listOf("Todos", "Lofi", "Pop", "Hip-Hop", "Rock", "Electrónica")
+    var genre by remember { mutableStateOf("Todos") }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RoomTile(
+                    Modifier.weight(1f), "Crear sala", "Tú eliges la música", Icons.Rounded.Add,
+                    container = MaterialTheme.colorScheme.onSurface, content = MaterialTheme.colorScheme.surface,
+                ) { ctx.navigator.push(Screen.Together()) }
+                RoomTile(
+                    Modifier.weight(1f), "Unirse con código", "Código de 6 caracteres o QR", Icons.Rounded.QrCode2,
+                    container = MaterialTheme.colorScheme.surfaceContainerHigh, content = MaterialTheme.colorScheme.onSurface,
+                ) { ctx.navigator.push(Screen.Together()) }
+            }
+        }
+        item {
+            Text(
+                "Salas públicas",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+            )
+        }
+        item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(genres) { g ->
+                    DezzyFilterChip(
+                        selected = g == genre,
+                        onClick = { genre = g },
+                        label = { Text(g) },
+                        leadingIcon = if (g == genre) ({ Icon(Icons.Rounded.Check, null, Modifier.size(18.dp)) }) else null,
+                    )
+                }
+            }
+        }
+        item {
+            P2PEmptyState(
+                Icons.Rounded.Public,
+                "No hay salas públicas activas",
+                "¡Sé el primero! Crea una sala pública y comparte tu música con el mundo.",
+                action = {
+                    DezzyButton(onClick = { ctx.navigator.push(Screen.Together()) }) {
+                        Icon(Icons.Rounded.Add, null, Modifier.size(18.dp))
+                        Text("Crear sala pública", modifier = Modifier.padding(start = 6.dp))
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RoomTile(
+    modifier: Modifier,
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    container: androidx.compose.ui.graphics.Color,
+    content: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Surface(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(24.dp), color = container, contentColor = content) {
+        Column(Modifier.padding(16.dp)) {
+            Icon(icon, null)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 12.dp))
+            Text(subtitle, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
 }
 
 // ---------------------------------------------------------------- Amigos

@@ -78,6 +78,7 @@ import com.dezzy.app.ui.screens.TabContent
  */
 @Composable
 fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
+    com.dezzy.app.ui.screens.settings.ApplyWindowSecure(com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.DisableScreenshotKey, false).value)
     val navigator = remember { Navigator() }
     val state by player.state.collectAsState()
     var expanded by rememberSaveable { mutableStateOf(false) }

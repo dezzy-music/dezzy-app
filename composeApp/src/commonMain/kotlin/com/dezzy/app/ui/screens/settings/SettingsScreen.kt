@@ -20,8 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Info
@@ -53,7 +56,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dezzy.app.core.AppVersionName
 import com.dezzy.app.core.accounts.AccountStore
+import com.dezzy.app.feature.dj.DjSettings
+import com.dezzy.app.feature.dj.DjVoice
+import com.dezzy.app.feature.lyrics.LyricsTranslateLangKey
+import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.core.model.UserSession
 import com.dezzy.app.ui.components.CoverImage
@@ -110,6 +118,11 @@ private val SUBPAGE_INDEX: List<Pair<String, SettingsPage>> = listOf(
     // Acerca de
     "Versión" to SettingsPage.ABOUT,
     "Licencia" to SettingsPage.ABOUT,
+    // Páginas nuevas
+    "Exportar o importar listas" to SettingsPage.BACKUP,
+    "PoToken" to SettingsPage.PO_TOKEN,
+    "Estadísticas para nerds" to SettingsPage.EXPERIMENTS,
+    "Reloj en reposo" to SettingsPage.AOD,
 )
 
 private fun pageName(page: SettingsPage): String = when (page) {
@@ -138,6 +151,10 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.WALLPAPER -> "Fondos de pantalla"
     SettingsPage.COLOR_PALETTE -> "Paleta de color"
     SettingsPage.THEME_CREATOR -> "Creador de Temas"
+    SettingsPage.BACKUP -> "Copia de seguridad"
+    SettingsPage.PO_TOKEN -> "Token de reproducción"
+    SettingsPage.EXPERIMENTS -> "Experimentos"
+    SettingsPage.AOD -> "Pantalla siempre activa"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */
@@ -163,26 +180,62 @@ internal fun SettingsScreen(ctx: ScreenContext) {
     val accounts: AccountStore = koinInject()
     val sessions by accounts.sessions.collectAsState()
     val youtube = sessions[SessionProvider.YOUTUBE]
-    val language by ctx.prefs.contentLanguage.collectAsState("es")
-    val country by ctx.prefs.contentCountry.collectAsState("US")
+    val themeMode by ctx.prefs.themeMode.collectAsState("dark")
+    val quality by ctx.prefs.audioQuality.collectAsState("auto")
+    val normalize by ctx.prefs.normalizeVolume.collectAsState(false)
+    val translateLang by rememberPreference(LyricsTranslateLangKey, "")
+    val djSettings: DjSettings = koinInject()
+    val djProvider by djSettings.provider.collectAsState(DjVoice.FREE)
+    val djVoiceName by djSettings.voiceName.collectAsState("")
+    val openDefaultLinks = rememberOpenDefaultLinksSettings()
+    val spotifyConnected = sessions[SessionProvider.SPOTIFY] != null
+
+    val themeText = when (themeMode) {
+        "light" -> "Tema claro"
+        "system" -> "Según el sistema"
+        else -> "Tema oscuro"
+    }
+    val qualityText = when (quality) {
+        "high" -> "Calidad alta"
+        "low" -> "Calidad baja"
+        else -> "Calidad automática"
+    } + if (normalize) ", normalizar volumen" else ""
+    val djText = if (djProvider == DjVoice.FREE) {
+        "Voz gratuita"
+    } else {
+        DjVoice.providerName(djProvider) + if (djVoiceName.isNotBlank()) " · $djVoiceName" else ""
+    }
 
     val group1 = listOf(
-        SettingsEntry("Apariencia", "Tema del sistema, color dinámico", Icons.Rounded.Palette) { open(SettingsPage.APPEARANCE) },
-        SettingsEntry("Reproductor y audio", "Calidad alta, normalizar volumen", Icons.Rounded.PlayCircle) { open(SettingsPage.PLAYER) },
-        SettingsEntry("Letras e IA", "Traducción, alineación y animación", Icons.Rounded.Lyrics) { open(SettingsPage.LYRICS) },
-        SettingsEntry("DJ Dezzy", "Gustos, voz y tu clave de Gemini", Icons.Rounded.AutoAwesome) { open(SettingsPage.DJ) },
-        SettingsEntry("Contenido", "${languageName(language)}, ${countryName(country)}", Icons.Rounded.Language) { open(SettingsPage.CONTENT) },
+        SettingsEntry("Apariencia", themeText, Icons.Rounded.Palette) { open(SettingsPage.APPEARANCE) },
+        SettingsEntry("Reproductor y audio", qualityText, Icons.Rounded.PlayCircle) { open(SettingsPage.PLAYER) },
+        SettingsEntry(
+            "Letras e IA",
+            if (translateLang.isNotEmpty()) "Traducción automática activada" else "Traducción automática desactivada",
+            Icons.Rounded.Lyrics,
+        ) { open(SettingsPage.LYRICS) },
+        SettingsEntry("DJ Dezzy", djText, Icons.Rounded.AutoAwesome) { open(SettingsPage.DJ) },
+        SettingsEntry("Contenido", "Idioma y región del sistema", Icons.Rounded.Language) { open(SettingsPage.CONTENT) },
+        SettingsEntry("Pantalla siempre activa", "Reloj y letras con la pantalla en reposo", Icons.Rounded.Schedule) { open(SettingsPage.AOD) },
     )
     val group2 = listOf(
-        SettingsEntry("Cuentas y servicios", "YouTube, Spotify", Icons.Rounded.Hub) { open(SettingsPage.ACCOUNTS) },
-        SettingsEntry("Descargas y almacenamiento", "Caché 1,2 GB, lossless", Icons.Rounded.Download) { open(SettingsPage.STORAGE) },
-        SettingsEntry("Privacidad", "Historial activado", Icons.Rounded.Lock) { open(SettingsPage.PRIVACY) },
-        SettingsEntry("Red social", "Amigos, radar y tus 12 palabras", Icons.Rounded.Groups) { open(SettingsPage.SOCIAL) },
-        SettingsEntry("Vincular escritorio", "Pasa tus sesiones a Dezzy Desktop", Icons.Rounded.Computer) { open(SettingsPage.DESKTOP_LINK) },
+        SettingsEntry(
+            "Cuentas y servicios",
+            if (spotifyConnected) "Spotify" else "YouTube, Spotify y más",
+            Icons.Rounded.Hub,
+        ) { open(SettingsPage.ACCOUNTS) },
+        SettingsEntry("Descargas y almacenamiento", "Caché, descargas y espacio usado", Icons.Rounded.Download) { open(SettingsPage.STORAGE) },
+        SettingsEntry("Copia de seguridad", "Exportar o restaurar tus datos", Icons.Rounded.Backup) { open(SettingsPage.BACKUP) },
+        SettingsEntry("Privacidad", "Historial y capturas de pantalla", Icons.Rounded.Lock) { open(SettingsPage.PRIVACY) },
     )
-    val group3 = listOf(
-        SettingsEntry("Actualizaciones", "Versión 3.0.8 disponible", Icons.Rounded.SystemUpdate, badge = false) { ctx.pending("Actualizaciones", "11") },
-        SettingsEntry("Acerca de Dezzy", "Versión 3.0.7", Icons.Rounded.Info) { open(SettingsPage.ABOUT) },
+    val group3 = listOfNotNull(
+        openDefaultLinks?.let {
+            SettingsEntry("Enlaces predeterminados", "Abrir enlaces de YouTube Music con Dezzy", Icons.Rounded.Link) { it() }
+        },
+        SettingsEntry("Token de reproducción", "PoToken y datos del cliente web", Icons.Rounded.VpnKey) { open(SettingsPage.PO_TOKEN) },
+        SettingsEntry("Experimentos", "Funciones en pruebas y depuración", Icons.Rounded.Science) { open(SettingsPage.EXPERIMENTS) },
+        SettingsEntry("Actualizaciones", "Estás al día, versión $AppVersionName", Icons.Rounded.SystemUpdate) { },
+        SettingsEntry("Acerca de", "Dezzy $AppVersionName", Icons.Rounded.Info) { open(SettingsPage.ABOUT) },
     )
 
     SettingsPage(title = "Ajustes", onBack = null) {
@@ -265,7 +318,7 @@ private fun SettingsAccountCard(session: UserSession?, onClick: () -> Unit) {
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
+            .background(Color(0xFFF1EEF7))
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -291,7 +344,7 @@ private fun SettingsAccountCard(session: UserSession?, onClick: () -> Unit) {
                 if (session != null) session.name ?: "Cuenta de YouTube Music" else "Inicia sesión",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = Color(0xFF1B1B1F),
             )
             Text(
                 when {
@@ -300,9 +353,9 @@ private fun SettingsAccountCard(session: UserSession?, onClick: () -> Unit) {
                     else -> "Cuenta de YouTube Music conectada"
                 },
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                color = Color(0xFF47464F),
             )
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color(0xFF1B1B1F))
     }
 }

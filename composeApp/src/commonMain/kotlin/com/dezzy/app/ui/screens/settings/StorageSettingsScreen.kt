@@ -37,6 +37,11 @@ import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
+import com.dezzy.app.ui.screens.settings.prefs.CanvasCacheMaxMbKey
+import com.dezzy.app.ui.screens.settings.prefs.ImageCacheMaxMbKey
+import com.dezzy.app.ui.screens.settings.prefs.SaveDownloadsToMusicKey
+import com.dezzy.app.ui.screens.settings.prefs.SmartTrimCacheKey
+import com.dezzy.app.ui.screens.settings.prefs.SongCacheMaxMbKey
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import androidx.compose.runtime.LaunchedEffect
@@ -69,15 +74,59 @@ internal fun StorageSettingsScreen(ctx: ScreenContext) {
 
     LaunchedEffect(cleaner) { entries = cleaner.entries() }
 
-    SettingsPage(title = "Descargas y almacenamiento", onBack = { ctx.navigator.back() }) {
+    var smartTrim by rememberPreference(SmartTrimCacheKey, false)
+    var saveToMusic by rememberPreference(SaveDownloadsToMusicKey, false)
+    var songCacheMb by rememberPreference(SongCacheMaxMbKey, 0)
+    var imageCacheMb by rememberPreference(ImageCacheMaxMbKey, 0)
+    var canvasCacheMb by rememberPreference(CanvasCacheMaxMbKey, 0)
+    val downloads = koinInject<DownloadManager>()
+    var confirmDeleteDownloads by remember { mutableStateOf(false) }
+    val cacheSizes = listOf(0, 128, 256, 512, 1024, 2048)
+    val cacheLabel: (Int) -> String = { if (it == 0) "Ilimitado" else if (it >= 1024) "${it / 1024} GB" else "$it MB" }
+
+    SettingsPage(title = "Almacenamiento", onBack = { ctx.navigator.back() }) {
+        item(key = "smart-trim") {
+            SettingsGroup {
+                SettingsSwitchRow(
+                    title = "Cortador inteligente",
+                    subtitle = "El cortador inteligente administra dinámicamente las canciones e imágenes en cache, eliminando viejas entradas y guardando espacio en disco.",
+                    icon = Icons.Rounded.CleaningServices,
+                    checked = smartTrim,
+                    onCheckedChange = { smartTrim = it },
+                )
+            }
+        }
         item(key = "downloads") {
-            SettingsGroup("Descargas") {
-                val doneItems = dlState.items.filter { it.status == DownloadStatus.DONE }
+            val doneItems = dlState.items.filter { it.status == DownloadStatus.DONE }
+            SettingsGroup("Canciones descargadas · ${readableSize(dlState.usedBytes)} usados") {
                 SettingsRow(
                     title = "Canciones descargadas",
                     subtitle = "${doneItems.size} ${if (doneItems.size == 1) "canción" else "canciones"} • ${readableSize(dlState.usedBytes)}",
                     icon = Icons.Rounded.Download,
                     onClick = { ctx.navigator.push(Screen.Downloads) },
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Simultaneous downloads",
+                    icon = Icons.Rounded.Download,
+                    options = listOf(1, 2, 3, 4),
+                    selected = concurrency,
+                    label = { "$it" },
+                    onSelect = { concurrency = it },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Save downloads to Music folder",
+                    subtitle = "After downloading, copy the file to Music/Dezzy on your device storage",
+                    icon = Icons.Rounded.Storage,
+                    checked = saveToMusic,
+                    onCheckedChange = { saveToMusic = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Eliminar todas las descargas",
+                    icon = Icons.Rounded.CleaningServices,
+                    onClick = { confirmDeleteDownloads = true },
                 )
                 SettingsDivider()
                 SettingsChoiceRow(
@@ -87,15 +136,6 @@ internal fun StorageSettingsScreen(ctx: ScreenContext) {
                     selected = dlQuality,
                     label = { qualityLabel(it) },
                     onSelect = { dlQuality = it },
-                )
-                SettingsDivider()
-                SettingsChoiceRow(
-                    title = "Descargas simultáneas",
-                    icon = Icons.Rounded.Download,
-                    options = listOf(1, 2, 3, 4),
-                    selected = concurrency,
-                    label = { "$it" },
-                    onSelect = { concurrency = it },
                 )
                 SettingsDivider()
                 SettingsChoiceRow(
@@ -122,9 +162,65 @@ internal fun StorageSettingsScreen(ctx: ScreenContext) {
                 )
             }
         }
+        item(key = "song-cache") {
+            SettingsGroup("Cache de canción · 0 KB usados") {
+                SettingsChoiceRow(
+                    title = "Tamaño máximo de cache",
+                    icon = Icons.Rounded.Storage,
+                    options = cacheSizes,
+                    selected = songCacheMb,
+                    label = cacheLabel,
+                    onSelect = { songCacheMb = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Eliminar cache de canciones",
+                    icon = Icons.Rounded.CleaningServices,
+                    onClick = { ctx.toast("La caché de canciones está vacía") },
+                )
+            }
+        }
+        item(key = "image-cache") {
+            val bytes = entries?.firstOrNull { it.id == "images" }?.bytes ?: 0L
+            SettingsGroup("Cache de imagen · ${readableSize(bytes)} usados") {
+                SettingsChoiceRow(
+                    title = "Tamaño máximo de cache",
+                    icon = Icons.Rounded.Storage,
+                    options = cacheSizes,
+                    selected = imageCacheMb,
+                    label = cacheLabel,
+                    onSelect = { imageCacheMb = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Eliminar cache de imágenes",
+                    icon = Icons.Rounded.CleaningServices,
+                    onClick = { scope.launch { cleaner.clear("images"); entries = cleaner.entries() } },
+                )
+            }
+        }
+        item(key = "canvas-cache") {
+            val bytes = entries?.firstOrNull { it.id == "video" }?.bytes ?: 0L
+            SettingsGroup("Cache del Canvas · ${readableSize(bytes)} usados") {
+                SettingsChoiceRow(
+                    title = "Tamaño máximo de cache",
+                    icon = Icons.Rounded.Storage,
+                    options = cacheSizes,
+                    selected = canvasCacheMb,
+                    label = cacheLabel,
+                    onSelect = { canvasCacheMb = it },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Limpiar el cache del canvas",
+                    icon = Icons.Rounded.CleaningServices,
+                    onClick = { scope.launch { cleaner.clear("video"); entries = cleaner.entries() } },
+                )
+            }
+        }
         item(key = "cache") {
             val list = entries
-            SettingsGroup("Caché") {
+            SettingsGroup("Otras cachés") {
                 if (list.isNullOrEmpty()) {
                     Text(
                         if (list == null) "Calculando…" else "No hay cachés que vaciar",
@@ -145,6 +241,21 @@ internal fun StorageSettingsScreen(ctx: ScreenContext) {
                 }
             }
         }
+    }
+
+    if (confirmDeleteDownloads) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteDownloads = false },
+            title = { Text("Eliminar todas las descargas") },
+            text = { Text("Se borrarán todas las canciones descargadas de este dispositivo.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteDownloads = false
+                    dlState.items.map { it.id }.forEach { downloads.remove(it) }
+                }) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteDownloads = false }) { Text("Cancelar") } },
+        )
     }
 
     toClear?.let { entry ->

@@ -101,12 +101,12 @@ fun AppThemeSelectorCard(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Estilo de la interfaz",
+                        text = "Tema de la aplicación",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "Elige cómo se ven los elementos de la app",
+                        text = "Alterna entre Normal (Material 3), LiquidGlass y Nothing OS 3.0",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -30,8 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.NorthWest
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Mic
@@ -59,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -69,6 +75,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -87,14 +96,19 @@ import com.dezzy.app.ui.components.CoverImage
 import com.dezzy.app.source.spotify.SpotifyFeatures
 import com.dezzy.app.source.spotify.SpotifyTrack
 import com.dezzy.app.ui.components.SpotifyTrackRow
+import com.dezzy.app.ui.components.SongMenuSheet
 import com.dezzy.app.ui.components.TrackRow
 import com.dezzy.app.ui.components.rememberSpotifyTrackPlayer
 import com.dezzy.app.ui.navigation.Screen
-import com.dezzy.app.ui.screens.search.SearchTypeChips
+import com.dezzy.app.ui.screens.search.SearchHistoryKey
 import com.dezzy.app.ui.screens.search.TopVideosScreen
+import com.dezzy.app.ui.screens.search.addSearchHistory
+import com.dezzy.app.ui.screens.search.parseSearchHistory
+import com.dezzy.app.ui.screens.search.removeSearchHistory
 import com.dezzy.app.ui.screens.search.rememberVideoSearch
 import com.dezzy.app.ui.screens.search.videoSearchResults
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 /** Cuántos géneros se muestran en la portada antes de «Ver todo». */
@@ -112,12 +126,24 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
     var submitted by rememberSaveable(initial) { mutableStateOf(initial) }
     var suggestions by remember { mutableStateOf<SearchSuggestions?>(null) }
     var topVideos by rememberSaveable { mutableStateOf(false) }
+    var source by rememberSaveable { mutableStateOf(SearchSourceOption.YOUTUBE) }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val historyRaw by remember { ctx.prefs.value(SearchHistoryKey, "") }.collectAsState("")
+    val history = remember(historyRaw) { parseSearchHistory(historyRaw) }
 
     fun submit(text: String) {
         query = text
         submitted = text.trim()
         keyboard?.hide()
+        if (submitted.isNotEmpty()) ctx.scope.launch { addSearchHistory(ctx.prefs, submitted) }
+    }
+
+    // Al abrir la pestaña el campo recibe el foco y sale el teclado.
+    LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+        keyboard?.show()
     }
 
     LaunchedEffect(query) {
@@ -135,24 +161,96 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            placeholder = { Text("Buscar música, artistas, álbumes") },
-            leadingIcon = { Icon(Icons.Rounded.Search, null) },
+            placeholder = { Text("¿Qué quieres escuchar?") },
+            leadingIcon = {
+                IconButton(onClick = {
+                    if (query.isNotEmpty() || topVideos) { query = ""; submitted = ""; topVideos = false }
+                    else { keyboard?.hide(); focusManager.clearFocus() }
+                }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás") }
+            },
             trailingIcon = {
                 if (query.isNotEmpty()) {
                     IconButton(onClick = { query = ""; submitted = "" }) { Icon(Icons.Rounded.Clear, "Borrar") }
+                } else {
+                    Icon(Icons.Rounded.Language, null)
                 }
             },
             shape = RoundedCornerShape(28.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { submit(query) }),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focusRequester),
+        )
+        SearchSourceChips(
+            current = source,
+            onSelect = {
+                when (it) {
+                    SearchSourceOption.LOSSLESS -> ctx.navigator.push(Screen.Lossless)
+                    else -> source = it
+                }
+            },
         )
         when {
             query.isBlank() && topVideos -> TopVideosScreen(ctx, onBack = { topVideos = false })
-            query.isBlank() -> SearchHome(ctx, onTopVideos = { topVideos = true })
+            query.isBlank() -> SearchHome(
+                ctx,
+                history = history,
+                onPick = ::submit,
+                onFill = { query = it },
+                onRemove = { q -> ctx.scope.launch { removeSearchHistory(ctx.prefs, q) } },
+                onTopVideos = { topVideos = true },
+            )
             query != submitted -> SuggestionsList(ctx, suggestions, onQuery = ::submit)
-            else -> SearchResults(ctx, submitted)
+            else -> SearchResults(ctx, submitted, source)
         }
+    }
+}
+
+/** Filtros por tipo de los resultados (Todos ✓ · Canciones · Vídeos · Álbumes · Artistas · Listas). */
+private enum class SearchFilter(val label: String) {
+    ALL("Todos"), SONGS("Canciones"), VIDEOS("Vídeos"), ALBUMS("Álbumes"), ARTISTS("Artistas"), PLAYLISTS("Listas"),
+}
+
+@Composable
+private fun SearchFilterChips(current: SearchFilter, onSelect: (SearchFilter) -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        SearchFilter.entries.forEach { f ->
+            val selected = f == current
+            FilterChip(
+                selected = selected,
+                onClick = { onSelect(f) },
+                label = { Text(f.label, maxLines = 1) },
+                leadingIcon = if (selected) {
+                    { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
+                } else null,
+            )
+        }
+    }
+}
+
+/** Historial de búsqueda: 🕘 texto ✕ (borra esa) ↖ (rellena el campo). */
+private fun LazyListScope.searchHistoryRows(
+    history: List<String>,
+    onPick: (String) -> Unit,
+    onFill: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    items(history.size, key = { "hist:${history[it]}" }) { i ->
+        val q = history[i]
+        ListItem(
+            headlineContent = { Text(q, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            leadingContent = { Icon(Icons.Rounded.History, null) },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { onRemove(q) }) { Icon(Icons.Rounded.Close, "Borrar del historial") }
+                    IconButton(onClick = { onFill(q) }) { Icon(Icons.Rounded.NorthWest, "Rellenar") }
+                }
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier = Modifier.clickable { onPick(q) },
+        )
     }
 }
 
@@ -195,7 +293,14 @@ private data class DiscoverEntry(
 )
 
 @Composable
-private fun SearchHome(ctx: ScreenContext, onTopVideos: () -> Unit) {
+private fun SearchHome(
+    ctx: ScreenContext,
+    history: List<String>,
+    onPick: (String) -> Unit,
+    onFill: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onTopVideos: () -> Unit,
+) {
     val moods = rememberLoad("moods") { ctx.client.getMoodsAndGenres() }
     val discover = listOf(
         DiscoverEntry(Icons.Rounded.TrendingUp, "Éxitos", "Lo más escuchado", { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) }, highlighted = true),
@@ -205,6 +310,7 @@ private fun SearchHome(ctx: ScreenContext, onTopVideos: () -> Unit) {
     )
 
     LazyColumn(Modifier.fillMaxSize()) {
+        searchHistoryRows(history, onPick, onFill, onRemove)
         item { HomeSectionTitle("Descubre") }
         items(discover.chunked(2).size) { row ->
             val pair = discover.chunked(2)[row]
@@ -357,9 +463,13 @@ private fun MoodCard(item: MoodItem, onClick: () -> Unit, modifier: Modifier = M
 // ---------------------------------------------------------------- resultados
 
 @Composable
-private fun SearchResults(ctx: ScreenContext, query: String) {
-    var source by rememberSaveable { mutableStateOf(SearchSourceOption.YOUTUBE) }
-    var videosOnly by rememberSaveable { mutableStateOf(false) }
+private fun SearchResults(ctx: ScreenContext, query: String, source: SearchSourceOption) {
+    if (source == SearchSourceOption.LIBRARY) {
+        LibrarySearchResults(ctx, query)
+        return
+    }
+    var filter by rememberSaveable { mutableStateOf(SearchFilter.ALL) }
+    val videosOnly = filter == SearchFilter.VIDEOS
     val result = rememberLoad(query) { ctx.client.search(query) }
     val videoResult = rememberVideoSearch(ctx, query, videosOnly)
     val features: SpotifyFeatures = koinInject()
@@ -371,26 +481,16 @@ private fun SearchResults(ctx: ScreenContext, query: String) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        SearchSourceChips(
-            current = source,
-            onSelect = {
-                when (it) {
-                    SearchSourceOption.YOUTUBE -> source = it
-                    SearchSourceOption.LOSSLESS -> ctx.navigator.push(Screen.Lossless)
-                    else -> ctx.toast("Llega en la fase 6")
-                }
-            },
-        )
-        SearchTypeChips(videosOnly = videosOnly, onChange = { videosOnly = it })
+        SearchFilterChips(current = filter, onSelect = { filter = it })
         LazyColumn(Modifier.fillMaxSize()) {
             if (videosOnly) {
                 videoSearchResults(ctx, query, videoResult)
             } else when (val r = result) {
                 Load.Loading -> loadingRows()
                 is Load.Failed -> errorRow(r.message)
-                is Load.Done -> resultItems(r.value, query, ctx)
+                is Load.Done -> resultItems(r.value, query, ctx, filter)
             }
-            if (!videosOnly && spotifyTracks.isNotEmpty()) {
+            if (filter == SearchFilter.ALL && spotifyTracks.isNotEmpty()) {
                 item(key = "spotify_h") { SearchResultSectionHeader("De tu Spotify") }
                 items(spotifyTracks.size, key = { "spotify:${spotifyTracks[it].id}" }) { i ->
                     SpotifyTrackRow(spotifyTracks[i], spotifyPlayer)
@@ -401,16 +501,18 @@ private fun SearchResults(ctx: ScreenContext, query: String) {
     }
 }
 
-private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: ScreenContext) {
+private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: ScreenContext, filter: SearchFilter) {
     if (result.songs.isEmpty() && result.albums.isEmpty() && result.artists.isEmpty() && result.playlists.isEmpty()) {
         emptyRow("Sin resultados para «$query»")
         return
     }
     val artist = result.artists.firstOrNull { it.title.equals(query, ignoreCase = true) }
     val song = result.songs.firstOrNull()
-    if (artist != null) {
+    if (filter != SearchFilter.ALL) {
+        // Con un filtro por tipo no se muestra la tarjeta de mejor resultado.
+    } else if (artist != null) {
         item(key = "top") {
-            SearchResultSectionHeader("Mejor resultado")
+            SearchResultSectionHeader("Top results")
             SearchTopResultCard(
                 title = artist.title,
                 subtitle = "Artista",
@@ -423,8 +525,9 @@ private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: 
         }
     } else if (song != null) {
         item(key = "top") {
-            SearchResultSectionHeader("Mejor resultado")
+            SearchResultSectionHeader("Top results")
             SearchTopResultCard(
+                track = song,
                 title = song.title,
                 subtitle = listOfNotNull("Canción", song.artists.ifBlank { null }).joinToString(", "),
                 thumbnail = song.thumbnail,
@@ -435,20 +538,65 @@ private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: 
             )
         }
     }
-    if (result.songs.isNotEmpty()) {
-        item(key = "songs_h") { SearchResultSectionHeader("Canciones") }
-        items(result.songs.size, key = { "song:$it:${result.songs[it].videoId}" }) { i ->
-            val t = result.songs[i]
-            TrackRow(
-                t,
-                onClick = { ctx.player.playTracks(result.songs, i, "search") },
-                playing = t.videoId == ctx.playingId,
-            )
+    if (filter == SearchFilter.ALL || filter == SearchFilter.SONGS) {
+        if (result.songs.isNotEmpty()) {
+            item(key = "songs_h") { SearchResultSectionHeader("Canciones") }
+            items(result.songs.size, key = { "song:$it:${result.songs[it].videoId}" }) { i ->
+                val t = result.songs[i]
+                TrackRow(
+                    t,
+                    onClick = { ctx.player.playTracks(result.songs, i, "search") },
+                    playing = t.videoId == ctx.playingId,
+                )
+            }
         }
     }
-    if (result.artists.isNotEmpty()) carousel(MusicSection("Artistas", items = result.artists), ctx, "s:")
-    if (result.albums.isNotEmpty()) carousel(MusicSection("Álbumes", items = result.albums), ctx, "s:")
-    if (result.playlists.isNotEmpty()) carousel(MusicSection("Listas", items = result.playlists), ctx, "s:")
+    if (filter == SearchFilter.ALL) {
+        if (result.artists.isNotEmpty()) carousel(MusicSection("Artistas", items = result.artists), ctx, "s:")
+        if (result.albums.isNotEmpty()) carousel(MusicSection("Álbumes", items = result.albums), ctx, "s:")
+        if (result.playlists.isNotEmpty()) carousel(MusicSection("Listas", items = result.playlists), ctx, "s:")
+    } else {
+        val filtered = when (filter) {
+            SearchFilter.ALBUMS -> result.albums
+            SearchFilter.ARTISTS -> result.artists
+            SearchFilter.PLAYLISTS -> result.playlists
+            else -> emptyList()
+        }
+        items(filtered.size, key = { "f:${filter.name}:$it:${filtered[it].id}" }) { i ->
+            ItemRow(filtered[i]) { ctx.open(filtered[i]) }
+        }
+    }
+}
+
+/** Biblioteca: busca en local (favoritos e historial) por título, artista o álbum. */
+@Composable
+private fun LibrarySearchResults(ctx: ScreenContext, query: String) {
+    val favorites by remember { ctx.repository.getFavorites() }.collectAsState(emptyList())
+    val history by remember { ctx.repository.getHistory(500) }.collectAsState(emptyList())
+    val matches = remember(favorites, history, query) {
+        (favorites + history)
+            .distinctBy { it.videoId ?: it.title + it.artists }
+            .filter {
+                it.title.contains(query, ignoreCase = true) ||
+                    it.artists.contains(query, ignoreCase = true) ||
+                    (it.album?.contains(query, ignoreCase = true) == true)
+            }
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (matches.isEmpty()) {
+            emptyRow("Sin resultados en tu biblioteca para «$query»")
+        } else {
+            items(matches.size, key = { "lib:$it:${matches[it].videoId}" }) { i ->
+                val t = matches[i]
+                TrackRow(
+                    t,
+                    onClick = { ctx.player.playTracks(matches, i, "search") },
+                    playing = t.videoId == ctx.playingId,
+                )
+            }
+        }
+        item { Spacer(Modifier.height(96.dp)) }
+    }
 }
 
 /** Fuente de búsqueda visible como chips (boceto fase 3 A). Sólo YouTube Music funciona por ahora. */
@@ -514,7 +662,10 @@ private fun SearchTopResultCard(
     onPlay: (() -> Unit)?,
     onShuffle: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    track: Track? = null,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    if (menuOpen && track != null) SongMenuSheet(track, onDismiss = { menuOpen = false })
     Surface(
         onClick = onOpen,
         shape = RoundedCornerShape(16.dp),
@@ -553,6 +704,9 @@ private fun SearchTopResultCard(
                         }
                         if (onShuffle != null) {
                             FilledTonalIconButton(onClick = onShuffle) { Icon(Icons.Rounded.Shuffle, "Aleatorio") }
+                        }
+                        if (track != null) {
+                            IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Más opciones") }
                         }
                     }
                 }
