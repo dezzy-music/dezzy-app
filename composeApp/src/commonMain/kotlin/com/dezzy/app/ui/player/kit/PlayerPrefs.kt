@@ -44,7 +44,10 @@ fun PlayerDesignStyle.label(): String = when (this) {
     PlayerDesignStyle.AURORA -> "Aurora"
 }
 
-enum class SliderStyle { Standard, Wavy, Slim }
+/** Los 12 estilos de la app actual, en su orden. Slim es «Simple» (nombre antiguo guardado). */
+enum class SliderStyle {
+    Standard, Wavy, Thick, Circular, Slim, Neon, Capsule, DoubleLine, Dots, AudioWave, ShootingStar, Aurora,
+}
 enum class PlayerBackgroundStyle { DEFAULT, GRADIENT, GLOW, COLORING, CUSTOM }
 enum class AuroraMode { DYNAMIC, CUSTOM }
 enum class IpodThemeMode { DYNAMIC, CLASSIC }

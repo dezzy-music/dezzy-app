@@ -5,6 +5,9 @@
 
 package com.dezzy.app.ui.screens.settings
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -527,29 +530,41 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     icon = Icons.Rounded.Palette,
                 )
                 SettingsDivider()
-                SettingsChoiceRow(
+                var sliderPicker by remember { mutableStateOf(false) }
+                SettingsRow(
                     title = "Estilo de control deslizante del reproductor",
+                    subtitle = sliderStyleLabel(sliderStyle),
                     icon = Icons.Rounded.LinearScale,
-                    options = SliderStyle.entries.toList(),
-                    selected = sliderStyle,
-                    label = { sliderStyleLabel(it) },
-                    onSelect = { sliderStyle = it },
+                    onClick = { sliderPicker = true },
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 4.dp),
-                ) {
-                    SliderStyle.entries.forEach { style ->
-                        SliderStyleCard(
-                            sliderStyle = style,
-                            selected = style == sliderStyle,
-                            onClick = { sliderStyle = style },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                if (sliderPicker) {
+                    AlertDialog(
+                        onDismissRequest = { sliderPicker = false },
+                        title = { Text("Estilo de control deslizante del reproductor") },
+                        text = {
+                            Column(
+                                Modifier.verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                SliderStyle.entries.chunked(3).forEach { row ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        row.forEach { style ->
+                                            SliderStyleCard(
+                                                sliderStyle = style,
+                                                selected = style == sliderStyle,
+                                                onClick = { sliderStyle = style; sliderPicker = false },
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { sliderPicker = false }) { Text("Cancelar") } },
+                    )
                 }
+                SettingsDivider()
                 PrefSwitchRow("Activar deslizar para cambiar de canción", null, PlayerSwipeToChangeKey, true, Icons.Rounded.Swipe)
                 SettingsDivider()
                 SettingsSliderRow(
@@ -1078,7 +1093,16 @@ internal fun rememberOwnImagePicker(current: String, onImported: (String) -> Uni
 private fun sliderStyleLabel(style: SliderStyle): String = when (style) {
     SliderStyle.Standard -> "Estándar"
     SliderStyle.Wavy -> "Ondulado"
-    SliderStyle.Slim -> "Fino"
+    SliderStyle.Thick -> "Grueso"
+    SliderStyle.Circular -> "Circular"
+    SliderStyle.Slim -> "Simple"
+    SliderStyle.Neon -> "Brillo de neón"
+    SliderStyle.Capsule -> "Cápsula"
+    SliderStyle.DoubleLine -> "Línea doble"
+    SliderStyle.Dots -> "Puntos"
+    SliderStyle.AudioWave -> "Onda de audio"
+    SliderStyle.ShootingStar -> "Estrella fugaz"
+    SliderStyle.Aurora -> "Aurora boreal"
 }
 
 /** Tarjeta de un estilo de barra de progreso con vista previa animada. */
@@ -1137,7 +1161,7 @@ private fun SliderStyleCard(
             .clip(RoundedCornerShape(20.dp))
             .background(containerBrush)
             .border(borderWidth, borderColor, RoundedCornerShape(20.dp))
-            .padding(14.dp),
+            .padding(8.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1160,7 +1184,9 @@ private fun SliderStyleCard(
 
             Text(
                 text = sliderStyleLabel(sliderStyle),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 2,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (selected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,

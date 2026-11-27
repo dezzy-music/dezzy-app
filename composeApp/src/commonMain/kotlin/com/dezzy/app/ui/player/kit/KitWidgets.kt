@@ -105,6 +105,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import kotlin.math.cos
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -170,8 +173,8 @@ fun PlayerSliderTrack(
 }
 
 /**
- * Slider de reproducción con el estilo global (Ajustes › Reproductor): estándar, fino u ondulado.
- * La onda sólo se mueve mientras suena; [songKey] reinicia la animación al cambiar de canción.
+ * Slider de reproducción con el estilo global (Ajustes › Apariencia): los 12 estilos de la app actual.
+ * Las animaciones sólo corren mientras suena; [songKey] reinicia la animación al cambiar de canción.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,11 +202,15 @@ fun StyledPlaybackSlider(
     val safe = value.coerceIn(valueRange.start, valueRange.endInclusive)
     val thumbSize by animateFloatAsState(
         when (sliderStyle) {
-            SliderStyle.Slim -> if (touching) 12f else 0f
+            SliderStyle.Slim, SliderStyle.Thick, SliderStyle.Dots, SliderStyle.AudioWave ->
+                if (touching) 14f else 0f
+            SliderStyle.Circular -> if (touching) 22f else 18f
+            SliderStyle.ShootingStar -> if (touching) 14f else 10f
             else -> if (touching) 16f else 12f
         },
         label = "thumb",
     )
+    val animate = isPlaying && !touching
     Slider(
         value = safe,
         onValueChange = onValueChange,
@@ -211,18 +218,58 @@ fun StyledPlaybackSlider(
         valueRange = valueRange,
         interactionSource = interaction,
         colors = colors,
-        thumb = {
-            Box(Modifier.size(thumbSize.dp).clip(CircleShape).background(activeColor))
-        },
+        thumb = { SliderThumb(sliderStyle, thumbSize, activeColor) },
         track = { state ->
             when (sliderStyle) {
                 SliderStyle.Standard -> PlayerSliderTrack(state, colors, trackHeight = 4.dp)
                 SliderStyle.Slim -> PlayerSliderTrack(state, colors, trackHeight = if (touching) 4.dp else 2.dp)
-                SliderStyle.Wavy -> WavyTrack(state, activeColor, base, animate = isPlaying && !touching, songKey = songKey)
+                SliderStyle.Thick -> PlayerSliderTrack(state, colors, trackHeight = 10.dp)
+                SliderStyle.Circular -> PlayerSliderTrack(state, colors, trackHeight = 4.dp)
+                SliderStyle.Wavy -> WavyTrack(state, activeColor, base, animate = animate, songKey = songKey)
+                else -> FancyTrack(sliderStyle, state, activeColor, base, animate, songKey)
             }
         },
         modifier = modifier.heightIn(min = 24.dp),
     )
+}
+
+/** Tirador de cada estilo. */
+@Composable
+private fun SliderThumb(style: SliderStyle, size: Float, color: Color) {
+    if (size <= 0.5f) return
+    when (style) {
+        SliderStyle.Circular -> Box(
+            Modifier.size(size.dp).clip(CircleShape).background(Color.White).padding(3.dp)
+                .clip(CircleShape).background(color),
+        )
+        SliderStyle.Capsule -> Box(
+            Modifier.size(width = (size * 0.5f).dp, height = (size * 1.7f).dp)
+                .clip(RoundedCornerShape(50)).background(Color.White),
+        )
+        SliderStyle.Neon -> Canvas(Modifier.size((size * 2).dp)) {
+            val r = size.dp.toPx() / 2
+            drawCircle(color.copy(alpha = 0.25f), r * 2f)
+            drawCircle(color.copy(alpha = 0.45f), r * 1.4f)
+            drawCircle(Color.White, r * 0.8f)
+        }
+        SliderStyle.ShootingStar -> Canvas(Modifier.size((size * 2.4f).dp)) {
+            val r = size.dp.toPx() / 2
+            val c = center
+            drawCircle(color.copy(alpha = 0.3f), r * 2.2f)
+            val star = Path().apply {
+                for (i in 0 until 10) {
+                    val ang = -PI / 2 + i * PI / 5
+                    val rad = if (i % 2 == 0) r * 1.5f else r * 0.6f
+                    val x = c.x + (rad * cos(ang)).toFloat()
+                    val y = c.y + (rad * sin(ang)).toFloat()
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                close()
+            }
+            drawPath(star, Color.White)
+        }
+        else -> Box(Modifier.size(size.dp).clip(CircleShape).background(color))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -235,9 +282,7 @@ private fun WavyTrack(state: SliderState, active: Color, base: Color, animate: B
         label = "phase",
     )
     val amplitude by animateFloatAsState(if (animate) 1f else 0f, label = "amp")
-    val range = state.valueRange
-    val span = (range.endInclusive - range.start).takeIf { it > 0f } ?: 1f
-    val fraction = ((state.value - range.start) / span).coerceIn(0f, 1f)
+    val fraction = state.fraction()
     Canvas(Modifier.fillMaxWidth().height(12.dp)) {
         val y = size.height / 2
         val stroke = 3.dp.toPx()
@@ -255,6 +300,129 @@ private fun WavyTrack(state: SliderState, active: Color, base: Color, animate: B
             }
         }
         drawPath(path, active, style = Stroke(stroke, cap = StrokeCap.Round))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SliderState.fraction(): Float {
+    val span = (valueRange.endInclusive - valueRange.start).takeIf { it > 0f } ?: 1f
+    return ((value - valueRange.start) / span).coerceIn(0f, 1f)
+}
+
+/** Pistas dibujadas: neón, cápsula, línea doble, puntos, onda de audio, estrella fugaz y aurora. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FancyTrack(style: SliderStyle, state: SliderState, active: Color, base: Color, animate: Boolean, songKey: String) {
+    val transition = rememberInfiniteTransition(label = "track:$songKey")
+    val clock by transition.animateFloat(
+        0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "clock",
+    )
+    val motion by animateFloatAsState(if (animate) 1f else 0f, label = "motion")
+    val t = clock
+    val fraction = state.fraction()
+    val height = when (style) {
+        SliderStyle.Capsule -> 14.dp
+        SliderStyle.AudioWave -> 22.dp
+        SliderStyle.Neon, SliderStyle.ShootingStar -> 14.dp
+        else -> 10.dp
+    }
+    Canvas(Modifier.fillMaxWidth().height(height)) {
+        val w = size.width
+        val y = size.height / 2
+        val end = w * fraction
+        when (style) {
+            SliderStyle.Neon -> {
+                val s = 3.dp.toPx()
+                drawLine(base, Offset(s, y), Offset(w - s, y), s, StrokeCap.Round)
+                if (end > 0f) {
+                    val glow = 0.6f + 0.4f * motion * sin(t * 2 * PI.toFloat())
+                    drawLine(active.copy(alpha = 0.18f * glow), Offset(s, y), Offset(end, y), s * 4f, StrokeCap.Round)
+                    drawLine(active.copy(alpha = 0.35f * glow), Offset(s, y), Offset(end, y), s * 2.2f, StrokeCap.Round)
+                    drawLine(active, Offset(s, y), Offset(end, y), s, StrokeCap.Round)
+                    drawLine(Color.White.copy(alpha = 0.8f), Offset(s, y), Offset(end, y), s * 0.35f, StrokeCap.Round)
+                }
+            }
+            SliderStyle.Capsule -> {
+                val s = size.height
+                drawLine(base, Offset(s / 2, y), Offset(w - s / 2, y), s, StrokeCap.Round)
+                if (end > 0f) drawLine(active, Offset(s / 2, y), Offset(end.coerceAtLeast(s / 2), y), s, StrokeCap.Round)
+            }
+            SliderStyle.DoubleLine -> {
+                val s = 2.dp.toPx()
+                val gap = 3.dp.toPx()
+                for (dy in listOf(-gap, gap)) {
+                    drawLine(base, Offset(s, y + dy), Offset(w - s, y + dy), s, StrokeCap.Round)
+                    if (end > 0f) drawLine(active, Offset(s, y + dy), Offset(end, y + dy), s, StrokeCap.Round)
+                }
+            }
+            SliderStyle.Dots -> {
+                val step = 9.dp.toPx()
+                val r = 2.2.dp.toPx()
+                var x = r
+                var i = 0
+                while (x <= w - r) {
+                    val played = x <= end
+                    val pulse = if (played && motion > 0f) 1f + 0.25f * motion * sin((t * 2 * PI.toFloat()) - i * 0.5f) else 1f
+                    drawCircle(if (played) active else base, r * pulse, Offset(x, y))
+                    x += step; i++
+                }
+            }
+            SliderStyle.AudioWave -> {
+                val bar = 3.dp.toPx()
+                val step = 5.dp.toPx()
+                var x = bar / 2
+                var i = 0
+                while (x <= w - bar / 2) {
+                    val seed = ((sin(i * 12.9898f) * 43758.547f) % 1f + 1f) % 1f
+                    val wave = 0.5f + 0.5f * sin(t * 2 * PI.toFloat() * 2 + i * 0.7f)
+                    val hFrac = (0.3f + 0.7f * seed) * (1f - 0.45f * motion + 0.45f * motion * wave)
+                    val h = (size.height * hFrac).coerceAtLeast(bar)
+                    drawLine(
+                        if (x <= end) active else base,
+                        Offset(x, y - h / 2), Offset(x, y + h / 2), bar, StrokeCap.Round,
+                    )
+                    x += step; i++
+                }
+            }
+            SliderStyle.ShootingStar -> {
+                val s = 2.dp.toPx()
+                drawLine(base, Offset(s, y), Offset(w - s, y), s, StrokeCap.Round)
+                if (end > 0f) {
+                    drawLine(
+                        Brush.horizontalGradient(listOf(Color.Transparent, active.copy(alpha = 0.6f), Color.White), startX = 0f, endX = end),
+                        Offset(s, y), Offset(end, y), s * 1.6f, StrokeCap.Round,
+                    )
+                    // Chispas que se quedan atrás de la estrella.
+                    for (k in 1..5) {
+                        val off = ((t + k * 0.19f) % 1f)
+                        val sx = end - off * 60.dp.toPx()
+                        if (sx > 0f) {
+                            val sy = y + (if (k % 2 == 0) 1 else -1) * off * 4.dp.toPx()
+                            drawCircle(Color.White.copy(alpha = (1f - off) * 0.8f * (0.3f + 0.7f * motion)), 1.4.dp.toPx() * (1f - off * 0.5f), Offset(sx, sy))
+                        }
+                    }
+                }
+            }
+            SliderStyle.Aurora -> {
+                val s = 6.dp.toPx()
+                drawLine(base, Offset(s / 2, y), Offset(w - s / 2, y), s, StrokeCap.Round)
+                if (end > 0f) {
+                    val shift = t * w * motion
+                    val aurora = Brush.linearGradient(
+                        listOf(Color(0xFF00E5A0), Color(0xFF00B8FF), Color(0xFF8A4DFF), Color(0xFFFF4FD8), Color(0xFF00E5A0)),
+                        start = Offset(-shift, 0f), end = Offset(w - shift, 0f),
+                        tileMode = TileMode.Repeated,
+                    )
+                    drawLine(aurora, Offset(s / 2, y), Offset(end.coerceAtLeast(s / 2), y), s * 1.8f, StrokeCap.Round, alpha = 0.25f)
+                    drawLine(aurora, Offset(s / 2, y), Offset(end.coerceAtLeast(s / 2), y), s, StrokeCap.Round)
+                }
+            }
+            else -> {
+                val s = 4.dp.toPx()
+                drawLine(base, Offset(s / 2, y), Offset(w - s / 2, y), s, StrokeCap.Round)
+                if (end > 0f) drawLine(active, Offset(s / 2, y), Offset(end, y), s, StrokeCap.Round)
+            }
+        }
     }
 }
 
