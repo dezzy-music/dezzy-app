@@ -82,12 +82,6 @@ El id de la app es `com.dezzy.app`, así que convive en el móvil con la app act
 - Al cambiar a la pestaña «Canvas» en la hoja de Compartir hubo un comportamiento raro: pareció cambiar el color en lugar de la pestaña.
 - La pantalla de bienvenida y el nuevo fondo/editor. Compilan en Android y escritorio, pero aún no se han visto en el dispositivo.
 
-## Reglas del repositorio (obligatorias)
+## Normas
 
-Las reglas completas están en `CLAUDE.md` y `docs/sala-limpia.md`. Lo esencial:
-
-- **Sala limpia.** Ni una línea derivada de código GPL. De OpenTune sólo se puede abrir lo que haya escrito Dezzy, comprobado con `git log`.
-- **Commits.** En español y con una línea final `Origen: …`. Sin firmas de IA (nada de `Co-Authored-By`, «Generated with…», etc.).
-- **Cambios visuales.** Primero 3 bocetos (A/B/C) y elegir uno antes de implementarlo.
-- **Secretos.** Nada de secretos del dueño dentro del binario: las claves las pone cada usuario (BYOK). Nada de Play Services ni ML Kit.
-- **Publicar.** No publicar releases sin el OK de Dezzy.
+Antes de tocar nada, lee [`CONTRIBUTING.md`](../CONTRIBUTING.md): código limpio de licencias, formato de los commits, bocetos antes de cualquier cambio visual y nada de secretos dentro de la app.

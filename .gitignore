@@ -12,3 +12,6 @@
 graphify-out/
 
 .kotlin/
+
+# Notas locales de herramientas
+CLAUDE.md
