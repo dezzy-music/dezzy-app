@@ -35,6 +35,8 @@ import com.dezzy.app.feature.player.SkipSilenceKey
 import com.dezzy.app.source.stream.AudioQuality
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.navigation.SettingsPage
+import com.dezzy.app.ui.player.kit.MiniPlayerStyle
+import com.dezzy.app.ui.player.kit.MiniPlayerStyleKey
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.ScreenContext
@@ -75,6 +77,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
     var skipSilence by rememberPreference(SkipSilenceKey, false)
     var pauseOnMute by rememberPreference(PauseOnMuteKey, false)
     var playOnBluetooth by rememberPreference(PlayOnBluetoothKey, false)
+    var miniStyle by rememberEnumPreference(MiniPlayerStyleKey, MiniPlayerStyle.PILL)
 
     SettingsPage(title = "Reproductor y audio", onBack = { ctx.navigator.back() }) {
         item(key = "quality") {
@@ -147,6 +150,15 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
         }
         item(key = "behavior") {
             SettingsGroup("Comportamiento") {
+                SettingsChoiceRow(
+                    title = "Estilo del minirreproductor",
+                    icon = Icons.Rounded.Queue,
+                    options = MiniPlayerStyle.entries.toList(),
+                    selected = miniStyle,
+                    label = { if (it == MiniPlayerStyle.PILL) "Píldora" else "Barra" },
+                    onSelect = { miniStyle = it },
+                )
+                SettingsDivider()
                 SettingsSwitchRow(
                     title = "Recordar la cola",
                     subtitle = "Recupera lo que sonaba al volver a abrir",

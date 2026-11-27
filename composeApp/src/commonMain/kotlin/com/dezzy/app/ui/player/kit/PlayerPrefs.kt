@@ -52,6 +52,9 @@ enum class IpodThemeMode { DYNAMIC, CLASSIC }
 /** Fondo del minirreproductor. */
 enum class MiniPlayerBackground { DEFAULT, COVER_COLOR, TRANSPARENT, IMAGE }
 
+/** Estilo del minirreproductor: píldora actual o tarjeta ancha (BAR). */
+enum class MiniPlayerStyle { PILL, BAR }
+
 /** Fondo de la pantalla de letras (independiente del reproductor). */
 enum class LyricsBackground { SAME_AS_PLAYER, COVER_GRADIENT, SOLID, IMAGE }
 enum class CanvasMode { NONE, SPOTIFY, SPOTIFY_WITH_FALLBACK, APPLE, APPLE_WITH_FALLBACK }
@@ -66,7 +69,8 @@ val PlayerCustomBlurKey = floatPreferencesKey("playerCustomBlur")
 val PlayerCustomContrastKey = floatPreferencesKey("playerCustomContrast")
 val PlayerCustomBrightnessKey = floatPreferencesKey("playerCustomBrightness")
 val MiniPlayerBackgroundKey = stringPreferencesKey("miniPlayerBackground")
-val MiniPlayerImageUriKey = stringPreferencesKey("miniPlayerImageUri")
+val MiniPlayerStyleKey = stringPreferencesKey("miniPlayerStyle")
+val MiniPlayerImageUriKey =stringPreferencesKey("miniPlayerImageUri")
 val LyricsBackgroundKey = stringPreferencesKey("lyricsBackground")
 val LyricsBgImageUriKey = stringPreferencesKey("lyricsBgImageUri")
 val LyricsBgBlurKey = floatPreferencesKey("lyricsBgBlur")

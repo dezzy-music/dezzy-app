@@ -37,6 +37,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import com.dezzy.app.ui.components.FloatingNavBar
+import com.dezzy.app.ui.components.FullNavBar
+import com.dezzy.app.ui.components.NavBarStyle
+import com.dezzy.app.ui.components.rememberNavBarStyle
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -80,6 +83,7 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val snackbar = remember { SnackbarHostState() }
+    val navBarStyle = rememberNavBarStyle().value
     val repository: MusicRepository = koinInject()
     val scope = rememberCoroutineScope()
     val prefs: DezzyPreferences = koinInject()
@@ -168,7 +172,11 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
                         if (wide) {
                             Box(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
                         } else {
-                            FloatingNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                            if (navBarStyle == NavBarStyle.DOCK) {
+                                FloatingNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                            } else {
+                                FullNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
+                            }
                         }
                     }
                 }

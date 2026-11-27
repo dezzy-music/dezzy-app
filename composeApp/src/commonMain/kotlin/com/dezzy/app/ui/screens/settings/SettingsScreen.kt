@@ -136,6 +136,8 @@ private fun pageName(page: SettingsPage): String = when (page) {
     SettingsPage.DJ_VOICE -> "Voz del DJ"
     SettingsPage.APP_ICON -> "Icono de la app"
     SettingsPage.WALLPAPER -> "Fondos de pantalla"
+    SettingsPage.COLOR_PALETTE -> "Paleta de color"
+    SettingsPage.THEME_CREATOR -> "Creador de Temas"
 }
 
 /** Minúsculas y sin tildes, para comparar lo que escribe el usuario. */

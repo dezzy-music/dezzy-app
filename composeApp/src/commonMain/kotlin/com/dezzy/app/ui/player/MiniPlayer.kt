@@ -8,6 +8,19 @@ package com.dezzy.app.ui.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.dezzy.app.ui.player.kit.LocalPlayerConnection
+import com.dezzy.app.ui.player.kit.MiniPlayerStyle
+import com.dezzy.app.ui.player.kit.MiniPlayerStyleKey
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,16 +84,21 @@ fun MiniPlayer(
 ) {
     val track = state.queue.current?.track ?: return
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val miniStyle by rememberEnumPreference(MiniPlayerStyleKey, MiniPlayerStyle.PILL)
+    val isBar = miniStyle == MiniPlayerStyle.BAR
+    val shape = RoundedCornerShape(if (isBar) 20.dp else 16.dp)
     var drag by remember { mutableFloatStateOf(0f) }
 
     val bgMode by rememberEnumPreference(MiniPlayerBackgroundKey, MiniPlayerBackground.DEFAULT)
     val imageUri by rememberPreference(MiniPlayerImageUriKey, "")
     val useImage = bgMode == MiniPlayerBackground.IMAGE && imageUri.isNotBlank()
     var palette by remember { mutableStateOf<ArtPalette?>(null) }
-    LaunchedEffect(track.thumbnail, bgMode) {
-        palette = if (bgMode == MiniPlayerBackground.COVER_COLOR) loadArtPalette(track.thumbnail, 16) else null
+    LaunchedEffect(track.thumbnail, bgMode, isBar) {
+        palette = if (bgMode == MiniPlayerBackground.COVER_COLOR || isBar) loadArtPalette(track.thumbnail, 16) else null
     }
+    val playerConnection = LocalPlayerConnection.current
+    val liked by (playerConnection?.currentSongLiked ?: remember { MutableStateFlow(false) }).collectAsState()
+    val barGradient = isBar && !useImage && bgMode != MiniPlayerBackground.TRANSPARENT
     val coverColor = palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) }
     val bgColor = when {
         bgMode == MiniPlayerBackground.COVER_COLOR && coverColor != null -> lerp(coverColor, Color.Black, 0.45f)
@@ -89,15 +107,18 @@ fun MiniPlayer(
         else -> colors.surfaceContainerHigh
     }
     val customLook = bgMode != MiniPlayerBackground.DEFAULT && (bgMode != MiniPlayerBackground.COVER_COLOR || coverColor != null)
-    val contentColor = if (customLook && bgMode != MiniPlayerBackground.TRANSPARENT) Color.White else colors.onSurface
+    val contentColor = if (barGradient || (customLook && bgMode != MiniPlayerBackground.TRANSPARENT)) Color.White else colors.onSurface
+    val barDominant = coverColor ?: palette?.let { Color(it.getDominantColor(0xFF303030.toInt()) or 0xFF000000.toInt()) } ?: Color(0xFF303030)
+    val barBrush = Brush.horizontalGradient(listOf(Color(0xFF121212), lerp(barDominant, Color.Black, 0.2f)))
 
     CompositionLocalProvider(LocalContentColor provides contentColor) {
     Box(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = if (isBar) 12.dp else 8.dp, vertical = 4.dp)
             .clip(shape)
             .background(bgColor)
+            .then(if (barGradient) Modifier.background(barBrush) else Modifier)
             .dezzyStyledSurface(shape)
             .clickable(onClick = onExpand)
             .pointerInput(Unit) {
@@ -119,7 +140,64 @@ fun MiniPlayer(
             )
             Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
         }
-        Column {
+        if (isBar) {
+            Row(
+                Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CoverImage(
+                    track.thumbnail,
+                    Modifier.size(44.dp).border(2.dp, Color.White, CircleShape),
+                    CircleShape,
+                    sizePx = 144,
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(track.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        track.artists,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Box(
+                    Modifier.size(36.dp).border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape).clip(CircleShape)
+                        .clickable(onClick = player::previous),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.SkipPrevious, "Anterior", Modifier.size(20.dp)) }
+                Box(
+                    Modifier.size(44.dp).clip(CircleShape).background(Color.Black)
+                        .clickable(enabled = !(state.isBuffering && !state.isPlaying), onClick = player::togglePlay),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (state.isBuffering && !state.isPlaying) {
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
+                    } else {
+                        Icon(
+                            if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (state.isPlaying) "Pausar" else "Reproducir",
+                            Modifier.size(26.dp),
+                            tint = Color.White,
+                        )
+                    }
+                }
+                Box(
+                    Modifier.size(36.dp).border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape).clip(CircleShape)
+                        .clickable(onClick = player::next),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.SkipNext, "Siguiente", Modifier.size(20.dp)) }
+                IconButton(onClick = { playerConnection?.toggleLike() }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        if (liked) "Quitar de Me gusta" else "Me gusta",
+                        tint = Color(0xFFFF8FA3),
+                    )
+                }
+            }
+        } else Column {
             Row(
                 Modifier.fillMaxWidth().height(60.dp).padding(start = 8.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,

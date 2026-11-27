@@ -101,6 +101,8 @@ fun TabContent(
             SettingsPage.DJ_VOICE -> com.dezzy.app.ui.screens.dj.DjVoiceSetupScreen(ctx)
             SettingsPage.APP_ICON -> com.dezzy.app.ui.screens.personalize.AppIconScreen(ctx)
             SettingsPage.WALLPAPER -> com.dezzy.app.ui.screens.personalize.WallpaperSettingsScreen(ctx)
+            SettingsPage.COLOR_PALETTE -> com.dezzy.app.ui.screens.settings.ColorPaletteScreen(ctx)
+            SettingsPage.THEME_CREATOR -> com.dezzy.app.ui.screens.settings.ThemeCreatorScreen(ctx)
         }
         Screen.AccountPlaylists -> AccountPlaylistsScreen(ctx)
         Screen.Downloads -> DownloadsScreen(ctx)

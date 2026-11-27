@@ -10,7 +10,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
+import com.dezzy.app.ui.player.kit.rememberPreference
 
 /** Tema raíz de Dezzy: color, tipografía y estilo de interfaz (normal, cristal líquido o Nothing). */
 @Composable
@@ -28,8 +30,14 @@ fun DezzyTheme(
         DarkMode.DARK -> true
     }
 
+    val activePalette by rememberPreference(ColorPaletteKey, "")
+    val customPalettes by rememberPreference(CustomPalettesKey, "[]")
+    val paletteSeeds = remember(activePalette, customPalettes) { resolveActiveSeeds(activePalette, customPalettes) }
+
     var scheme = if (interfaceTheme == AppInterfaceTheme.NOTHING) {
         buildNothingColorScheme(dark)
+    } else if (paletteSeeds != null) {
+        buildSchemeFromSeeds(paletteSeeds, dark)
     } else {
         (if (dynamicColor) platformDynamicColorScheme(dark) else null)
             ?: (if (dark) DezzyDarkColors else DezzyLightColors)

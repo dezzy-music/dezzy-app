@@ -194,6 +194,13 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 )
                 SettingsDivider()
                 SettingsRow(
+                    title = "Paleta de color",
+                    subtitle = "Elige o crea los colores de la app",
+                    icon = Icons.Rounded.Palette,
+                    onClick = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Settings(com.dezzy.app.ui.navigation.SettingsPage.COLOR_PALETTE)) },
+                )
+                SettingsDivider()
+                SettingsRow(
                     title = "Icono de la app",
                     subtitle = "Forma y colores del icono, en la app y en el launcher",
                     icon = Icons.Rounded.Apps,
@@ -207,6 +214,16 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     selected = appFont,
                     label = { it.label },
                     onSelect = { appFont = it },
+                )
+                SettingsDivider()
+                var navStyle by com.dezzy.app.ui.components.rememberNavBarStyle()
+                SettingsChoiceRow(
+                    title = "Barra de navegación",
+                    icon = Icons.Rounded.Apps,
+                    options = com.dezzy.app.ui.components.NavBarStyle.entries.toList(),
+                    selected = navStyle,
+                    label = { if (it == com.dezzy.app.ui.components.NavBarStyle.FULL) "Completa" else "Dock" },
+                    onSelect = { navStyle = it },
                 )
             }
         }

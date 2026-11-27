@@ -23,11 +23,15 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,59 +65,93 @@ fun FloatingNavBar(
     } else {
         Modifier.shadow(6.dp, shape).clip(shape).background(colors.surfaceContainerHigh)
     }
-    Box(
+    val circle = CircleShape
+    val searchOn = selected == Tab.SEARCH
+    val searchSurface = if (styled) {
+        Modifier.dezzyStyledSurface(shape = circle, prominent = true)
+    } else {
+        Modifier.shadow(6.dp, circle).clip(circle)
+            .background(if (searchOn) colors.primary else colors.primaryContainer)
+    }
+    Row(
         modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = FloatingNavBarMargin, vertical = FloatingNavBarMargin),
-        contentAlignment = Alignment.Center,
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Dock compacto centrado, sólo iconos (la búsqueda va en su botón circular).
         Row(
             Modifier
-                .widthIn(max = 480.dp)
-                .fillMaxWidth()
-                .height(FloatingNavBarHeight)
+                .height(DockHeight)
                 .then(surface)
                 .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Tab.entries.forEach { tab ->
+            Tab.entries.filter { it != Tab.SEARCH }.forEach { tab ->
                 val on = tab == selected
-                Column(
+                Box(
                     Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(24.dp))
+                        .size(width = 56.dp, height = 40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (on) colors.secondaryContainer else Color.Transparent)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { onSelect(tab) }
-                        .padding(vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) { onSelect(tab) },
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Box(
-                        Modifier
-                            .size(width = 64.dp, height = 32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (on) colors.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            if (on) tab.selectedIcon else tab.icon,
-                            contentDescription = tab.label,
-                            tint = if (on) colors.onSecondaryContainer else colors.onSurfaceVariant,
-                        )
-                    }
-                    Text(
-                        tab.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (on) colors.onSurface else colors.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    Icon(
+                        if (on) tab.selectedIcon else tab.icon,
+                        contentDescription = tab.label,
+                        tint = if (on) colors.onSecondaryContainer else colors.onSurfaceVariant,
                     )
                 }
             }
+        }
+        // Botón circular de búsqueda destacado.
+        Box(
+            Modifier
+                .size(DockHeight)
+                .then(searchSurface)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { onSelect(Tab.SEARCH) },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Tab.SEARCH.selectedIcon,
+                contentDescription = Tab.SEARCH.label,
+                tint = if (!styled && searchOn) colors.onPrimary else if (styled) colors.onSurface else colors.onPrimaryContainer,
+            )
+        }
+    }
+}
+
+private val DockHeight = 56.dp
+
+/**
+ * Barra completa (boceto A): NavigationBar M3 de ancho completo pegada abajo, indicador en píldora,
+ * icono + etiqueta; respeta los insets del sistema.
+ */
+@Composable
+fun FullNavBar(
+    selected: Tab,
+    onSelect: (Tab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    NavigationBar(modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        Tab.entries.forEach { tab ->
+            val on = tab == selected
+            NavigationBarItem(
+                selected = on,
+                onClick = { onSelect(tab) },
+                icon = { Icon(if (on) tab.selectedIcon else tab.icon, contentDescription = tab.label) },
+                label = { Text(tab.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
         }
     }
 }
