@@ -66,6 +66,7 @@ fun TabContent(
         scope = rememberCoroutineScope(),
         playingId = state.queue.current?.track?.videoId,
     )
+    androidx.compose.runtime.CompositionLocalProvider(com.dezzy.app.ui.components.LocalScreenContext provides ctx) {
     when (val top = navigator.top) {
         is Screen.Album -> AlbumScreen(top.id, ctx)
         is Screen.Artist -> ArtistScreen(top.id, ctx)
@@ -132,6 +133,7 @@ fun TabContent(
             Tab.LIBRARY -> LibraryScreen(ctx)
             Tab.TOGETHER -> com.dezzy.app.ui.screens.social.SocialHubScreen(ctx)
         }
+    }
     }
 }
 

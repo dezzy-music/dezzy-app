@@ -43,6 +43,7 @@ import com.dezzy.app.ui.player.kit.LocalBottomSheetPageState
 import com.dezzy.app.ui.player.kit.LocalMenuState
 import com.dezzy.app.ui.player.kit.LocalOpenPlayerStyleSelector
 import com.dezzy.app.ui.player.kit.LocalOpenSleepTimer
+import com.dezzy.app.ui.player.kit.LocalOpenVisualizer
 import com.dezzy.app.ui.player.kit.MenuHost
 import com.dezzy.app.ui.player.kit.MenuState
 import com.dezzy.app.ui.player.kit.NavController
@@ -140,6 +141,7 @@ fun PlayerRouter(
         LocalBottomSheetPageState provides pageState,
         LocalOpenPlayerStyleSelector provides { showStyles = true },
         LocalOpenSleepTimer provides { showSleep = true },
+        LocalOpenVisualizer provides { showVisualizer = true },
     ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
             when (style) {

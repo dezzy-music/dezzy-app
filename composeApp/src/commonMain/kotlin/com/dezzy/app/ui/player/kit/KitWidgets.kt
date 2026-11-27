@@ -31,6 +31,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,7 +41,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.ScreenLockPortrait
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.CastConnected
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -561,54 +576,155 @@ fun ColumnScope.PlayerMenu(
     onDismiss: () -> Unit,
 ) {
     val connection = LocalPlayerConnection.current ?: return
-    val openStyles = LocalOpenPlayerStyleSelector.current
     val openSleep = LocalOpenSleepTimer.current
+    val openVisualizer = LocalOpenVisualizer.current
+    val playback by connection.controller.state.collectAsState()
+    val fx: com.dezzy.app.feature.audio.AudioEffects = koinInject()
+    val fxState by fx.state.collectAsState()
+    val downloads = koinInject<DownloadManager>()
+    val dlStatus by downloads.status(mediaMetadata.id).collectAsState(null)
+    @Suppress("DEPRECATION")
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     var addToPlaylist by remember { mutableStateOf(false) }
     var share by remember { mutableStateOf(false) }
     var modDialog by remember { mutableStateOf(false) }
-    Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        CoverImage(mediaMetadata.thumbnailUrl, Modifier.size(48.dp), RoundedCornerShape(8.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(mediaMetadata.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                mediaMetadata.artists.joinToString { it.name },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+    var voiceDialog by remember { mutableStateOf(false) }
+    var speedDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    val artistNames = mediaMetadata.artists.joinToString { it.name }
+    val albumTitle = mediaMetadata.album?.title
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        // Cabecera
+        Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            CoverImage(mediaMetadata.thumbnailUrl, Modifier.size(48.dp), RoundedCornerShape(8.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(mediaMetadata.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOfNotNull(artistNames.ifBlank { null }, albumTitle).joinToString(", "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        // Chips
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            MenuChip(Icons.Rounded.Share, "Compartir") { share = true }
+            MenuChip(Icons.Rounded.Mic, "Voz / Pista") { voiceDialog = true }
+            MenuChip(Icons.AutoMirrored.Rounded.PlaylistAdd, "Añadir") { addToPlaylist = true }
+            if (dlStatus != null) {
+                MenuChip(Icons.Rounded.Download, "Quitar descarga") {
+                    downloads.remove(mediaMetadata.id)
+                    connection.toast("Descarga quitada")
+                    onDismiss()
+                }
+            } else {
+                MenuChip(Icons.Rounded.Download, "Descargar") {
+                    downloads.enqueue(listOf(mediaMetadata.track))
+                    connection.toast("“${mediaMetadata.title}” a descargas")
+                    onDismiss()
+                }
+            }
+        }
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            MenuGroupHeader("Ver y escuchar")
+            MenuRow(Icons.Rounded.Videocam, "Ver video") { connection.enableVideoMode(); onDismiss() }
+            MenuRow(Icons.Rounded.GraphicEq, "Visualizador", "El estilo se elige en Ajustes › Apariencia") {
+                onDismiss(); openVisualizer()
+            }
+            MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy", "Pídele música escribiendo o con tu voz") {
+                onDismiss(); navController.navigate("dj_dezzy")
+            }
+            MenuRow(Icons.Rounded.Radio, "Empezar radio") { connection.playQueue(mediaMetadata.track); onDismiss() }
+
+            MenuGroupHeader("Audio")
+            MenuRow(Icons.Rounded.Mic, "Voz / Instrumental", vocalMixSubtitle(fxState.vocalMix)) { voiceDialog = true }
+            MenuRow(Icons.Rounded.Equalizer, "Ecualizador") { onDismiss(); navController.navigate("settings/equalizer") }
+            MenuRow(Icons.Rounded.Speed, "Velocidad y tono", "x${formatFactor(playback.speed)} • x${formatFactor(playback.pitch)}") {
+                speedDialog = true
+            }
+            MenuRow(Icons.Rounded.Bedtime, "Temporizador") { onDismiss(); openSleep() }
+
+            MenuGroupHeader("Ir a")
+            mediaMetadata.artists.firstOrNull()?.let { artist ->
+                MenuRow(Icons.Rounded.Person, "Ver artista", artist.name) { onDismiss(); navController.openArtist(artist) }
+            }
+            if (albumTitle != null) {
+                MenuRow(Icons.Rounded.Album, "Ver álbum", albumTitle) {
+                    val albumId = mediaMetadata.album?.id
+                    if (albumId != null) {
+                        onDismiss(); navController.navigate("album/$albumId")
+                    } else {
+                        // Se busca «álbum artista» y se abre el primero; si no hay, abre Buscar con esa consulta.
+                        val query = listOf(albumTitle, mediaMetadata.artists.firstOrNull()?.name).filterNotNull().joinToString(" ")
+                        scope.launch {
+                            val found = connection.client.search(query).getOrNull()?.albums?.firstOrNull()
+                            navController.navigate(if (found != null) "album/${found.id}" else "search/$query")
+                            onDismiss()
+                        }
+                    }
+                }
+            }
+        }
+        HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 20.dp))
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            MenuRow(
+                if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                if (expanded) "Mostrar menos" else "Mostrar todo",
+                "Marcación rápida, escuchar juntos, ajustes, detalles…",
+            ) { expanded = !expanded }
+            if (expanded) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.VolumeUp, null, tint = MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Volumen", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        Text("${(playback.volume * 100).toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Slider(value = playback.volume, onValueChange = { connection.controller.setVolume(it) })
+                }
+                MenuRow(Icons.Rounded.PushPin, "Pin to speed dial") {
+                    // Aún no hay almacén de canciones fijadas en la «Marcación rápida» del Inicio.
+                    connection.toast("Fijar en la marcación rápida llegará más adelante")
+                    onDismiss()
+                }
+                MenuRow(Icons.Rounded.ContentCopy, "Copiar enlace") {
+                    clipboard.setText(AnnotatedString("https://music.youtube.com/watch?v=${mediaMetadata.id}"))
+                    connection.toast("Enlace copiado")
+                    onDismiss()
+                }
+                MenuRow(Icons.Rounded.Groups, "Listen Together", "Escuchar juntos") {
+                    onDismiss(); navController.navigate("settings/music_together")
+                }
+                MenuRow(Icons.Rounded.ScreenLockPortrait, "Pantalla siempre activa") {
+                    onDismiss(); connection.pending("Pantalla siempre activa", "posterior")
+                }
+                MenuRow(Icons.Rounded.Info, "Detalles", onClick = onShowDetailsDialog)
+                MenuRow(Icons.Rounded.Settings, "Ajustes del reproductor", "Reproductor y audio") {
+                    onDismiss(); navController.navigate("settings/player")
+                }
+                MenuRow(Icons.Rounded.Palette, "Apariencia y visualizador") {
+                    onDismiss(); navController.navigate("settings/appearance")
+                }
+                MenuRow(Icons.Rounded.Edit, "Personalizar canción") { modDialog = true }
+            }
         }
     }
-    HorizontalDivider(Modifier.padding(vertical = 4.dp))
-    Column(Modifier.padding(horizontal = 20.dp)) {
-        SheetRow(Icons.Rounded.Radio, "Iniciar radio", null, onClick = { connection.playQueue(mediaMetadata.track); onDismiss() })
-        SheetRow(Icons.AutoMirrored.Rounded.PlaylistAdd, "Añadir a una lista", null, onClick = { addToPlaylist = true })
-        val downloads = koinInject<DownloadManager>()
-        val dlStatus by downloads.status(mediaMetadata.id).collectAsState(null)
-        if (dlStatus != null) {
-            SheetRow(Icons.Rounded.Download, "Quitar descarga", null, onClick = {
-                downloads.remove(mediaMetadata.id)
-                connection.toast("Descarga quitada")
-                onDismiss()
-            })
-        } else {
-            SheetRow(Icons.Rounded.Download, "Descargar", null, onClick = {
-                downloads.enqueue(listOf(mediaMetadata.track))
-                connection.toast("“${mediaMetadata.title}” a descargas")
-                onDismiss()
-            })
-        }
-        mediaMetadata.artists.firstOrNull()?.let { artist ->
-            SheetRow(Icons.Rounded.Person, "Ir al artista", artist.name, onClick = { onDismiss(); navController.openArtist(artist) })
-        }
-        SheetRow(Icons.Rounded.Share, "Compartir", null, onClick = { share = true })
-        SheetRow(Icons.Rounded.Bedtime, "Temporizador", null, onClick = { onDismiss(); openSleep() })
-        SheetRow(Icons.Rounded.Palette, "Estilo del reproductor", null, onClick = { onDismiss(); openStyles() })
-        SheetRow(Icons.Rounded.Equalizer, "Ecualizador", null, onClick = { onDismiss(); navController.navigate("settings/equalizer") })
-        SheetRow(Icons.Rounded.Edit, "Personalizar canción", null, onClick = { modDialog = true })
-        SheetRow(Icons.Rounded.Info, "Detalles", null, onClick = onShowDetailsDialog)
-    }
+    if (voiceDialog) VocalMixDialog(onDismiss = { voiceDialog = false })
+    if (speedDialog) SpeedPitchDialog(onDismiss = { speedDialog = false })
     if (modDialog) {
         // El diálogo trabaja con la canción ORIGINAL (la de la cola), no con la ya modificada.
         val original = connection.controller.state.value.queue.current?.track ?: mediaMetadata.track

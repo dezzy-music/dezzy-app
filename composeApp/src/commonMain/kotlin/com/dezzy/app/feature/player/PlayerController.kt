@@ -25,6 +25,12 @@ data class PlaybackState(
     val sleepAtEndOfSong: Boolean = false,
     /** Volumen elegido por quien escucha (0–1), aparte de la normalización y el fundido. */
     val volume: Float = 1f,
+    /** Velocidad de reproducción (0,5–2,0). */
+    val speed: Float = 1f,
+    /** Tono (0,5–2,0). */
+    val pitch: Float = 1f,
+    /** Al llegar al final de la cola, añadir música similar a la última canción. */
+    val autoplay: Boolean = true,
 )
 
 /** Mando del reproductor. Todas las llamadas desde el hilo principal. */
@@ -55,6 +61,15 @@ interface PlayerController {
 
     /** Volumen de la app entre 0 y 1. */
     fun setVolume(volume: Float)
+
+    /** Velocidad de reproducción entre 0,5 y 2,0. */
+    fun setPlaybackSpeed(speed: Float)
+
+    /** Tono entre 0,5 y 2,0. */
+    fun setPlaybackPitch(pitch: Float)
+
+    /** Reproducción automática de música similar al acabarse la cola. */
+    fun setAutoplay(enabled: Boolean)
 
     /** Sesión de audio del motor (para el espectro de los visualizadores); 0 si no hay. */
     val audioSessionId: Int get() = 0

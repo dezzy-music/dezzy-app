@@ -10,6 +10,9 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 /** Saltar los silencios de las canciones. */
 val SkipSilenceKey = booleanPreferencesKey("playerSkipSilence")
 
+/** Reproducción automática de música similar al acabarse la cola. Por defecto sí. */
+val AutoplayKey = booleanPreferencesKey("playerAutoplay")
+
 /** Pausar cuando el volumen de medios llega a 0 (y reanudar al subirlo si la pausa la puso la app). */
 val PauseOnMuteKey = booleanPreferencesKey("playerPauseOnMute")
 

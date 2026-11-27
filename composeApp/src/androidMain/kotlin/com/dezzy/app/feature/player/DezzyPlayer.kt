@@ -20,6 +20,7 @@ import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -121,6 +122,34 @@ class DezzyPlayer(
         videoModeInstance?.setVolume(userVolume)
     }
 
+    // Velocidad, tono y reproducción automática ------------------------------------
+    private var userSpeed = 1f
+    private var userPitch = 1f
+    private var autoplayEnabled = true
+
+    override fun setPlaybackSpeed(speed: Float) {
+        userSpeed = speed.coerceIn(0.5f, 2f)
+        _state.update { it.copy(speed = userSpeed) }
+        applyPlaybackParams()
+    }
+
+    override fun setPlaybackPitch(pitch: Float) {
+        userPitch = pitch.coerceIn(0.5f, 2f)
+        _state.update { it.copy(pitch = userPitch) }
+        applyPlaybackParams()
+    }
+
+    private fun applyPlaybackParams() {
+        exo?.playbackParameters = PlaybackParameters(userSpeed, userPitch)
+    }
+
+    override fun setAutoplay(enabled: Boolean) {
+        autoplayEnabled = enabled
+        _state.update { it.copy(autoplay = enabled) }
+        scope.launch { runCatching { prefs.set(AutoplayKey, enabled) } }
+        if (enabled) maybeExtendRadio()
+    }
+
     // Modo vídeo ------------------------------------------------------------------
     private var videoModeInstance: AndroidVideoMode? = null
 
@@ -219,6 +248,12 @@ class DezzyPlayer(
             prefs.value(SkipSilenceKey, false).collect {
                 skipSilence = it
                 exo?.skipSilenceEnabled = it
+            }
+        }
+        scope.launch {
+            prefs.value(AutoplayKey, true).collect { enabled ->
+                autoplayEnabled = enabled
+                _state.update { it.copy(autoplay = enabled) }
             }
         }
         scope.launch { queue.state.collect { q -> _state.update { it.copy(queue = q) } } }
@@ -504,8 +539,15 @@ class DezzyPlayer(
         maybeExtendRadio()
     }
 
+    /** Con «reproducción automática», al quedar la última canción se añade música similar (sin cortar la actual). */
+    private fun needsAutoplayExtension(): Boolean {
+        if (!autoplayEnabled) return false
+        val q = queue.state.value
+        return q.current != null && q.index >= q.items.size - 1 && q.repeat == RepeatMode.OFF
+    }
+
     private fun maybeExtendRadio() {
-        if (!queue.needsRadioExtension() || radioJob?.isActive == true) return
+        if (!(queue.needsRadioExtension() || needsAutoplayExtension()) || radioJob?.isActive == true) return
         val provider = radioProvider ?: return
         val seed = queue.state.value.current?.track ?: return
         radioJob = scope.launch {
@@ -743,6 +785,7 @@ class DezzyPlayer(
             .also {
                 it.addListener(listener)
                 it.skipSilenceEnabled = skipSilence
+                it.playbackParameters = PlaybackParameters(userSpeed, userPitch)
                 appliedVolume = -1f
             }
     }

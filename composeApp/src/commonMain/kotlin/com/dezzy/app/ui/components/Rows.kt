@@ -23,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +47,6 @@ import com.dezzy.app.feature.downloads.DownloadManager
 import com.dezzy.app.feature.downloads.DownloadStatus
 import com.dezzy.app.feature.personalize.SongMods
 import com.dezzy.app.feature.personalize.withMods
-import com.dezzy.app.ui.screens.personalize.SongModDialog
 import org.koin.compose.koinInject
 
 /** «m:ss» o «h:mm:ss». */
@@ -103,7 +100,6 @@ fun TrackRow(
     @Suppress("NAME_SHADOWING")
     val track = remember(original, mods) { original.withMods(mods) }
     var menuOpen by remember { mutableStateOf(false) }
-    var modDialog by remember { mutableStateOf(false) }
     Row(
         modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -155,29 +151,11 @@ fun TrackRow(
         if (onMore != null) {
             IconButton(onClick = onMore) { Icon(Icons.Rounded.MoreVert, "Más opciones", tint = colors.onSurfaceVariant) }
         } else {
-            // Menú «⋮» común: descargar / quitar descarga y personalizar la canción.
-            Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Más opciones", tint = colors.onSurfaceVariant) }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    extraMenu.forEach { (label, action) ->
-                        DropdownMenuItem(text = { Text(label) }, onClick = { menuOpen = false; action() })
-                    }
-                    val vid = original.videoId
-                    if (vid != null) {
-                        val manager = koinInject<DownloadManager>()
-                        val status by remember(vid) { manager.status(vid) }.collectAsState(null)
-                        if (status != null) {
-                            DropdownMenuItem(text = { Text("Quitar descarga") }, onClick = { menuOpen = false; manager.remove(vid) })
-                        } else {
-                            DropdownMenuItem(text = { Text("Descargar") }, onClick = { menuOpen = false; manager.enqueue(listOf(original)) })
-                        }
-                    }
-                    DropdownMenuItem(text = { Text("Personalizar canción") }, onClick = { menuOpen = false; modDialog = true })
-                }
-            }
+            // Menú «⋮» común: hoja de canción (SongMenuSheet).
+            IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Más opciones", tint = colors.onSurfaceVariant) }
         }
     }
-    if (modDialog) SongModDialog(original, onDismiss = { modDialog = false })
+    if (menuOpen) SongMenuSheet(original, onDismiss = { menuOpen = false }, extraItems = extraMenu)
 }
 
 /** Tarjeta de álbum, playlist o artista (redonda) para los carruseles. */
