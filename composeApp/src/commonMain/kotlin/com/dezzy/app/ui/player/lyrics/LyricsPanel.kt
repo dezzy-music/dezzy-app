@@ -155,7 +155,7 @@ internal fun LyricsContent(
     val state by manager.state.collectAsState()
     val translation by manager.translation.collectAsState()
 
-    val align by rememberEnumPreference(LyricsAlignKey, LyricsAlign.LEFT)
+    val align by rememberEnumPreference(LyricsAlignKey, LyricsAlign.CENTER)
     val anim by rememberEnumPreference(LyricsAnimKey, LyricsAnim.FOCUS)
     val scale by rememberPreference(LyricsTextScaleKey, 1f)
     val offsetMs by rememberPreference(LyricsSyncOffsetKey, 0)
@@ -169,9 +169,12 @@ internal fun LyricsContent(
 
     val found = state as? LyricsState.Found
     val result = found?.result
-    val synced: List<SyncedLine>? = result?.synced?.takeIf { it.isNotEmpty() }
-    val plainLines: List<String> = remember(result, synced) {
-        if (synced == null) result?.plain?.split(Regex("\r?\n")).orEmpty() else emptyList()
+    val nowMeta by playerConnection.mediaMetadata.collectAsState()
+    val edited = nowMeta?.let { m -> LyricsEdits.byKey[LyricsEdits.key(m.title, m.artists.joinToString { it.name })] }
+    val synced: List<SyncedLine>? = if (edited != null) null else result?.synced?.takeIf { it.isNotEmpty() }
+    val plainLines: List<String> = remember(result, synced, edited) {
+        edited?.split(Regex("\r?\n"))
+            ?: if (synced == null) result?.plain?.split(Regex("\r?\n")).orEmpty() else emptyList()
     }
     val trLines = (translation as? TranslationState.Ready)?.lines
     fun trFor(i: Int, text: String): String? =
@@ -278,6 +281,28 @@ internal fun LyricsContent(
 
         // Aviso cuando la traducción no cambia nada: la letra ya está en ese idioma.
         val sameLanguage = (translation as? TranslationState.Ready)?.lines?.let { l -> l.isNotEmpty() && l.all { it == null } } == true
+        if (translation is TranslationState.Loading) {
+            Box(Modifier.fillMaxWidth().padding(bottom = 10.dp), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.92f))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp,
+                    )
+                    Text(
+                        "Traduciendo letras…",
+                        color = Color.Black,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
         if (sameLanguage) {
             Box(Modifier.fillMaxWidth().padding(bottom = 10.dp), contentAlignment = Alignment.Center) {
                 Text(
@@ -479,7 +504,8 @@ private fun LyricLine(
             )
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        val style = if (glow) TextStyle(shadow = Shadow(Color(0xFFFFB77A).copy(alpha = 0.3f), blurRadius = 24f)) else TextStyle.Default
+        val font = MaterialTheme.typography.bodyLarge
+        val style = if (glow) font.copy(shadow = Shadow(Color(0xFFFFB77A).copy(alpha = 0.3f), blurRadius = 24f)) else font
         if (words != null && words.isNotEmpty()) {
             val pos = clock()
             val annotated = buildAnnotatedString {
@@ -492,8 +518,7 @@ private fun LyricLine(
                     // Palabra que suena en cian; las ya cantadas, plenas; las que faltan, tenues.
                     val wc = when {
                         p <= 0f -> color.copy(alpha = 0.38f)
-                        p >= 1f -> color
-                        else -> LyricsWordHighlight
+                        else -> color
                     }
                     withStyle(SpanStyle(color = wc)) { append(w.text) }
                 }

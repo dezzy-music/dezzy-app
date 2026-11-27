@@ -19,6 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -92,6 +96,8 @@ fun TrackRow(
     showCover: Boolean = true,
     onMore: (() -> Unit)? = null,
     extraMenu: List<Pair<String, () -> Unit>> = emptyList(),
+    /** Canción actual en la cola: ▶ sobre la carátula y título tenue (va sobre una tarjeta clara). */
+    queueCurrent: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val songMods: SongMods = koinInject()
@@ -114,7 +120,12 @@ fun TrackRow(
         if (showCover) {
             Box {
                 CoverImage(track.thumbnail, Modifier.size(48.dp), RoundedCornerShape(6.dp), sizePx = 144)
-                if (playing && number == null) {
+                if (queueCurrent) {
+                    Box(
+                        Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White) }
+                } else if (playing && number == null) {
                     Box(Modifier.size(48.dp).padding(14.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.GraphicEq, null, tint = colors.primary)
                     }
@@ -126,14 +137,18 @@ fun TrackRow(
                 track.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = if (playing) colors.primary else colors.onSurface,
+                color = when {
+                    queueCurrent -> Color.White.copy(alpha = 0.6f)
+                    playing -> colors.primary
+                    else -> colors.onSurface
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             val meta = listOfNotNull(
                 track.artists.ifBlank { null },
                 track.durationSeconds?.takeIf { it > 0 }?.let(::formatClock),
-            ).joinToString(" · ")
+            ).joinToString(" • ")
             val downloaded = track.videoId?.let { id ->
                 val manager = koinInject<DownloadManager>()
                 val status by remember(id) { manager.status(id) }.collectAsState(null)

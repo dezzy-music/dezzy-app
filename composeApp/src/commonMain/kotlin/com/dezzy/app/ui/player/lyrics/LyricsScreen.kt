@@ -32,11 +32,9 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -58,7 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.dezzy.app.feature.lyrics.LyricsManager
-import com.dezzy.app.ui.components.glass.DezzyIconButton as IconButton
+import androidx.compose.material3.IconButton
 import com.dezzy.app.ui.navigation.PlatformBackHandler
 import com.dezzy.app.ui.player.canvas.AiCanvasScreen
 import com.dezzy.app.ui.player.canvas.LyricsShareSheet
@@ -98,6 +96,7 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     val bgStyle by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
     var showCanvas by remember { mutableStateOf(false) }
     var shareLines by remember { mutableStateOf<List<String>?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
 
     PlatformBackHandler(enabled = true) { if (showCanvas) showCanvas = false else onClose() }
 
@@ -110,8 +109,8 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
 
     // Degradado con los colores de la carátula, salvo en el estilo por defecto.
     val followsPlayer = lyricsBg == LyricsBackground.SAME_AS_PLAYER
-    val plain = (followsPlayer && bgStyle == PlayerBackgroundStyle.DEFAULT) ||
-        (lyricsBg == LyricsBackground.IMAGE && !useImage)
+    // Como en la app original: siempre degradado con los colores de la carátula.
+    val plain = lyricsBg == LyricsBackground.IMAGE && !useImage
     var palette by remember { mutableStateOf<ArtPalette?>(null) }
     LaunchedEffect(meta?.thumbnailUrl, plain, useImage) {
         palette = if (plain || useImage) null else loadArtPalette(meta?.thumbnailUrl, 16)
@@ -125,7 +124,14 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
             val solid = lerp(top, Color.Black, 0.35f)
             Brush.verticalGradient(listOf(solid, solid))
         } else {
-            Brush.verticalGradient(listOf(top, lerp(top, Color.Black, 0.65f)))
+            // Diagonal entre el color dominante y el vivo de la carátula (como la app actual).
+            val other = palette?.let {
+                val v = it.getLightVibrantColor(it.getMutedColor(it.getVibrantColor(0xFF5A5A20.toInt())))
+                Color(v or 0xFF000000.toInt())
+            } ?: lerp(top, Color.Black, 0.5f)
+            Brush.linearGradient(
+                listOf(lerp(top, Color.Black, 0.1f), lerp(top, other, 0.45f), lerp(other, Color.Black, 0.35f)),
+            )
         }
     }
     val textColor = if (plain) MaterialTheme.colorScheme.onBackground else Color.White
@@ -153,13 +159,14 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
                 onClose = onClose,
                 onCanvas = { showCanvas = true },
                 onRetry = { manager.retry() },
+                onMenu = { showMenu = true },
             )
             if (landscape) {
                 Row(Modifier.fillMaxSize().padding(bottom = 8.dp)) {
                     LyricsContent(
                         playerConnection = playerConnection,
                         modifier = Modifier.weight(1.4f).fillMaxSize().padding(horizontal = 20.dp),
-                        contentColor = textColor, textSizeOverride = null, showChips = true,
+                        contentColor = textColor, textSizeOverride = null, showChips = false,
                         onShare = { shareLines = it },
                     )
                     Column(
@@ -174,7 +181,7 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
                 LyricsContent(
                     playerConnection = playerConnection,
                     modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
-                    contentColor = textColor, textSizeOverride = null, showChips = true,
+                    contentColor = textColor, textSizeOverride = null, showChips = false,
                     onShare = { shareLines = it },
                 )
                 Column(Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 16.dp)) {
@@ -186,6 +193,14 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
 
         if (showCanvas) {
             Box(Modifier.fillMaxSize().zIndex(2f)) { AiCanvasScreen(onClose = { showCanvas = false }) }
+        }
+        if (showMenu) {
+            LyricsMenuSheet(
+                title = meta?.title.orEmpty(),
+                artist = meta?.artists?.joinToString { it.name }.orEmpty(),
+                manager = manager,
+                onDismiss = { showMenu = false },
+            )
         }
         shareLines?.let { lines ->
             meta?.track?.let { track ->
@@ -202,8 +217,8 @@ private fun LyricsHeader(
     onClose: () -> Unit,
     onCanvas: () -> Unit,
     onRetry: () -> Unit,
+    onMenu: () -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).zIndex(1f),
         verticalAlignment = Alignment.CenterVertically,
@@ -227,13 +242,8 @@ private fun LyricsHeader(
                 Icon(Icons.Rounded.AutoAwesome, "Canvas IA", Modifier.size(20.dp), tint = color)
             }
             Spacer(Modifier.size(4.dp))
-            Box {
-                Box(Modifier.size(32.dp).clickable { menu = true }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.MoreHoriz, "Más opciones", Modifier.size(20.dp), tint = color)
-                }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text("Buscar la letra otra vez") }, onClick = { menu = false; onRetry() })
-                }
+            Box(Modifier.size(32.dp).clickable(onClick = onMenu), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.MoreHoriz, "Más opciones", Modifier.size(20.dp), tint = color)
             }
         }
     }
@@ -300,7 +310,7 @@ private fun PlayerControls(pc: PlayerConnection, color: Color) {
             )
         }
         IconButton(onClick = { pc.player.seekToPrevious() }, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Rounded.SkipPrevious, null, Modifier.size(24.dp), tint = color)
+            Icon(Icons.Rounded.FastRewind, "Anterior", Modifier.size(24.dp), tint = color)
         }
         IconButton(onClick = { pc.player.togglePlayPause() }, modifier = Modifier.size(56.dp)) {
             if (isLoading) {
@@ -315,7 +325,7 @@ private fun PlayerControls(pc: PlayerConnection, color: Color) {
             }
         }
         IconButton(onClick = { pc.player.seekToNext() }, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Rounded.SkipNext, null, Modifier.size(24.dp), tint = color)
+            Icon(Icons.Rounded.FastForward, "Siguiente", Modifier.size(24.dp), tint = color)
         }
         IconButton(onClick = { pc.player.shuffleModeEnabled = !shuffle }, modifier = Modifier.size(40.dp)) {
             Icon(
@@ -337,7 +347,7 @@ private fun PlayerControls(pc: PlayerConnection, color: Color) {
             value = volume.coerceIn(0f, 1f),
             onValueChange = { pc.service.playerVolume.value = it },
             colors = SliderDefaults.colors(
-                thumbColor = color,
+                thumbColor = Color.Transparent,
                 activeTrackColor = color,
                 inactiveTrackColor = color.copy(alpha = 0.24f),
             ),

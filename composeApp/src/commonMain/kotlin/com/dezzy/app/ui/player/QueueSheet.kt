@@ -80,7 +80,9 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
     var locked by rememberPreference(QueueLockedKey, false)
     var clearMenu by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { if (queue.index > 0) list.scrollToItem((queue.index - 1).coerceAtLeast(0)) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Como en la app actual, la cola se abre a pantalla completa.
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         val current = queue.current?.track
         // Cabecera: portada, título, artista y me gusta.
         Row(
@@ -100,6 +102,7 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
                 Text(
                     current?.artists.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -141,7 +144,8 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
             val total = queue.items.sumOf { it.track.durationSeconds ?: 0L }
             Text(
                 "${queue.items.size} canciones • ${total / 3600}h ${(total % 3600) / 60}m ${total % 60}s",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -168,6 +172,7 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
             Text(
                 "Reproducir automáticamente música similar",
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -182,8 +187,11 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
                 TrackRow(
                     track = item.track,
                     onClick = { player.playAt(index) },
-                    playing = isCurrent,
-                    modifier = if (isCurrent) Modifier.background(Color.White.copy(alpha = 0.10f)) else Modifier,
+                    queueCurrent = isCurrent,
+                    // La actual va en una tarjeta clara redondeada, como en la app actual.
+                    modifier = if (isCurrent) {
+                        Modifier.padding(horizontal = 8.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFD6D6D6).copy(alpha = 0.92f))
+                    } else Modifier,
                     extraMenu = rowMenu,
                 )
             }

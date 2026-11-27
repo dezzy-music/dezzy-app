@@ -106,7 +106,7 @@ object YouTubeParsers {
                     else -> {
                         if (text.contains(":") && duration == null) {
                             duration = YouTubeJsonHelper.parseDurationSeconds(text)
-                        } else if (text != " • " && text != " & " && text != ", " && parts.isEmpty()) {
+                        } else if (text != " • " && text != " & " && text != ", " && parts.isEmpty() && !isItemTypeLabel(text)) {
                             parts.add(text)
                         }
                     }
@@ -305,7 +305,7 @@ object YouTubeParsers {
                             Track(
                                 videoId = videoId,
                                 title = title,
-                                artists = subtitle,
+                                artists = artistsFromSubtitle(subtitle),
                                 album = null,
                                 thumbnail = thumb,
                                 durationSeconds = null
@@ -445,4 +445,18 @@ object YouTubeParsers {
             tracks = tracks
         )
     }
+}
+
+/** Palabras que YouTube Music pone delante del subtítulo para indicar el tipo («Canción • Artista • …»). */
+private val ItemTypeLabels = setOf(
+    "canción", "cancion", "song", "vídeo", "video", "episodio", "episode", "álbum", "album", "sencillo", "single", "ep",
+)
+
+internal fun isItemTypeLabel(text: String): Boolean = text.trim().lowercase() in ItemTypeLabels
+
+/** De «Canción • Artista • 3:20» deja sólo «Artista». */
+internal fun artistsFromSubtitle(subtitle: String): String {
+    val parts = subtitle.split(" • ").map { it.trim() }.filter { it.isNotEmpty() }
+    val rest = if (parts.isNotEmpty() && isItemTypeLabel(parts.first())) parts.drop(1) else parts
+    return rest.firstOrNull() ?: subtitle
 }
