@@ -129,7 +129,10 @@ fun QueueSheet(state: PlaybackState, player: PlayerController, onDismiss: () -> 
             IconButton(onClick = { locked = !locked }) {
                 Icon(if (locked) Icons.Rounded.Lock else Icons.Rounded.LockOpen, if (locked) "Desbloquear la cola" else "Bloquear la cola")
             }
-            IconButton(onClick = { commentsFor = queue.current?.track?.videoId }) {
+            val showCommentsButton by rememberPreference(
+                com.dezzy.app.ui.screens.settings.prefs.ShowCommentsButtonKey, true,
+            )
+            if (showCommentsButton) IconButton(onClick = { commentsFor = queue.current?.track?.videoId }) {
                 Icon(Icons.Rounded.ChatBubbleOutline, "Comentarios")
             }
             Box {

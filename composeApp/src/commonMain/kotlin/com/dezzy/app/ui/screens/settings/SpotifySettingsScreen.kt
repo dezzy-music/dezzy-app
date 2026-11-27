@@ -57,6 +57,7 @@ internal fun SpotifySettingsScreen(ctx: ScreenContext) {
 
     fun open(page: SettingsPage) = ctx.navigator.push(Screen.Settings(page))
 
+    val spotifySyncing by org.koin.compose.koinInject<com.dezzy.app.source.spotify.SpotifyImporter>().syncing.collectAsState()
     SettingsPage(title = "Integración de Spotify", onBack = { ctx.navigator.back() }) {
         item(key = "account") {
             SettingsGroup(label = "Cuenta") {
@@ -97,7 +98,7 @@ internal fun SpotifySettingsScreen(ctx: ScreenContext) {
                 SettingsGroup(label = "Biblioteca") {
                     SettingsRow(
                         title = "Importar tu biblioteca",
-                        subtitle = "Elige qué listas de Spotify traer a Dezzy",
+                        subtitle = if (spotifySyncing) "Sincronizando tu biblioteca en segundo plano…" else "Elige qué listas de Spotify traer a Dezzy",
                         icon = Icons.Rounded.LibraryMusic,
                         onClick = { open(SettingsPage.SPOTIFY_IMPORT) },
                     )

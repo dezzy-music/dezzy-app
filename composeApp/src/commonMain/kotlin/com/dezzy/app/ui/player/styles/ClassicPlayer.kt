@@ -39,6 +39,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MusicNote
+import com.dezzy.app.ui.player.kit.playerSwipeToChange
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -250,41 +252,33 @@ fun ClassicPlayer(
         }
     }
 
+    val look = com.dezzy.app.ui.player.kit.rememberPlayerAppearance()
     val cover: @Composable (Modifier) -> Unit = { coverModifier ->
         Box(modifier = coverModifier, contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
                     .aspectRatio(1f)
-                    .shadow(12.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
+                    .shadow(12.dp, look.coverShape)
+                    .clip(look.coverShape)
                     .background(colorScheme.surfaceContainerHighest)
-                    // Deslizar la carátula a los lados cambia de canción.
-                    .pointerInput(playerConnection) {
-                        val threshold = 96.dp.toPx()
-                        var total = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { total = 0f },
-                            onDragEnd = {
-                                when {
-                                    total <= -threshold -> playerConnection.seekToNext()
-                                    total >= threshold -> playerConnection.seekToPrevious()
-                                }
-                                total = 0f
-                            },
-                            onDragCancel = { total = 0f },
-                        ) { change, dragAmount ->
-                            change.consume()
-                            total += dragAmount
-                        }
-                    },
+                    // Deslizar la carátula a los lados cambia de canción (si el ajuste está activo).
+                    .playerSwipeToChange(playerConnection, look.swipeToChange),
             ) {
-                AsyncImage(
+                if (look.hideThumbnail) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Rounded.MusicNote, null,
+                            Modifier.fillMaxSize(0.4f),
+                            tint = colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else AsyncImage(
                     model = mediaMetadata?.thumbnailUrl,
                     contentDescription = mediaMetadata?.title?.let { "Carátula de $it" },
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-                if (hasCanvas) {
+                if (hasCanvas && !look.hideThumbnail) {
                     CanvasArtworkPlayer(
                         primaryUrl = canvasPrimary,
                         fallbackUrl = canvasFallback,

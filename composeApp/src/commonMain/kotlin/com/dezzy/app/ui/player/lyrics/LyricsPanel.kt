@@ -81,6 +81,13 @@ import com.dezzy.app.ui.player.kit.DisableBlurKey
 import com.dezzy.app.ui.player.kit.PlayerConnection
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPreference
+import com.dezzy.app.ui.screens.settings.prefs.LyricsAnimStyleKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsAppleBlurKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsAutoScrollKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsLineSpacingKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsTapToSeekKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsV2AnimKey
+import com.dezzy.app.ui.screens.settings.prefs.LyricsV2Key
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.koin.compose.koinInject
@@ -156,7 +163,23 @@ internal fun LyricsContent(
     val translation by manager.translation.collectAsState()
 
     val align by rememberEnumPreference(LyricsAlignKey, LyricsAlign.CENTER)
-    val anim by rememberEnumPreference(LyricsAnimKey, LyricsAnim.FOCUS)
+    val baseAnim by rememberEnumPreference(LyricsAnimKey, LyricsAnim.FOCUS)
+
+    // Ajustes › Apariencia › Letras.
+    val v2 by rememberPreference(LyricsV2Key, false)
+    val v2Anim by rememberPreference(LyricsV2AnimKey, "HEATMAP")
+    val animStyle by rememberPreference(LyricsAnimStyleKey, "APPLE")
+    val appleBlur by rememberPreference(LyricsAppleBlurKey, true)
+    val autoScroll by rememberPreference(LyricsAutoScrollKey, true)
+    val tapToSeek by rememberPreference(LyricsTapToSeekKey, true)
+    val lineSpacing by rememberPreference(LyricsLineSpacingKey, 1.3f)
+    // Con V2 apagado manda el estilo de transición elegido; APPLE conserva el comportamiento actual.
+    val anim = if (v2) baseAnim else when (animStyle) {
+        "FADE" -> LyricsAnim.FADE
+        "SLIDE" -> LyricsAnim.SLIDE
+        "NONE" -> LyricsAnim.NONE
+        else -> baseAnim
+    }
     val scale by rememberPreference(LyricsTextScaleKey, 1f)
     val offsetMs by rememberPreference(LyricsSyncOffsetKey, 0)
     val disableBlur by rememberPreference(DisableBlurKey, false)
@@ -198,7 +221,7 @@ internal fun LyricsContent(
     val listState = rememberLazyListState()
     var lastUser by remember { mutableLongStateOf(0L) }
     LaunchedEffect(active, anim) {
-        if (active < 0 || nowMs() - lastUser < 3000L) return@LaunchedEffect
+        if (!autoScroll || active < 0 || nowMs() - lastUser < 3000L) return@LaunchedEffect
         val target = -(listState.layoutInfo.viewportSize.height * 0.4f).toInt()
         if (anim == LyricsAnim.NONE) listState.scrollToItem(active, target)
         else listState.animateScrollToItem(active, target)
@@ -361,10 +384,11 @@ internal fun LyricsContent(
                         base = base, color = color, align = align.textAlign,
                         selected = selecting && i in selected,
                         words = words, clock = clock,
+                        appleBlur = appleBlur, v2 = v2, v2Anim = v2Anim, lineSpacing = lineSpacing,
                         onClick = {
                             if (selecting) {
                                 if (i in selected) selected.remove(i) else selected.add(i)
-                            } else {
+                            } else if (tapToSeek) {
                                 playerConnection.player.seekTo(line.startMs)
                             }
                         },
@@ -386,7 +410,9 @@ internal fun LyricsContent(
                         text = text, translation = if (text.isNotBlank()) trFor(i, text) else null,
                         kind = LineKind.FAR, plain = true, anim = anim, disableBlur = disableBlur,
                         base = base, color = color, align = align.textAlign,
-                        selected = false, words = null, clock = clock, onClick = null, onLongClick = null,
+                        selected = false, words = null, clock = clock,
+                        appleBlur = appleBlur, v2 = v2, v2Anim = v2Anim, lineSpacing = lineSpacing,
+                        onClick = null, onLongClick = null,
                     )
                 }
             }
@@ -453,6 +479,10 @@ private fun LyricLine(
     selected: Boolean,
     words: List<WordSpan>?,
     clock: () -> Long,
+    appleBlur: Boolean,
+    v2: Boolean,
+    v2Anim: String,
+    lineSpacing: Float,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
 ) {
@@ -480,7 +510,7 @@ private fun LyricLine(
         if (kind == LineKind.NOW && anim == LyricsAnim.SLIDE && !isGap && !plain) 10.dp else 0.dp,
         label = "lyShift",
     )
-    val blurred = !plain && anim == LyricsAnim.FOCUS && kind == LineKind.PAST && !disableBlur
+    val blurred = !plain && anim == LyricsAnim.FOCUS && kind == LineKind.PAST && !disableBlur && appleBlur
     val glow = !plain && anim == LyricsAnim.FOCUS && kind == LineKind.NOW && !isGap
     val interaction = remember { MutableInteractionSource() }
 
@@ -515,22 +545,47 @@ private fun LyricLine(
                     } else {
                         ((pos - w.startMs).toFloat() / (w.endMs - w.startMs)).coerceIn(0f, 1f)
                     }
-                    // Palabra que suena en cian; las ya cantadas, plenas; las que faltan, tenues.
-                    val wc = when {
-                        p <= 0f -> color.copy(alpha = 0.38f)
-                        else -> color
+                    if (!v2) {
+                        // Palabra que suena en cian; las ya cantadas, plenas; las que faltan, tenues.
+                        val wc = when {
+                            p <= 0f -> color.copy(alpha = 0.38f)
+                            else -> color
+                        }
+                        withStyle(SpanStyle(color = wc)) { append(w.text) }
+                    } else when (v2Anim) {
+                        "FADE" -> {
+                            // Fundido de opacidad por palabra.
+                            withStyle(SpanStyle(color = color.copy(alpha = 0.38f + 0.62f * p))) { append(w.text) }
+                        }
+                        "SCALE" -> {
+                            // La palabra que se canta crece un poco; las cantadas, plenas; las pendientes, tenues.
+                            val current = p > 0f && p < 1f
+                            withStyle(
+                                SpanStyle(
+                                    color = if (p <= 0f) color.copy(alpha = 0.38f) else color,
+                                    fontSize = if (current) (size * 1.08f).sp else androidx.compose.ui.unit.TextUnit.Unspecified,
+                                ),
+                            ) { append(w.text) }
+                        }
+                        else -> {
+                            // HEATMAP: carácter a carácter dentro de la palabra, de tenue a color pleno.
+                            val n = w.text.length.coerceAtLeast(1)
+                            w.text.forEachIndexed { c, ch ->
+                                val cp = (p * n - c).coerceIn(0f, 1f)
+                                withStyle(SpanStyle(color = color.copy(alpha = 0.38f + 0.62f * cp))) { append(ch) }
+                            }
+                        }
                     }
-                    withStyle(SpanStyle(color = wc)) { append(w.text) }
                 }
             }
             Text(
-                annotated, color = color, fontSize = size.sp, lineHeight = (size * 1.25f).sp,
+                annotated, color = color, fontSize = size.sp, lineHeight = (size * lineSpacing).sp,
                 fontWeight = FontWeight.Bold, textAlign = align, style = style, modifier = Modifier.fillMaxWidth(),
             )
         } else {
             Text(
                 if (isGap) "♪" else text.ifEmpty { " " },
-                color = color.copy(alpha = a), fontSize = size.sp, lineHeight = (size * 1.25f).sp,
+                color = color.copy(alpha = a), fontSize = size.sp, lineHeight = (size * lineSpacing).sp,
                 fontWeight = FontWeight.Bold, textAlign = align, style = style, modifier = Modifier.fillMaxWidth(),
             )
         }

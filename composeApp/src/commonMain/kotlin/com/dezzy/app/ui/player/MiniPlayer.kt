@@ -96,6 +96,9 @@ fun MiniPlayer(
     val isBar = miniStyle == MiniPlayerStyle.BAR
     val shape = RoundedCornerShape(if (isBar) 20.dp else 16.dp)
     var drag by remember { mutableFloatStateOf(0f) }
+    val swipeSensitivity by rememberPreference(
+        com.dezzy.app.ui.screens.settings.prefs.MiniSwipeSensitivityKey, 73f,
+    )
 
     val bgStyle by rememberEnumPreference(MiniBackgroundStyleKey, MiniBackgroundStyle.DEZZY_STYLE)
     val dynamicColor by rememberPreference(MiniDynamicColorKey, true)
@@ -148,10 +151,12 @@ fun MiniPlayer(
             .background(bgBrush)
             .then(glowBorder)
             .clickable(onClick = onExpand)
-            .pointerInput(Unit) {
+            .pointerInput(swipeSensitivity) {
+                // Sensibilidad 10..100 % -> umbral de 160 dp a 24 dp.
+                val threshold = (160f + (24f - 160f) * ((swipeSensitivity - 10f) / 90f).coerceIn(0f, 1f)).dp.toPx()
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (drag < -120f) player.next() else if (drag > 120f) player.previous()
+                        if (drag < -threshold) player.next() else if (drag > threshold) player.previous()
                         drag = 0f
                     },
                     onDragCancel = { drag = 0f },

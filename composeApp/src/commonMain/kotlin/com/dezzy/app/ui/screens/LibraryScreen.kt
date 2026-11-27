@@ -92,6 +92,7 @@ import com.dezzy.app.core.model.SessionProvider
 import com.dezzy.app.ui.navigation.Screen
 import com.dezzy.app.ui.screens.downloads.DownloadAllButton
 import com.dezzy.app.ui.navigation.SettingsPage
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -118,6 +119,18 @@ fun LibraryScreen(ctx: ScreenContext) {
     val playlists by ctx.repository.getPlaylists().collectAsState(emptyList())
     val favorites by ctx.repository.getFavorites().collectAsState(null)
     var tab by remember { mutableStateOf(LibraryTab.PLAYLISTS) }
+    // Pestaña inicial (Ajustes › Apariencia); GENRES abre otra pantalla, así que cae en Listas.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val saved = ctx.prefs.value(com.dezzy.app.ui.screens.settings.prefs.DefaultLibraryTabKey, "PLAYLISTS").first()
+        tab = LibraryTab.entries.firstOrNull { it.name == saved && it != LibraryTab.GENRES } ?: LibraryTab.PLAYLISTS
+    }
+    val libraryTagsOn by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.LibraryTagsKey, true)
+    val gridCellSize by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.GridCellSizeKey, "SMALL")
+    // SMALL = 3 columnas, LARGE = 2 columnas.
+    val gridCols = if (gridCellSize == "LARGE") 2 else 3
+    val showLiked by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.ShowLikedAutoPlaylistKey, true)
+    val showDownloaded by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.ShowDownloadedAutoPlaylistKey, true)
+    val showTop by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.ShowTopAutoPlaylistKey, true)
     val savedAlbums by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SavedAlbumsKey) }.collectAsState(null)
     val subscribedArtists by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey) }.collectAsState(null)
     var creating by remember { mutableStateOf(false) }
@@ -165,10 +178,10 @@ fun LibraryScreen(ctx: ScreenContext) {
     val hasSpotify = SessionProvider.SPOTIFY in sessions
 
     val colors = MaterialTheme.colorScheme
-    val pills = listOf(
-        LibraryPill("Favorito", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
-        LibraryPill("Descargado", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
-        LibraryPill("Mi top", Icons.AutoMirrored.Rounded.TrendingUp, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
+    val pills = listOfNotNull(
+        if (showLiked) LibraryPill("Favorito", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) } else null,
+        if (showDownloaded) LibraryPill("Descargado", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) } else null,
+        if (showTop) LibraryPill("Mi top", Icons.AutoMirrored.Rounded.TrendingUp, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) } else null,
     )
     // Orden y vista de la rejilla (se recuerdan entre sesiones).
     var sort by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.library.LibrarySortKey, 0)
@@ -184,7 +197,7 @@ fun LibraryScreen(ctx: ScreenContext) {
     Box(Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { DezzyTopBar(ctx) }
-        item {
+        if (pills.isNotEmpty()) item {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
@@ -250,7 +263,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                 }
                 // Tarjetas fijas + listas locales, en filas de dos (rejilla) o de una (lista).
                 val cards = buildList<@Composable (Modifier) -> Unit> {
-                    add { m ->
+                    if (showLiked) add { m ->
                         LibraryCard(
                             m, title = "Tus me gusta",
                             subtitle = favorites?.let { "${it.size} canciones" } ?: "",
@@ -311,7 +324,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                 }
             }
             LibraryTab.SONGS -> {
-                item(key = "songs:chips") {
+                if (libraryTagsOn) item(key = "songs:chips") {
                     LibraryFilterChips(listOf("Me gustan", "Tu biblioteca", "Descargados"), songFilter) { songFilter = it }
                 }
                 val tracks = when (songFilter) {
@@ -349,7 +362,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                 }
             }
             LibraryTab.ALBUMS -> {
-                item(key = "albums:chips") {
+                if (libraryTagsOn) item(key = "albums:chips") {
                     LibraryFilterChips(listOf("Me gustan", "Tu biblioteca", "Descargados"), albumFilter) { albumFilter = it }
                 }
                 val list = when (albumFilter) {
@@ -367,14 +380,14 @@ fun LibraryScreen(ctx: ScreenContext) {
                 when {
                     list == null -> loadingRows()
                     list.isEmpty() -> item(key = "albums:empty") { LibraryEmptyState(Icons.Rounded.Album, "Los álbumes de la biblioteca aparecerán aquí") }
-                    itemsGrid -> items(list.chunked(2), key = { row -> "ar:" + row.first().id }) { row ->
-                        LibraryItemGridRow(row) { item -> LibraryAlbumCell(item, liked = albumFilter != 2, onPlay = { ctx.open(item) }) { ctx.open(item) } }
+                    itemsGrid -> items(list.chunked(gridCols), key = { row -> "ar:" + row.first().id }) { row ->
+                        LibraryItemGridRow(row, gridCols) { item -> LibraryAlbumCell(item, liked = albumFilter != 2, onPlay = { ctx.open(item) }) { ctx.open(item) } }
                     }
                     else -> items(list, key = { "album:" + it.id }) { item -> ItemRow(item) { ctx.open(item) } }
                 }
             }
             LibraryTab.ARTISTS -> {
-                item(key = "artists:chips") {
+                if (libraryTagsOn) item(key = "artists:chips") {
                     LibraryFilterChips(listOf("Me gustan", "Tu biblioteca"), artistFilter) { artistFilter = it }
                 }
                 val list = (if (artistFilter == 0) subscribedArtists else libraryArtists)?.let { l -> sortItems(l, artistSort, artistAsc) }
@@ -395,8 +408,8 @@ fun LibraryScreen(ctx: ScreenContext) {
                 when {
                     list == null -> loadingRows()
                     list.isEmpty() -> item(key = "artists:empty") { LibraryEmptyState(Icons.Rounded.PersonSearch, "Los artistas de la biblioteca aparecerán aquí") }
-                    itemsGrid -> items(list.chunked(2), key = { row -> "rr:" + row.first().id }) { row ->
-                        LibraryItemGridRow(row) { item -> LibraryArtistCell(item) { openArtist(item) } }
+                    itemsGrid -> items(list.chunked(gridCols), key = { row -> "rr:" + row.first().id }) { row ->
+                        LibraryItemGridRow(row, gridCols) { item -> LibraryArtistCell(item) { openArtist(item) } }
                     }
                     else -> items(list, key = { "artist:" + it.id }) { item -> ItemRow(item) { openArtist(item) } }
                 }
@@ -539,11 +552,13 @@ private fun LibraryEmptyState(icon: ImageVector, text: String) {
 @Composable
 private fun LibraryItemGridRow(
     row: List<com.dezzy.app.core.model.MusicItem>,
+    cols: Int,
     cell: @Composable (com.dezzy.app.core.model.MusicItem) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(if (cols >= 3) 12.dp else 24.dp)) {
         row.forEach { item -> Box(Modifier.weight(1f)) { cell(item) } }
-        if (row.size == 1) Spacer(Modifier.weight(1f))
+        // Rellena los huecos de la última fila para que las celdas no se estiren.
+        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 

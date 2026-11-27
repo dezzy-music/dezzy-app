@@ -27,6 +27,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -106,8 +109,31 @@ fun TrackRow(
     @Suppress("NAME_SHADOWING")
     val track = remember(original, mods) { original.withMods(mods) }
     var menuOpen by remember { mutableStateOf(false) }
+    // Deslizar: izquierda = añadir a la cola, derecha = reproducir a continuación (ajuste SwipeSongActionsKey).
+    val swipeEnabled by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.SwipeSongActionsKey, true)
+    val swipeCtx = LocalScreenContext.current
+    val swipeConn = com.dezzy.app.ui.player.kit.LocalPlayerConnection.current
+    val swipeController = swipeCtx?.player ?: swipeConn?.controller
+    val swipeToast: (String) -> Unit = { msg -> swipeCtx?.toast(msg) ?: swipeConn?.toast?.invoke(msg) }
+    val useSwipe = swipeEnabled && !queueCurrent && swipeController != null && original.videoId != null
+    val swipeState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                androidx.compose.material3.SwipeToDismissBoxValue.EndToStart -> {
+                    swipeController?.addToQueue(original); swipeToast("Añadida a la cola")
+                }
+                androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd -> {
+                    swipeController?.playNext(original); swipeToast("Se reproducirá a continuación")
+                }
+                else -> Unit
+            }
+            // false: la fila vuelve a su sitio tras la acción.
+            false
+        },
+    )
+    val rowBody: @Composable (Modifier) -> Unit = { rowModifier ->
     Row(
-        modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        rowModifier.fillMaxWidth().heightIn(min = 64.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -171,6 +197,29 @@ fun TrackRow(
             IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Más opciones", tint = colors.onSurfaceVariant) }
         }
     }
+    }
+    if (useSwipe) {
+        androidx.compose.material3.SwipeToDismissBox(
+            state = swipeState,
+            modifier = modifier,
+            backgroundContent = {
+                val toStart = swipeState.dismissDirection == androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd
+                val active = swipeState.dismissDirection != androidx.compose.material3.SwipeToDismissBoxValue.Settled
+                if (active) {
+                    Box(
+                        Modifier.fillMaxSize().background(colors.primaryContainer).padding(horizontal = 24.dp),
+                        contentAlignment = if (toStart) Alignment.CenterStart else Alignment.CenterEnd,
+                    ) {
+                        Icon(
+                            if (toStart) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.AutoMirrored.Rounded.QueueMusic,
+                            if (toStart) "Reproducir a continuación" else "Añadir a la cola",
+                            tint = colors.onPrimaryContainer,
+                        )
+                    }
+                }
+            },
+        ) { rowBody(Modifier) }
+    } else rowBody(modifier)
     if (menuOpen) SongMenuSheet(original, onDismiss = { menuOpen = false }, extraItems = extraMenu)
 }
 

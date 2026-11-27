@@ -77,6 +77,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.composed
+import com.dezzy.app.ui.player.kit.playerSwipeToChange
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -348,25 +350,13 @@ private fun StyledArtwork(
 }
 
 /** Deslizar a los lados cambia de canción (igual que en Clásico). */
-private fun Modifier.swipeToSkip(playerConnection: PlayerConnection): Modifier =
-    pointerInput(playerConnection) {
-        val threshold = 96.dp.toPx()
-        var total = 0f
-        detectHorizontalDragGestures(
-            onDragStart = { total = 0f },
-            onDragEnd = {
-                when {
-                    total <= -threshold -> playerConnection.seekToNext()
-                    total >= threshold -> playerConnection.seekToPrevious()
-                }
-                total = 0f
-            },
-            onDragCancel = { total = 0f },
-        ) { change, dragAmount ->
-            change.consume()
-            total += dragAmount
-        }
-    }
+private fun Modifier.swipeToSkip(playerConnection: PlayerConnection): Modifier = composed {
+    // Respeta «Deslizar para cambiar de canción» de Apariencia › Reproductor.
+    val enabled by com.dezzy.app.ui.player.kit.rememberPreference(
+        com.dezzy.app.ui.screens.settings.prefs.PlayerSwipeToChangeKey, true,
+    )
+    Modifier.playerSwipeToChange(playerConnection, enabled)
+}
 
 private fun playIcon(isPlaying: Boolean, playbackState: Int): ImageVector = when {
     playbackState == Player.STATE_ENDED -> Icons.Rounded.Replay

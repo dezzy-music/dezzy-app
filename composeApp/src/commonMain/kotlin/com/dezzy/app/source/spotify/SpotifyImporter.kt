@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
 sealed interface SpotifyImportState {
@@ -51,17 +52,25 @@ class SpotifyImporter(
     private val _state = MutableStateFlow<SpotifyImportState>(SpotifyImportState.Idle)
     val state: StateFlow<SpotifyImportState> = _state.asStateFlow()
 
+    /** Trabajo que ve el usuario (cargar listas, importar). */
     private var job: Job? = null
+    /** Sincronización silenciosa en segundo plano: nunca bloquea la pantalla de importar. */
+    private var syncJob: Job? = null
     private var known: List<SpotifyPlaylistSummary> = emptyList()
 
+    private val _syncing = MutableStateFlow(false)
+    /** true mientras corre la sincronización en segundo plano. */
+    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+
     private fun busy(): Boolean = job?.isActive == true
+    private fun syncBusy(): Boolean = syncJob?.isActive == true
 
     fun loadPlaylists() {
         if (busy()) return
         _state.value = SpotifyImportState.LoadingPlaylists
         job = scope.launch {
             try {
-                val list = client.playlists()
+                val list = (withTimeoutOrNull(LOAD_TIMEOUT_MS) { client.playlists() } ?: error(TIMEOUT_ERROR))
                 known = list
                 val imported = repo.importedRemoteIds(SOURCE).toSet()
                 _state.value = SpotifyImportState.Choosing(list, imported)
@@ -75,6 +84,8 @@ class SpotifyImporter(
 
     fun import(ids: Set<String>) {
         if (busy() || ids.isEmpty()) return
+        // La importación elegida por el usuario manda: la sincronización silenciosa se para.
+        syncJob?.cancel()
         job = scope.launch {
             try {
                 val result = run(ids, silent = false)
@@ -83,6 +94,22 @@ class SpotifyImporter(
                 throw e
             } catch (e: Exception) {
                 _state.value = SpotifyImportState.Failed(e.message ?: DEFAULT_ERROR)
+            }
+        }
+    }
+
+    private fun launchSync(block: suspend () -> Unit) {
+        if (busy() || syncBusy()) return
+        syncJob = scope.launch {
+            _syncing.value = true
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // En silencio: se reintentará en el próximo arranque.
+            } finally {
+                _syncing.value = false
             }
         }
     }
@@ -99,45 +126,27 @@ class SpotifyImporter(
     }
 
     /** Al arrancar: si hay sesión, la sincronización automática está activa y han pasado ≥24 h. */
-    fun startAutoSync() {
-        if (busy()) return
-        job = scope.launch {
-            try {
-                if (!client.hasSession()) return@launch
-                val last = prefs.spotifyLastSync.first()
-                // Nunca sincronizada (sesión recién iniciada): toda la biblioteca, sin preguntar.
-                if (last > 0L) {
-                    if (!prefs.spotifyAutoSync.first()) return@launch
-                    if (nowMs() - last < AUTO_SYNC_INTERVAL_MS) return@launch
-                }
-                syncAllPlaylists()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // En silencio: se reintentará en el próximo arranque.
-            }
+    fun startAutoSync() = launchSync {
+        if (!client.hasSession()) return@launchSync
+        val last = prefs.spotifyLastSync.first()
+        // Nunca sincronizada (sesión recién iniciada): toda la biblioteca, sin preguntar.
+        if (last > 0L) {
+            if (!prefs.spotifyAutoSync.first()) return@launchSync
+            if (nowMs() - last < AUTO_SYNC_INTERVAL_MS) return@launchSync
         }
+        syncAllPlaylists()
     }
 
     /**
      * Sincroniza de una vez toda la biblioteca de Spotify (todas las listas y «Me gusta»),
      * como la app actual al iniciar sesión. Corre en segundo plano y sin tocar el estado de la UI.
      */
-    fun syncEverything() {
-        if (busy()) return
-        job = scope.launch {
-            try {
-                if (client.hasSession()) syncAllPlaylists()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // En silencio: se reintentará en el próximo arranque.
-            }
-        }
+    fun syncEverything() = launchSync {
+        if (client.hasSession()) syncAllPlaylists()
     }
 
     private suspend fun syncAllPlaylists() {
-        known = client.playlists()
+        known = (withTimeoutOrNull(LOAD_TIMEOUT_MS) { client.playlists() } ?: error(TIMEOUT_ERROR))
         val ids = known.map { it.id }.toSet()
         if (ids.isNotEmpty()) run(ids, silent = true)
     }
@@ -211,6 +220,8 @@ class SpotifyImporter(
         const val LIKED_TITLE = "Me gusta de Spotify"
         const val DEFAULT_ERROR = "No se pudo leer tu biblioteca"
         const val SEARCH_PAUSE_MS = 150L
+        const val LOAD_TIMEOUT_MS = 45_000L
+        const val TIMEOUT_ERROR = "Spotify no respondió. Revisa tu conexión e inténtalo de nuevo."
         const val AUTO_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000L
     }
 }

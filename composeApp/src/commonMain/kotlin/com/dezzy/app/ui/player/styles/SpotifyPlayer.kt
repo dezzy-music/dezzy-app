@@ -407,7 +407,11 @@ fun SpotifyPlayer(
     val canvasAlpha by remember(canvasFadePx) {
         derivedStateOf { (1f - scrollState.value / canvasFadePx).coerceIn(0f, 1f) }
     }
-    val swipeToChangeSong = Modifier.pointerInput(Unit) {
+    val swipeEnabled by com.dezzy.app.ui.player.kit.rememberPreference(
+        com.dezzy.app.ui.screens.settings.prefs.PlayerSwipeToChangeKey, true,
+    )
+    val swipeToChangeSong = Modifier.pointerInput(swipeEnabled) {
+        if (!swipeEnabled) return@pointerInput
         detectHorizontalDragGestures(
             onDragStart = { artworkDragTotal = 0f },
             onDragEnd = {

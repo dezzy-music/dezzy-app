@@ -636,7 +636,10 @@ private fun VideoModeScreen(
                         label = "Guardar",
                         onClick = { showPlaylistDialog = true },
                     )
-                    VideoActionChip(
+                    val showCommentsButton by com.dezzy.app.ui.player.kit.rememberPreference(
+                        com.dezzy.app.ui.screens.settings.prefs.ShowCommentsButtonKey, true,
+                    )
+                    if (showCommentsButton) VideoActionChip(
                         icon = Icons.Rounded.ChatBubble,
                         label = "Comentarios",
                         onClick = { showComments = true },

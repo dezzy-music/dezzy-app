@@ -51,6 +51,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -109,6 +110,7 @@ private class ExperienceLink(
 @Composable
 fun ExperiencesScreen(ctx: ScreenContext) {
     val stats: StatsStore = koinInject()
+    val djName by ctx.prefs.djName.collectAsState("")
 
     // Minutos escuchados esta semana.
     val weekMs by produceState(0L) {
@@ -189,7 +191,7 @@ fun ExperiencesScreen(ctx: ScreenContext) {
             modifier = Modifier.weight(1f),
         ) {
             item(key = "dj", span = { GridItemSpan(maxLineSpan) }) {
-                ExperienceDjCard(onClick = { ctx.navigator.push(Screen.Dj) })
+                ExperienceDjCard(djName, onClick = { ctx.navigator.push(Screen.Dj) })
             }
 
             items(items = tiles, key = { "tile_${it.key}" }) { tile -> ExperienceTileCard(tile) }
@@ -236,7 +238,7 @@ fun ExperiencesScreen(ctx: ScreenContext) {
 
 /** Tarjeta grande del DJ: ocupa las dos columnas y lleva el degradado oscuro del DJ. */
 @Composable
-private fun ExperienceDjCard(onClick: () -> Unit) {
+private fun ExperienceDjCard(djName: String, onClick: () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -262,7 +264,7 @@ private fun ExperienceDjCard(onClick: () -> Unit) {
             Icon(Icons.Rounded.GraphicEq, contentDescription = null, tint = ExperienceDjAccent, modifier = Modifier.size(28.dp))
             Column(Modifier.fillMaxWidth(0.7f)) {
                 Text(
-                    text = "DJ Dezzy",
+                    text = if (djName.isBlank()) "DJ Dezzy" else "DJ $djName",
                     style = MaterialTheme.typography.titleLarge,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Medium,

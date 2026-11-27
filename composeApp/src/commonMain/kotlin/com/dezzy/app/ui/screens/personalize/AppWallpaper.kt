@@ -43,7 +43,7 @@ import org.koin.compose.koinInject
 @Composable
 fun AppWallpaper(modifier: Modifier = Modifier) {
     val store: WallpaperStore = koinInject()
-    val state by remember(store) { store.state }.collectAsState(initial = WallpaperState())
+    val state by remember(store) { store.displayed }.collectAsState(initial = WallpaperState())
     if (state.isEmpty) return
     val density = LocalDensity.current
     val platformContext = coil3.compose.LocalPlatformContext.current
@@ -110,6 +110,6 @@ private fun averageLuminance(painter: Painter, density: androidx.compose.ui.unit
 @Composable
 fun rememberHasAppWallpaper(): Boolean {
     val store: WallpaperStore = koinInject()
-    val state by remember(store) { store.state }.collectAsState(initial = WallpaperState())
+    val state by remember(store) { store.displayed }.collectAsState(initial = WallpaperState())
     return !state.isEmpty
 }

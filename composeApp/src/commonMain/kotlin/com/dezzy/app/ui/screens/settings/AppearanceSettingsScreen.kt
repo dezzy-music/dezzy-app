@@ -187,6 +187,10 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     var visualizerName by rememberPreference(VisualizerStyleKey, VisualizerStyle.ESFERA.name)
     var visualizerSwipe by rememberPreference(VisualizerSwipeKey, true)
     var canvasSong by rememberPreference(CanvasSongEnabledKey, CANVAS_SONG_DEFAULT)
+    // Ajustes que dependen de otro: sólo se muestran cuando el principal está activo.
+    val lyricsV2 by rememberPreference(LyricsV2Key, false)
+    val wallpaperImage by rememberPreference(WallpaperImageEnabledKey, false)
+    val wallpaperVideo by rememberPreference(WallpaperVideoEnabledKey, false)
     var canvasArtist by rememberPreference(CanvasArtistEnabledKey, CANVAS_ARTIST_DEFAULT)
     var canvasMode by rememberEnumPreference(CanvasModeKey, CanvasMode.APPLE_WITH_FALLBACK)
 
@@ -248,6 +252,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     checked = dynamicColor,
                     onCheckedChange = { scope.launch { prefs.setDynamicColor(it) } },
                 )
+                if (!dynamicColor) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Tema aleatorio al inicio",
@@ -263,6 +268,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     icon = Icons.Rounded.Palette,
                     onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.COLOR_PALETTE)) },
                 )
+                }
                 SettingsDivider()
                 SettingsRow(
                     title = "Icono de la app",
@@ -304,6 +310,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     },
                     onSelect = { scope.launch { prefs.setThemeMode(it) } },
                 )
+                if (themeMode != "light") {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Negro puro",
@@ -312,6 +319,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     checked = pureBlack,
                     onCheckedChange = { scope.launch { prefs.setPureBlack(it) } },
                 )
+                }
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Desactivar efectos de desenfoque",
@@ -330,6 +338,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onSelect = { appFont = it },
                     optionFont = { it.fontFamily() },
                 )
+                if (!disableBlur) {
                 SettingsDivider()
                 SettingsSliderRow(
                     title = "Radio del desenfoque",
@@ -340,6 +349,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     valueLabel = { it.toInt().toString() },
                     onValueChangeFinished = { blurRadius = it },
                 )
+                }
             }
         }
 
@@ -351,6 +361,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 PrefSwitchRow("Fondo con imagen", null, WallpaperImageEnabledKey, false, Icons.Rounded.Image)
                 SettingsDivider()
                 PrefSwitchRow("Fondo con video", null, WallpaperVideoEnabledKey, false, Icons.Rounded.Videocam)
+                if (wallpaperImage || wallpaperVideo) {
                 SettingsDivider()
                 PrefSwitchRow(
                     "Desvanecimiento por inactividad",
@@ -366,6 +377,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     icon = Icons.Rounded.Image,
                     onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.WALLPAPER)) },
                 )
+                }
             }
         }
 
@@ -438,7 +450,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                         if (it != CanvasMode.NONE) canvasMode = it
                     },
                 )
-                Text(
+                if (canvasSong && (canvasMode == CanvasMode.SPOTIFY || canvasMode == CanvasMode.SPOTIFY_WITH_FALLBACK)) Text(
                     "El Canvas de Spotify solo funciona si has iniciado sesión en Spotify.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -600,14 +612,16 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     false,
                     Icons.Rounded.TextFields,
                 )
-                SettingsDivider()
-                PrefStringChoiceRow(
-                    title = "Estilo de animación de letras V2",
-                    key = LyricsV2AnimKey,
-                    default = "HEATMAP",
-                    options = listOf("HEATMAP" to "Mapa de calor", "FADE" to "Desvanecer", "SCALE" to "Escala"),
-                    icon = Icons.Rounded.TextFields,
-                )
+                if (lyricsV2) {
+                    SettingsDivider()
+                    PrefStringChoiceRow(
+                        title = "Estilo de animación de letras V2",
+                        key = LyricsV2AnimKey,
+                        default = "HEATMAP",
+                        options = listOf("HEATMAP" to "Mapa de calor", "FADE" to "Desvanecer", "SCALE" to "Escala"),
+                        icon = Icons.Rounded.TextFields,
+                    )
+                }
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Posición del texto de las letras",
@@ -617,6 +631,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     label = { it.label },
                     onSelect = { lyricsAlign = it },
                 )
+                if (!lyricsV2) {
                 SettingsDivider()
                 PrefStringChoiceRow(
                     title = "Lyrics Animation Style",
@@ -625,10 +640,13 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     options = listOf("APPLE" to "Apple", "FADE" to "Fade", "SLIDE" to "Slide", "NONE" to "None"),
                     icon = Icons.Rounded.TextFields,
                 )
+                }
                 SettingsDivider()
                 PrefSwitchRow("Cambia la letra al presionarla", null, LyricsTapToSeekKey, true, Icons.Rounded.TextFields)
                 SettingsDivider()
                 PrefSwitchRow("Auto desplazamiento de letras", null, LyricsAutoScrollKey, true, Icons.Rounded.TextFields)
+                // Con los desenfoques desactivados en toda la app, estas dos opciones no harían nada.
+                if (!disableBlur) {
                 SettingsDivider()
                 PrefSwitchRow(
                     "Desenfoque de letras estilo Apple Music",
@@ -645,6 +663,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     false,
                     Icons.Rounded.BlurOn,
                 )
+                }
                 SettingsDivider()
                 PrefSwitchRow(
                     "Ocultar barra de estado en pantalla completa",

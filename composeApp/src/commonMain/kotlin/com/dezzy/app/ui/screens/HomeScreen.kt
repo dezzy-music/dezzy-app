@@ -182,7 +182,6 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         value = if (sessions[SessionProvider.YOUTUBE]?.isValid == true) runCatching { ctx.client.getLibraryPlaylists() }.getOrDefault(emptyList()) else emptyList()
     }
 
-    var showMore by remember { mutableStateOf(false) }
     var pinSlot by remember { mutableIntStateOf(0) }
     var surprise by remember { mutableStateOf<Track?>(null) }
 
@@ -264,7 +263,7 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         item(key = "tools") {
             DezzyToolsSection(
                 surprise = surprise,
-                onMore = { showMore = true },
+                onMore = { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Experiences) },
                 onSurprise = {
                     val pool = picks.ifEmpty { history }
                     pool.randomOrNull()?.let { t ->
@@ -328,7 +327,6 @@ fun HomeScreen(ctx: ScreenContext, state: PlaybackState) {
         }
     }
 
-    if (showMore) MoreFromDezzySheet(ctx) { showMore = false }
     if (pinSlot != 0) PinnedPlaylistDialog(ctx, pinSlot) { pinSlot = 0 }
 }
 
@@ -760,61 +758,3 @@ private fun TrackCarousel(tracks: List<Track>, ctx: ScreenContext, source: Strin
     }
 }
 
-// ── «Más de Dezzy» ──────────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    // Primero se cierra la hoja y después se navega.
-    fun go(action: () -> Unit) {
-        ctx.scope.launch { sheet.hide() }.invokeOnCompletion { onDismiss(); action() }
-    }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
-            MenuRow(Icons.Rounded.Person, "Tu Cuenta y Espacio") { go { ctx.navigator.push(Screen.Settings(SettingsPage.ACCOUNTS)) } }
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            MenuGroup("Tu Actividad")
-            MenuRow(Icons.Rounded.NewReleases, "Novedades y Lanzamientos") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) } }
-            MenuRow(Icons.Rounded.History, "Historial de Reproducción") { go { ctx.navigator.push(Screen.History) } }
-            MenuRow(Icons.Rounded.BarChart, "Estadísticas de Escucha") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) } }
-            MenuRow(Icons.Rounded.Download, "Mis Descargas") { go { ctx.navigator.push(Screen.Downloads) } }
-            MenuGroup("Descubrimiento y Más")
-            MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy AI") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Dj) } }
-            MenuRow(Icons.Rounded.AutoAwesome, "Dezzy IA") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.DezzyIA) } }
-            MenuRow(Icons.Rounded.Leaderboard, "Experiencias") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Experiences) } }
-            MenuRow(Icons.Rounded.Groups, "Escuchar Juntos") { go { ctx.navigator.select(Tab.TOGETHER) } }
-            MenuRow(Icons.Rounded.Leaderboard, "Listas de Éxitos") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) } }
-            MenuRow(Icons.Rounded.Map, "Mapa Musical") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.MusicMap) } }
-            MenuRow(Icons.Rounded.Today, "Resumen del Año") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.YearInMusic) } }
-            MenuRow(Icons.Rounded.GraphicEq, "Reconocer Música") { go { ctx.pending("Reconocer música", "10") } }
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            MenuRow(Icons.Rounded.Settings, "Ajustes") { go { ctx.navigator.push(Screen.Settings()) } }
-        }
-    }
-}
-
-@Composable
-private fun MenuGroup(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 4.dp),
-    )
-}
-
-@Composable
-private fun MenuRow(icon: ImageVector, title: String, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-        }
-        Spacer(Modifier.width(14.dp))
-        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}

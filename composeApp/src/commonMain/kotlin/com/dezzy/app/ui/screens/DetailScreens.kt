@@ -352,7 +352,9 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
         Box(Modifier.fillMaxWidth().height(380.dp)) {
             CoverImage(a.thumbnail, Modifier.fillMaxSize(), RectangleShape, sizePx = 1080)
             // Canvas del artista: trozo mudo del videoclip de su primera canción sobre la foto.
-            com.dezzy.app.ui.player.canvas.ArtistCanvas(a.songs.firstOrNull(), Modifier.matchParentSize())
+            // Sólo si el ajuste «Vídeo de fondo del artista» está activo.
+            val artistVideoBg by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.ArtistVideoBackgroundKey, true)
+            if (artistVideoBg) com.dezzy.app.ui.player.canvas.ArtistCanvas(a.songs.firstOrNull(), Modifier.matchParentSize())
             Box(
                 Modifier.matchParentSize().background(
                     Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black),

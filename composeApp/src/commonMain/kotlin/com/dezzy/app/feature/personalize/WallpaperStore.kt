@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 
 /** Un fondo: imagen o vídeo, por su URI (`file://…`, `content://…` o `https://…`). */
 @Immutable
@@ -49,6 +50,10 @@ class WallpaperStore(
         val LandscapeUri = stringPreferencesKey("wallpaperLandscapeUri")
         val LandscapeVideo = booleanPreferencesKey("wallpaperLandscapeVideo")
         val Dim = intPreferencesKey("wallpaperDim")
+        // Interruptores de Ajustes › Apariencia › Fondo de la app («Fondo con imagen» / «Fondo con video»).
+        val ImageEnabled = booleanPreferencesKey("wallpaper_image_enabled")
+        val VideoEnabled = booleanPreferencesKey("wallpaper_video_enabled")
+        val FlagsMigrated = booleanPreferencesKey("wallpaper_flags_migrated")
     }
 
     val state: Flow<WallpaperState> = combine(
@@ -67,11 +72,31 @@ class WallpaperStore(
 
     suspend fun current(): WallpaperState = state.first()
 
+    /** El fondo que se pinta: sin las imágenes o vídeos cuyo interruptor está apagado. */
+    val displayed: Flow<WallpaperState> = combine(
+        state,
+        prefs.value(ImageEnabled, false),
+        prefs.value(VideoEnabled, false),
+    ) { st, image, video ->
+        fun WallpaperSlot?.allowed() = this?.takeIf { if (it.isVideo) video else image }
+        st.copy(portrait = st.portrait.allowed(), landscape = st.landscape.allowed())
+    }.distinctUntilChanged().onStart { migrateFlags() }
+
+    /** Una sola vez: un fondo elegido antes de existir los interruptores enciende el suyo. */
+    private suspend fun migrateFlags() {
+        if (prefs.value(FlagsMigrated, false).first()) return
+        val st = state.first()
+        listOfNotNull(st.portrait, st.landscape).forEach { prefs.set(if (it.isVideo) VideoEnabled else ImageEnabled, true) }
+        prefs.set(FlagsMigrated, true)
+    }
+
     /** Pone [uri] como fondo de esa orientación; si el anterior lo había bajado Dezzy, lo borra. */
     suspend fun set(landscape: Boolean, uri: String, isVideo: Boolean) {
         val old = current().slot(landscape)
         prefs.set(if (landscape) LandscapeUri else PortraitUri, uri)
         prefs.set(if (landscape) LandscapeVideo else PortraitVideo, isVideo)
+        // Elegir un fondo enciende su interruptor, para que se vea sin tener que ir a Ajustes.
+        prefs.set(if (isVideo) VideoEnabled else ImageEnabled, true)
         if (old != null && old.uri != uri) files.deleteOwnFile(old.uri)
     }
 

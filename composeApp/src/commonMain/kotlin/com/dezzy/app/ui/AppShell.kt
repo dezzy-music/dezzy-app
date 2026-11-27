@@ -67,6 +67,7 @@ import com.dezzy.app.ui.player.kit.NavController
 import com.dezzy.app.ui.player.kit.PlayerConnection
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import com.dezzy.app.ui.player.MiniPlayer
@@ -99,6 +100,16 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
                 snackbar.showSnackbar(message)
             }
         }
+    }
+    // Pestaña inicial (Ajustes › Apariencia): sólo al arrancar.
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val start = when (prefs.value(com.dezzy.app.ui.screens.settings.prefs.DefaultTabKey, "HOME").first()) {
+            "SEARCH" -> Tab.SEARCH
+            "LIBRARY" -> Tab.LIBRARY
+            "ROOMS" -> Tab.TOGETHER
+            else -> Tab.HOME
+        }
+        if (start != Tab.HOME && navigator.tab == Tab.HOME && navigator.stack.isEmpty()) navigator.select(start)
     }
     val connectBridge: com.dezzy.app.feature.connect.ConnectPlaybackBridge = koinInject()
     androidx.compose.runtime.LaunchedEffect(navigator) {

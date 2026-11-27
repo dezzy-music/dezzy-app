@@ -51,6 +51,8 @@ import com.dezzy.app.ui.player.kit.LocalOpenAod
 import com.dezzy.app.ui.player.kit.LocalOpenVisualizer
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.screens.settings.prefs.AodInactivityMinutesKey
+import com.dezzy.app.ui.screens.settings.prefs.KeepScreenOnPlayerKey
+import com.dezzy.app.ui.player.kit.KeepScreenOn
 import com.dezzy.app.ui.player.kit.MenuHost
 import com.dezzy.app.ui.player.kit.MenuState
 import com.dezzy.app.ui.player.kit.NavController
@@ -108,6 +110,9 @@ fun PlayerRouter(
     var showAod by remember { mutableStateOf(false) }
     var lastTouch by remember { mutableLongStateOf(Clock.System.now().toEpochMilliseconds()) }
     val aodMinutes by rememberPreference(AodInactivityMinutesKey, 0)
+    // «Mantener la pantalla encendida» mientras el reproductor está expandido.
+    val keepScreenOn by rememberPreference(KeepScreenOnPlayerKey, false)
+    KeepScreenOn(keepScreenOn && sheet.isExpanded)
 
     // Activación automática de la pantalla siempre activa tras N minutos sin toques.
     LaunchedEffect(lastTouch, aodMinutes, isPlaying, sheet.isExpanded, mediaMetadata != null) {

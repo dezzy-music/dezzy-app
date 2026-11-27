@@ -107,6 +107,11 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     val bgDim by rememberPreference(LyricsBgDimKey, 0.4f)
     val useImage = lyricsBg == LyricsBackground.IMAGE && bgImageUri.isNotBlank()
 
+    // Ajustes › Apariencia › Letras: barra de estado oculta y fondo con la portada desenfocada.
+    val hideStatusBar by rememberPreference(com.dezzy.app.ui.screens.settings.prefs.LyricsHideStatusBarKey, false)
+    val standardBlur by rememberPreference(com.dezzy.app.ui.screens.settings.prefs.LyricsStandardBlurKey, false)
+    HideStatusBarEffect(hideStatusBar)
+
     // Degradado con los colores de la carátula, salvo en el estilo por defecto.
     val followsPlayer = lyricsBg == LyricsBackground.SAME_AS_PLAYER
     // Como en la app original: siempre degradado con los colores de la carátula.
@@ -143,6 +148,16 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
             .background(background)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
+        if (standardBlur && !useImage && meta?.thumbnailUrl != null) {
+            // Portada desenfocada a pantalla completa detrás de la letra.
+            AsyncImage(
+                model = meta?.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(48.dp),
+            )
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+        }
         if (useImage) {
             AsyncImage(
                 model = bgImageUri,

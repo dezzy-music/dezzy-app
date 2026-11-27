@@ -114,6 +114,11 @@ import com.dezzy.app.ui.player.kit.makeTimeString
 import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.rememberPlaybackCanvas
 import com.dezzy.app.ui.player.kit.rememberPreference
+import com.dezzy.app.ui.player.kit.PlayerCover
+import com.dezzy.app.ui.player.kit.buttonTint
+import com.dezzy.app.ui.player.kit.playerSwipeToChange
+import com.dezzy.app.ui.player.kit.rememberCoverAccent
+import com.dezzy.app.ui.player.kit.rememberPlayerAppearance
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -237,6 +242,15 @@ fun DezzyPlayer(
     }
 
     val isLandscape = isLandscape()
+
+    // Ajustes de Apariencia › Reproductor: esquinas, giro, ocultar portada, deslizar y color de botones.
+    val look = rememberPlayerAppearance()
+    val coverShape = look.coverShape
+    val coverAccent = if (look.buttonColors == "DYNAMIC") {
+        rememberCoverAccent(mediaMetadata?.thumbnailUrl) ?: gradientColors.firstOrNull()
+    } else null
+    // Color de los botones de transporte (por defecto, blanco como siempre).
+    val controlTint = look.buttonTint(Color.White, coverAccent)
 
     val bottomBgColor = remember(gradientColors) {
         gradientColors.firstOrNull() ?: Color(0xFF1C1C1E)
@@ -520,6 +534,7 @@ fun DezzyPlayer(
                                 blendMode = BlendMode.DstIn
                             )
                         }
+                        .playerSwipeToChange(playerConnection, look.swipeToChange)
                 ) {
                     if (videoModeActive && videoPlayer != null) {
                         VideoSurface(player = videoPlayer, active = true, modifier = Modifier.fillMaxSize())
@@ -738,24 +753,19 @@ fun DezzyPlayer(
                                 modifier = Modifier
                                     .fillMaxHeight(0.85f)
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(coverShape)
                             )
                         } else {
-                            AsyncImage(
-                                model = mediaMetadata?.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlayerCover(
+                                url = mediaMetadata?.thumbnailUrl,
+                                isPlaying = isPlaying,
+                                scale = artworkScale,
+                                elevation = artworkShadowElevation,
                                 modifier = Modifier
                                     .fillMaxHeight(0.85f)
-                                    .aspectRatio(1f)
-                                    .graphicsLayer {
-                                        scaleX = artworkScale
-                                        scaleY = artworkScale
-                                    }
-                                    .shadow(artworkShadowElevation, RoundedCornerShape(16.dp))
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .aspectRatio(1f),
                             )
-                            if (anyCanvasActive && hasCanvas) {
+                            if (anyCanvasActive && hasCanvas && !look.hideThumbnail) {
                                 CanvasArtworkPlayer(
                                     primaryUrl  = primaryCanvasUrl,
                                     fallbackUrl = fallbackCanvasUrl,
@@ -763,7 +773,7 @@ fun DezzyPlayer(
                                     modifier    = Modifier
                                         .fillMaxHeight(0.85f)
                                         .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(16.dp))
+                                        .clip(coverShape)
                                 )
                             }
                         }
@@ -936,7 +946,7 @@ fun DezzyPlayer(
                                 Icon(
                                     imageVector = Icons.Rounded.SkipPrevious,
                                     contentDescription = "Anterior",
-                                    tint = Color.White,
+                                    tint = controlTint,
                                     modifier = Modifier.size(32.dp),
                                 )
                             }
@@ -946,7 +956,7 @@ fun DezzyPlayer(
                                     .size(56.dp)
                                     .shadow(6.dp, CircleShape)
                                     .clip(CircleShape)
-                                    .background(Color.White)
+                                    .background(controlTint)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = ripple(bounded = true),
@@ -968,7 +978,7 @@ fun DezzyPlayer(
                                 Icon(
                                     imageVector = Icons.Rounded.SkipNext,
                                     contentDescription = "Siguiente",
-                                    tint = Color.White,
+                                    tint = controlTint,
                                     modifier = Modifier.size(32.dp),
                                 )
                             }
@@ -1034,7 +1044,7 @@ fun DezzyPlayer(
                             .padding(horizontal = 24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (hasCanvas) {
+                        if (hasCanvas && !look.hideThumbnail) {
                             CanvasArtworkPlayer(
                                 primaryUrl  = primaryCanvasUrl,
                                 fallbackUrl = fallbackCanvasUrl,
@@ -1046,23 +1056,19 @@ fun DezzyPlayer(
                                         scaleX = artworkScale
                                         scaleY = artworkScale
                                     }
-                                    .shadow(artworkShadowElevation, RoundedCornerShape(16.dp))
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .shadow(artworkShadowElevation, coverShape)
+                                    .clip(coverShape)
+                                    .playerSwipeToChange(playerConnection, look.swipeToChange)
                             )
                         } else {
-                            AsyncImage(
-                                model = mediaMetadata?.thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlayerCover(
+                                url = mediaMetadata?.thumbnailUrl,
+                                isPlaying = isPlaying,
+                                scale = artworkScale,
+                                elevation = artworkShadowElevation,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .graphicsLayer {
-                                        scaleX = artworkScale
-                                        scaleY = artworkScale
-                                    }
-                                    .shadow(artworkShadowElevation, RoundedCornerShape(16.dp))
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .aspectRatio(1f),
                             )
                         }
                     }
@@ -1274,7 +1280,7 @@ fun DezzyPlayer(
                             Icon(
                                 imageVector = if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) Icons.Rounded.FastRewind else Icons.Rounded.SkipPrevious,
                                 contentDescription = "Anterior",
-                                tint = Color.White,
+                                tint = controlTint,
                                 modifier = Modifier.size(44.dp),
                             )
                         }
@@ -1289,7 +1295,7 @@ fun DezzyPlayer(
                                 imageVector =
                                     if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 contentDescription = "Play/Pausa",
-                                tint = Color.White,
+                                tint = controlTint,
                                 modifier = Modifier.size(56.dp),
                             )
                         }
@@ -1303,7 +1309,7 @@ fun DezzyPlayer(
                             Icon(
                                 imageVector = if (playerStyle == PlayerDesignStyle.APPLE_MUSIC) Icons.Rounded.FastForward else Icons.Rounded.SkipNext,
                                 contentDescription = "Siguiente",
-                                tint = Color.White,
+                                tint = controlTint,
                                 modifier = Modifier.size(44.dp),
                             )
                         }
