@@ -621,8 +621,10 @@ fun DevicesButton(
 
 // ── Compartir ────────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Suppress("DEPRECATION")
+/**
+ * Hoja de Compartir con tarjeta (ver [com.dezzy.app.ui.share.DezzyShareSheet]). Con [mediaId] es una
+ * canción; si no, [kind] dice si es álbum, lista o artista (por defecto se deduce del enlace).
+ */
 @Composable
 fun ShareBottomSheet(
     title: String,
@@ -631,33 +633,30 @@ fun ShareBottomSheet(
     shareLink: String,
     lyrics: String? = null,
     mediaId: String? = null,
+    kind: com.dezzy.app.ui.share.ShareKind? = null,
+    tracks: List<Track> = emptyList(),
     onDismiss: () -> Unit,
 ) {
-    val share = rememberShareText()
-    val clipboard = LocalClipboardManager.current
+    @Suppress("UNUSED_VARIABLE") val unusedLyrics = lyrics
     val connection = LocalPlayerConnection.current
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CoverImage(thumbnailUrl, Modifier.size(64.dp), RoundedCornerShape(10.dp))
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            SheetRow(Icons.Rounded.Share, "Compartir", null, onClick = {
-                share(listOf(title, subtitle).filter { it.isNotBlank() }.joinToString(" — ") + "\n" + shareLink)
-                onDismiss()
-            })
-            SheetRow(Icons.Rounded.ContentCopy, "Copiar enlace", null, onClick = {
-                clipboard.setText(AnnotatedString(shareLink))
-                connection?.toast?.invoke("Enlace copiado")
-                onDismiss()
-            })
-        }
+    val playing = connection?.mediaMetadata?.collectAsState()?.value
+    val resolvedKind = kind ?: when {
+        mediaId != null -> com.dezzy.app.ui.share.ShareKind.Song
+        shareLink.contains("/channel/") -> com.dezzy.app.ui.share.ShareKind.Artist
+        shareLink.contains("playlist") || shareLink.contains("browse/VL") -> com.dezzy.app.ui.share.ShareKind.Playlist
+        else -> com.dezzy.app.ui.share.ShareKind.Album
     }
+    com.dezzy.app.ui.share.DezzyShareSheet(
+        kind = resolvedKind,
+        title = title,
+        subtitle = subtitle,
+        thumbnailUrl = thumbnailUrl,
+        link = shareLink,
+        mediaId = mediaId,
+        durationSec = playing?.takeIf { it.id == mediaId }?.duration?.takeIf { it > 0 },
+        tracks = tracks,
+        onDismiss = onDismiss,
+    )
 }
 
 // ── Añadir a una lista ───────────────────────────────────────────────────────────────────────

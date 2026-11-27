@@ -46,7 +46,7 @@ actual fun saveImage(png: ByteArray, fileName: String): Boolean {
     return insertPng(context, png, fileName) != null
 }
 
-private fun insertPng(context: Context, png: ByteArray, fileName: String): Uri? {
+internal fun insertPng(context: Context, png: ByteArray, fileName: String): Uri? {
     if (png.isEmpty()) return null
     val resolver = context.contentResolver
     val values = ContentValues().apply {

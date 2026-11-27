@@ -241,6 +241,8 @@ private fun AlbumHeader(a: Album, tracks: List<Track>, ctx: ScreenContext, onMen
             subtitle = a.artist,
             thumbnailUrl = a.thumbnail,
             shareLink = "https://music.youtube.com/browse/${a.id}",
+            kind = com.dezzy.app.ui.share.ShareKind.Album,
+            tracks = tracks,
             onDismiss = { share = false },
         )
     }
@@ -250,6 +252,7 @@ private fun AlbumHeader(a: Album, tracks: List<Track>, ctx: ScreenContext, onMen
 @Composable
 fun PlaylistScreen(id: String, ctx: ScreenContext) {
     val playlist = rememberLoad(id) { ctx.client.getPlaylist(id) }
+    var sharePlaylist by remember(id) { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         when (playlist) {
             Load.Loading -> {
@@ -271,8 +274,26 @@ fun PlaylistScreen(id: String, ctx: ScreenContext) {
                         onBack = { ctx.navigator.back() },
                         onPlay = if (p.tracks.isEmpty()) null else ({ ctx.player.playTracks(p.tracks, 0, "playlist:${p.title}") }),
                         onShuffle = { ctx.player.playTracks(p.tracks.shuffled(), 0, "playlist:${p.title}") },
-                        extraActions = { DownloadAllButton(p.tracks, ctx) },
+                        extraActions = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                DownloadAllButton(p.tracks, ctx)
+                                androidx.compose.material3.IconButton(onClick = { sharePlaylist = true }) {
+                                    Icon(Icons.Rounded.Share, "Compartir")
+                                }
+                            }
+                        },
                     )
+                    if (sharePlaylist) {
+                        ShareBottomSheet(
+                            title = p.title,
+                            subtitle = p.author.orEmpty(),
+                            thumbnailUrl = p.thumbnail ?: p.tracks.firstOrNull()?.thumbnail,
+                            shareLink = "https://music.youtube.com/playlist?list=${id.removePrefix("VL")}",
+                            kind = com.dezzy.app.ui.share.ShareKind.Playlist,
+                            tracks = p.tracks,
+                            onDismiss = { sharePlaylist = false },
+                        )
+                    }
                 }
                 trackList(p.tracks, ctx, "playlist:${p.title}", numbered = false)
             }
@@ -330,8 +351,19 @@ fun ArtistScreen(id: String, ctx: ScreenContext) {
                     androidx.compose.material3.IconButton(onClick = { clipboard.setText(AnnotatedString(link)); ctx.toast("Enlace copiado") }) {
                         Icon(Icons.Rounded.Link, "Copiar enlace", tint = Color.White)
                     }
-                    androidx.compose.material3.IconButton(onClick = { shareText(link) }) {
+                    var shareArtist by remember { mutableStateOf(false) }
+                    androidx.compose.material3.IconButton(onClick = { shareArtist = true }) {
                         Icon(Icons.Rounded.Share, "Compartir", tint = Color.White)
+                    }
+                    if (shareArtist) {
+                        ShareBottomSheet(
+                            title = name,
+                            subtitle = "",
+                            thumbnailUrl = (artist as? Load.Done)?.value?.thumbnail,
+                            shareLink = link,
+                            kind = com.dezzy.app.ui.share.ShareKind.Artist,
+                            onDismiss = { shareArtist = false },
+                        )
                     }
                 }
             }
@@ -346,6 +378,17 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
     val link = "https://music.youtube.com/channel/$id"
     val source = "artist:${a.name}"
     var expanded by remember(id) { mutableStateOf(false) }
+    var shareArtist by remember { mutableStateOf(false) }
+    if (shareArtist) {
+        ShareBottomSheet(
+            title = a.name,
+            subtitle = "",
+            thumbnailUrl = a.thumbnail,
+            shareLink = link,
+            kind = com.dezzy.app.ui.share.ShareKind.Artist,
+            onDismiss = { shareArtist = false },
+        )
+    }
     val subscribedList by remember { com.dezzy.app.ui.screens.library.localItems(ctx.prefs, com.dezzy.app.ui.screens.library.SubscribedArtistsKey) }.collectAsState(emptyList())
     val subscribed = a.subscribed == true || subscribedList.any { it.id == id }
     Column(Modifier.fillMaxWidth()) {
@@ -375,7 +418,7 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
                     )
                     Spacer(Modifier.size(8.dp))
                     CircleIconButton(
-                        Icons.Rounded.Share, "Compartir", onClick = { shareText(link) },
+                        Icons.Rounded.Share, "Compartir", onClick = { shareArtist = true },
                         background = Color.Black.copy(alpha = 0.4f),
                     )
                 }
