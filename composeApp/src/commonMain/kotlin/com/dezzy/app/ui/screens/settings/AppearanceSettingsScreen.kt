@@ -165,18 +165,6 @@ import com.dezzy.app.ui.theme.LiquidGlassIntensity
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-/** Estilos del reproductor que dibujan su propio fondo fijo: no admiten «Fondo del reproductor». */
-private val StandaloneBackgroundStyles = setOf(
-    PlayerDesignStyle.V7,
-    PlayerDesignStyle.IPOD,
-    PlayerDesignStyle.SPOTIFY,
-    PlayerDesignStyle.CAR,
-    PlayerDesignStyle.APPLE_MUSIC,
-    PlayerDesignStyle.LIVE_MESH,
-    PlayerDesignStyle.AURORA,
-    PlayerDesignStyle.V1,
-)
-
 @Composable
 internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     val prefs = ctx.prefs
@@ -560,7 +548,8 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onValueChangeFinished = { swipeSensitivity = it },
                 )
                 // Lo que ya había en Apariencia y no está en la app actual: al final del grupo.
-                if (playerStyle !in StandaloneBackgroundStyles) {
+                // Sólo el estilo «Dezzy» (DezzyPlayer) dibuja este fondo; en los demás no haría nada.
+                if (playerStyle == PlayerDesignStyle.V5) {
                     SettingsDivider()
                     SettingsChoiceRow(
                         title = "Fondo del reproductor",

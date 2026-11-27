@@ -409,8 +409,19 @@ object YouTubeParsers {
     }
 
     fun parsePlaylist(json: JsonObject, playlistId: String): Playlist {
+        // La web de YouTube Music responde con dos columnas: cabecera en tabs[0] y pistas en secondaryContents.
+        val twoColumn = json["contents"]?.jsonObject?.get("twoColumnBrowseResultsRenderer")?.jsonObject
+        val twoColumnHeader = twoColumn?.get("tabs")?.jsonArray?.getOrNull(0)?.jsonObject
+            ?.get("tabRenderer")?.jsonObject
+            ?.get("content")?.jsonObject
+            ?.get("sectionListRenderer")?.jsonObject
+            ?.get("contents")?.jsonArray?.getOrNull(0)?.jsonObject
+            ?.let { it["musicResponsiveHeaderRenderer"] ?: it["musicEditablePlaylistDetailHeaderRenderer"]
+                ?.jsonObject?.get("header")?.jsonObject?.get("musicResponsiveHeaderRenderer") }
+            ?.jsonObject
         val header = json["header"]?.jsonObject?.get("musicDetailHeaderRenderer")?.jsonObject
             ?: json["header"]?.jsonObject?.get("musicResponsiveHeaderRenderer")?.jsonObject
+            ?: twoColumnHeader
 
         val title = YouTubeJsonHelper.runsText(header?.get("title")).ifBlank { "Playlist" }
         val author = YouTubeJsonHelper.runsText(header?.get("subtitle"))
@@ -424,6 +435,9 @@ object YouTubeParsers {
             ?.get("content")?.jsonObject
             ?.get("sectionListRenderer")?.jsonObject
             ?.get("contents")?.jsonArray
+            ?: twoColumn?.get("secondaryContents")?.jsonObject
+                ?.get("sectionListRenderer")?.jsonObject
+                ?.get("contents")?.jsonArray
 
         if (contents != null) {
             for (section in contents) {
@@ -431,6 +445,7 @@ object YouTubeParsers {
                 val items = playlistShelf["contents"]?.jsonArray ?: continue
                 for (item in items) {
                     val itemObj = item as? JsonObject ?: continue
+                    if (itemObj.containsKey("continuationItemRenderer")) continue
                     parseTrack(itemObj)?.let { tracks.add(it) }
                 }
             }
@@ -446,6 +461,37 @@ object YouTubeParsers {
         )
     }
 }
+
+/** Token de la página siguiente de una lista (primera página o continuación); null si no hay más. */
+internal fun playlistContinuationToken(json: JsonObject): String? {
+    var token: String? = null
+    fun walk(e: JsonElement) {
+        when (e) {
+            is JsonObject -> {
+                val c = e["continuationItemRenderer"]?.jsonObject
+                    ?.get("continuationEndpoint")?.jsonObject
+                    ?.get("continuationCommand")?.jsonObject
+                    ?.get("token")?.jsonPrimitive?.content
+                if (c != null) { token = c; return }
+                e.values.forEach { walk(it) }
+            }
+            is JsonArray -> e.forEach { walk(it) }
+            else -> Unit
+        }
+    }
+    walk(json)
+    return token
+}
+
+/** Pistas de una página de continuación de lista («appendContinuationItemsAction»). */
+internal fun parsePlaylistContinuationTracks(json: JsonObject): List<Track> =
+    json["onResponseReceivedActions"]?.jsonArray.orEmpty().flatMap { action ->
+        (action as? JsonObject)?.get("appendContinuationItemsAction")?.jsonObject
+            ?.get("continuationItems")?.jsonArray.orEmpty()
+    }.mapNotNull { item ->
+        val obj = item as? JsonObject ?: return@mapNotNull null
+        if (obj.containsKey("continuationItemRenderer")) null else YouTubeParsers.parseTrack(obj)
+    }
 
 /** Palabras que YouTube Music pone delante del subtítulo para indicar el tipo («Canción • Artista • …»). */
 private val ItemTypeLabels = setOf(

@@ -404,7 +404,23 @@ class YouTubeMusicClient(
             put("browseId", id)
         })
 
-        YouTubeParsers.parsePlaylist(response, playlistId)
+        val first = YouTubeParsers.parsePlaylist(response, playlistId)
+        // YouTube entrega 100 pistas por página: se siguen las continuaciones hasta el final.
+        val tracks = first.tracks.toMutableList()
+        var token = playlistContinuationToken(response)
+        var pages = 0
+        while (token != null && pages < MAX_PLAYLIST_PAGES) {
+            val page = post(YouTubeEndpoints.BROWSE_URL, buildJsonObject {
+                put("context", buildContext(gl = gl))
+                put("continuation", token)
+            })
+            val more = parsePlaylistContinuationTracks(page)
+            if (more.isEmpty()) break
+            tracks += more
+            token = playlistContinuationToken(page)
+            pages++
+        }
+        first.copy(tracks = tracks, trackCount = tracks.size)
     }
 
     suspend fun getCountryCharts(countryCode: String): Result<List<Track>> = runCatching {
@@ -489,3 +505,6 @@ class YouTubeMusicClient(
         YouTubeParsers.parseHomeSections(response)
     }
 }
+
+/** Tope de páginas de 100 pistas por lista (10 000 canciones). */
+private const val MAX_PLAYLIST_PAGES = 100
