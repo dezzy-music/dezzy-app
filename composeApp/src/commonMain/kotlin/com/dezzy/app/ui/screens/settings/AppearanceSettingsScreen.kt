@@ -759,12 +759,16 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.AOD)) },
                 )
                 SettingsDivider()
-                PrefSwitchRow(
-                    "Burbuja Flotante",
-                    "Habilitar un reproductor de burbuja flotante en pantalla",
-                    FloatingBubbleKey,
-                    false,
-                    Icons.Rounded.PlayCircle,
+                var bubble by rememberPreference(FloatingBubbleKey, false)
+                SettingsSwitchRow(
+                    title = "Burbuja Flotante",
+                    subtitle = "Habilitar un reproductor de burbuja flotante en pantalla",
+                    icon = Icons.Rounded.PlayCircle,
+                    checked = bubble,
+                    onCheckedChange = {
+                        bubble = it
+                        if (it) com.dezzy.app.feature.bubble.OverlayPermission.request?.invoke()
+                    },
                 )
                 SettingsDivider()
                 PrefSwitchRow(

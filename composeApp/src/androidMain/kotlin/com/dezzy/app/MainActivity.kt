@@ -24,6 +24,10 @@ import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
     private val player: PlayerController by inject()
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences> by inject()
+
+    /** «Burbuja Flotante» activada en Ajustes (se lee en vivo). */
+    @Volatile private var bubbleEnabled = false
 
     /** Hora a la que se cerró la ventana PiP (para distinguir «cerrar» de «volver a la app»). */
     private var leftPipAtMs = 0L
@@ -39,6 +43,29 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             VideoPipState.eligible.collect { setVideoPipEligible(it) }
         }
+        lifecycleScope.launch {
+            dataStore.data.collect {
+                bubbleEnabled = it[com.dezzy.app.ui.screens.settings.prefs.FloatingBubbleKey] ?: false
+                if (!bubbleEnabled) com.dezzy.app.feature.bubble.FloatingBubbleService.stop(this@MainActivity)
+            }
+        }
+        com.dezzy.app.feature.bubble.OverlayPermission.request = {
+            if (!android.provider.Settings.canDrawOverlays(this)) {
+                runCatching {
+                    startActivity(
+                        android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:$packageName"),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        com.dezzy.app.feature.bubble.FloatingBubbleService.stop(this)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -101,6 +128,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        // Burbuja flotante: al salir de la app con una canción cargada (no al girar ni en PiP).
+        if (bubbleEnabled && !isChangingConfigurations && !isInPictureInPictureMode &&
+            player.state.value.queue.current != null
+        ) {
+            com.dezzy.app.feature.bubble.FloatingBubbleService.start(this)
+        }
         // Se cerró la ventana PiP con la X: la actividad se para justo después y el vídeo no
         // debe seguir sonando sin imagen.
         if (leftPipAtMs != 0L && SystemClock.elapsedRealtime() - leftPipAtMs < 1_500L) {
