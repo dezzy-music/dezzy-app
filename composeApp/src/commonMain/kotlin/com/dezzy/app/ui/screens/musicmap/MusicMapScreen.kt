@@ -89,6 +89,7 @@ import com.dezzy.app.feature.musicmap.CountryNames
 import com.dezzy.app.feature.musicmap.MusicMapCharts
 import com.dezzy.app.feature.musicmap.MusicMapGenres
 import com.dezzy.app.feature.musicmap.MusicMapLocation
+import com.dezzy.app.feature.musicmap.SongChartStats
 import com.dezzy.app.feature.social.P2PMap
 import com.dezzy.app.feature.social.P2PMapListener
 import com.dezzy.app.feature.social.P2PSocial
@@ -197,6 +198,10 @@ fun MusicMapScreen(ctx: ScreenContext) {
     var highlight by remember { mutableStateOf<Set<String>>(emptySet()) }
     var searchTab by remember { mutableStateOf<SearchTab?>(null) }
     var previousRanks by remember { mutableStateOf<Map<String, Map<String, Int>>>(emptyMap()) }
+
+    val chartStats = koinInject<SongChartStats>()
+    val myTop = rememberMostPlayed()
+    val historyRankings = rememberHistoryRankings(myTop, chartStats)
 
     val mapState = remember { TileMapState(20.0, 0.0, 3.0) }
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -545,6 +550,7 @@ fun MusicMapScreen(ctx: ScreenContext) {
                                 )
                             }
                         }
+                        if (focus == null) historyRankingsSection(ctx, myTop, historyRankings)
                     }
                 }
             }

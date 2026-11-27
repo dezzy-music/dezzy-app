@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.SnackbarHost
@@ -33,7 +31,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import com.dezzy.app.ui.components.FloatingNavBar
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -143,24 +146,29 @@ fun AppShell(player: PlayerController, client: YouTubeMusicClient) {
                 }
             }
             Column(Modifier.weight(1f).fillMaxSize()) {
+                val density = LocalDensity.current
+                var bottomStackPx by remember { mutableIntStateOf(0) }
+                val bottomStack = with(density) { bottomStackPx.toDp() }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    TabContent(navigator, player, client, state, snackbar)
+                    // Padding inferior = alto de minirreproductor + píldora, para no tapar la última fila.
+                    Box(Modifier.fillMaxSize().padding(bottom = bottomStack)) {
+                        TabContent(navigator, player, client, state, snackbar)
+                    }
                     // Velo bajo la barra de estado para que el contenido no choque con los iconos.
                     Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(colors.surface.copy(alpha = 0.92f)))
-                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
-                }
-                MiniPlayer(state, player, onExpand = { expanded = true })
-                if (wide) {
-                    Box(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
-                } else {
-                    NavigationBar(containerColor = colors.surfaceContainer) {
-                        Tab.entries.forEach { tab ->
-                            NavigationBarItem(
-                                selected = navigator.tab == tab,
-                                onClick = { navigator.select(tab) },
-                                icon = { Icon(if (navigator.tab == tab) tab.selectedIcon else tab.icon, null) },
-                                label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
-                            )
+                    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = bottomStack))
+                    // Pila inferior flotante: minirreproductor encima y píldora de navegación debajo.
+                    Column(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .onSizeChanged { bottomStackPx = it.height },
+                    ) {
+                        MiniPlayer(state, player, onExpand = { expanded = true })
+                        if (wide) {
+                            Box(Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        } else {
+                            FloatingNavBar(selected = navigator.tab, onSelect = { navigator.select(it) })
                         }
                     }
                 }

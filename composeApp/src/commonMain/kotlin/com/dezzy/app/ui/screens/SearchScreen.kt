@@ -90,6 +90,10 @@ import com.dezzy.app.ui.components.SpotifyTrackRow
 import com.dezzy.app.ui.components.TrackRow
 import com.dezzy.app.ui.components.rememberSpotifyTrackPlayer
 import com.dezzy.app.ui.navigation.Screen
+import com.dezzy.app.ui.screens.search.SearchTypeChips
+import com.dezzy.app.ui.screens.search.TopVideosScreen
+import com.dezzy.app.ui.screens.search.rememberVideoSearch
+import com.dezzy.app.ui.screens.search.videoSearchResults
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 
@@ -107,6 +111,7 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
     var query by rememberSaveable(initial) { mutableStateOf(initial) }
     var submitted by rememberSaveable(initial) { mutableStateOf(initial) }
     var suggestions by remember { mutableStateOf<SearchSuggestions?>(null) }
+    var topVideos by rememberSaveable { mutableStateOf(false) }
     val keyboard = LocalSoftwareKeyboardController.current
 
     fun submit(text: String) {
@@ -143,7 +148,8 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         )
         when {
-            query.isBlank() -> SearchHome(ctx)
+            query.isBlank() && topVideos -> TopVideosScreen(ctx, onBack = { topVideos = false })
+            query.isBlank() -> SearchHome(ctx, onTopVideos = { topVideos = true })
             query != submitted -> SuggestionsList(ctx, suggestions, onQuery = ::submit)
             else -> SearchResults(ctx, submitted)
         }
@@ -189,12 +195,12 @@ private data class DiscoverEntry(
 )
 
 @Composable
-private fun SearchHome(ctx: ScreenContext) {
+private fun SearchHome(ctx: ScreenContext, onTopVideos: () -> Unit) {
     val moods = rememberLoad("moods") { ctx.client.getMoodsAndGenres() }
     val discover = listOf(
         DiscoverEntry(Icons.Rounded.TrendingUp, "Éxitos", "Lo más escuchado", { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) }, highlighted = true),
         DiscoverEntry(Icons.Rounded.NewReleases, "Novedades", "Álbumes y sencillos", { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.NewReleases) }),
-        DiscoverEntry(Icons.Rounded.SlowMotionVideo, "Videos", "Los más vistos", { ctx.pending("Videos", "5d") }),
+        DiscoverEntry(Icons.Rounded.SlowMotionVideo, "Vídeos", "Los más vistos", onTopVideos),
         DiscoverEntry(Icons.Rounded.Mic, "Reconocer", "¿Qué está sonando?", { ctx.pending("Reconocer música", "10") }),
     )
 
@@ -353,7 +359,9 @@ private fun MoodCard(item: MoodItem, onClick: () -> Unit, modifier: Modifier = M
 @Composable
 private fun SearchResults(ctx: ScreenContext, query: String) {
     var source by rememberSaveable { mutableStateOf(SearchSourceOption.YOUTUBE) }
+    var videosOnly by rememberSaveable { mutableStateOf(false) }
     val result = rememberLoad(query) { ctx.client.search(query) }
+    val videoResult = rememberVideoSearch(ctx, query, videosOnly)
     val features: SpotifyFeatures = koinInject()
     val spotifyPlayer = rememberSpotifyTrackPlayer(ctx, features)
     // Sólo con sesión y «Usar para búsquedas» activo; si Spotify falla, queda vacío sin avisar.
@@ -373,13 +381,16 @@ private fun SearchResults(ctx: ScreenContext, query: String) {
                 }
             },
         )
+        SearchTypeChips(videosOnly = videosOnly, onChange = { videosOnly = it })
         LazyColumn(Modifier.fillMaxSize()) {
-            when (val r = result) {
+            if (videosOnly) {
+                videoSearchResults(ctx, query, videoResult)
+            } else when (val r = result) {
                 Load.Loading -> loadingRows()
                 is Load.Failed -> errorRow(r.message)
                 is Load.Done -> resultItems(r.value, query, ctx)
             }
-            if (spotifyTracks.isNotEmpty()) {
+            if (!videosOnly && spotifyTracks.isNotEmpty()) {
                 item(key = "spotify_h") { SearchResultSectionHeader("De tu Spotify") }
                 items(spotifyTracks.size, key = { "spotify:${spotifyTracks[it].id}" }) { i ->
                     SpotifyTrackRow(spotifyTracks[i], spotifyPlayer)
