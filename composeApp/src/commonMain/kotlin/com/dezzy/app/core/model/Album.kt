@@ -15,5 +15,7 @@ data class Album(
     val year: String? = null,
     val thumbnail: String? = null,
     val trackCount: Int? = null,
-    val tracks: List<Track> = emptyList()
+    val tracks: List<Track> = emptyList(),
+    /** Estanterías bajo las pistas (p. ej. «Otras versiones»). */
+    val related: List<MusicSection> = emptyList(),
 )

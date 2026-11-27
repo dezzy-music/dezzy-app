@@ -87,7 +87,7 @@ internal fun CircleIconButton(
 
 /** Título de sección en negrita con «→» a la derecha; sólo es pulsable si hay [onClick]. */
 @Composable
-internal fun ArrowSectionHeader(title: String, onClick: (() -> Unit)? = null) {
+internal fun ArrowSectionHeader(title: String, onClick: (() -> Unit)? = null, arrow: Boolean = true) {
     Row(
         Modifier.fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
@@ -103,6 +103,6 @@ internal fun ArrowSectionHeader(title: String, onClick: (() -> Unit)? = null) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurface)
+        if (arrow) Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurface)
     }
 }

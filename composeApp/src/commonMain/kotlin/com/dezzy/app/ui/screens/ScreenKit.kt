@@ -173,8 +173,8 @@ fun LazyListScope.carousel(section: MusicSection, ctx: ScreenContext, keyPrefix:
 @Composable
 fun ItemRow(item: MusicItem, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(item.subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        headlineContent = { Text(item.title, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = { Text(item.subtitle, style = MaterialTheme.typography.bodySmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = {
             CoverImage(
                 item.thumbnail,

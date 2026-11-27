@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Download
@@ -116,6 +117,7 @@ fun AlbumScreen(id: String, ctx: ScreenContext) {
                     val tracks = albumTracks(a)
                     item(key = "header") { AlbumHeader(a, tracks, ctx, onMenu = { menu = true }) }
                     trackList(tracks, ctx, "album:${a.title}", numbered = true)
+                    a.related.forEach { artistShelf(it, ctx, arrow = false) }
                 }
             }
         }
@@ -152,56 +154,47 @@ private fun AlbumHeader(a: Album, tracks: List<Track>, ctx: ScreenContext, onMen
             Spacer(Modifier.weight(1f))
             androidx.compose.material3.IconButton(onClick = onMenu) { Icon(Icons.Rounded.MoreVert, "Más", tint = Color.White) }
         }
-        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(200.dp)) {
-                CoverImage(a.thumbnail, Modifier.size(200.dp), RoundedCornerShape(12.dp), sizePx = 720)
-                CircleIconButton(
-                    Icons.Rounded.Download, "Descargar",
+        // Portada centrada; título, artista y datos a la izquierda, en negrita (como la app actual).
+        Box(Modifier.fillMaxWidth().padding(top = 64.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(232.dp)) {
+                CoverImage(a.thumbnail, Modifier.size(232.dp), RoundedCornerShape(12.dp), sizePx = 720)
+                androidx.compose.material3.IconButton(
                     onClick = {
                         downloads.enqueue(tracks)
                         ctx.toast("${tracks.size} canciones a descargas")
                     },
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                    background = Color.Black.copy(alpha = 0.6f),
-                    size = 36.dp,
-                    iconSize = 20.dp,
-                )
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                ) { Icon(Icons.Rounded.Download, "Descargar", tint = Color.White) }
             }
-            Spacer(Modifier.height(16.dp))
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Spacer(Modifier.height(20.dp))
             Text(
                 a.title,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                textAlign = TextAlign.Center,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(8.dp))
             if (a.artist.isNotBlank()) {
-                Row(
-                    Modifier.clickable { openArtistByName(ctx, a.artist.substringBefore(",").trim()) },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Person, null, Modifier.size(14.dp), tint = Color.White)
-                    }
-                    Text(
-                        a.artist,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textDecoration = TextDecoration.Underline,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    a.artist,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textDecoration = TextDecoration.Underline,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { openArtistByName(ctx, a.artist.substringBefore(",").trim()) },
+                )
             }
             Spacer(Modifier.height(6.dp))
-            Text(meta, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
-            Spacer(Modifier.height(16.dp))
+            Text(meta, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f))
+            Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.IconButton(onClick = {
                         scope.launch { tracks.forEach { repository.setFavorite(it, !allLiked) } }
                         ctx.toast(if (allLiked) "Quitado de Me gusta" else "Álbum añadido a Me gusta")
@@ -209,15 +202,16 @@ private fun AlbumHeader(a: Album, tracks: List<Track>, ctx: ScreenContext, onMen
                         Icon(
                             if (allLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             "Me gusta",
-                            tint = if (allLiked) MaterialTheme.colorScheme.primary else Color.White,
+                            tint = if (allLiked) Color(0xFFFF6B81) else Color.White,
                         )
                     }
                     androidx.compose.material3.IconButton(onClick = {
                         downloads.enqueue(tracks)
                         ctx.toast("${tracks.size} canciones a descargas")
                     }) { Icon(Icons.Rounded.Download, "Descargar", tint = Color.White) }
-                    androidx.compose.material3.IconButton(onClick = { share = true }) { Icon(Icons.Rounded.Share, "Compartir", tint = Color.White) }
-                    androidx.compose.material3.IconButton(onClick = onMenu) { Icon(Icons.Rounded.MoreVert, "Más", tint = Color.White) }
+                    androidx.compose.material3.IconButton(onClick = { share = true }) {
+                        Icon(Icons.AutoMirrored.Rounded.Redo, "Compartir", tint = Color.White)
+                    }
                 }
                 androidx.compose.material3.IconButton(onClick = {
                     if (tracks.isNotEmpty()) ctx.player.playTracks(tracks.shuffled(), 0, source)
@@ -443,8 +437,8 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
 }
 
 /** Estantería del artista: título en negrita con «→» y carrusel de tarjetas (sin enlace propio: el cliente no da browseId). */
-private fun LazyListScope.artistShelf(section: MusicSection, ctx: ScreenContext) {
-    item(key = "h:artist:${section.title}") { ArrowSectionHeader(section.title) }
+private fun LazyListScope.artistShelf(section: MusicSection, ctx: ScreenContext, arrow: Boolean = true) {
+    item(key = "h:artist:${section.title}") { ArrowSectionHeader(section.title, arrow = arrow) }
     item(key = "r:artist:${section.title}") {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(section.items, key = { it.type.name + it.id }) {
@@ -458,7 +452,9 @@ private fun LazyListScope.artistShelf(section: MusicSection, ctx: ScreenContext)
 /** Tarjeta de álbum o sencillo en la ficha de artista: portada con ▶ encima, título y sólo el año, en negrita. */
 @Composable
 private fun ArtistAlbumCard(item: com.dezzy.app.core.model.MusicItem, onClick: () -> Unit) {
-    val year = Regex("[12][0-9]{3}").findAll(item.subtitle).lastOrNull()?.value ?: item.subtitle
+    // Sólo el año; sin año, el subtítulo sin el tipo («Álbum • Artista» → «Artista»).
+    val year = Regex("[12][0-9]{3}").findAll(item.subtitle).lastOrNull()?.value
+        ?: item.subtitle.split(" • ").let { parts -> if (parts.size > 1) parts.drop(1).joinToString(" • ") else item.subtitle }
     Column(Modifier.width(128.dp).clickable(onClick = onClick)) {
         Box(Modifier.size(128.dp)) {
             CoverImage(item.thumbnail, Modifier.fillMaxSize(), RoundedCornerShape(10.dp), sizePx = 360)
@@ -469,7 +465,7 @@ private fun ArtistAlbumCard(item: com.dezzy.app.core.model.MusicItem, onClick: (
         }
         Spacer(Modifier.height(8.dp))
         Text(item.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(year, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 1)
+        Text(year, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 2)
     }
 }
 

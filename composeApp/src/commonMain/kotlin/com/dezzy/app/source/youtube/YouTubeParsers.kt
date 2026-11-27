@@ -351,12 +351,22 @@ object YouTubeParsers {
 
     fun parseAlbum(json: JsonObject, albumId: String): Album {
         val twoColumn = json["contents"]?.jsonObject?.get("twoColumnBrowseResultsRenderer")?.jsonObject
-        val header = json["header"]?.jsonObject?.get("musicDetailHeaderRenderer")?.jsonObject
+        // Formato actual: la cabecera va dentro de la primera pestaña (musicResponsiveHeaderRenderer).
+        val tabHeader = twoColumn?.get("tabs")?.jsonArray?.getOrNull(0)?.jsonObject
+            ?.get("tabRenderer")?.jsonObject?.get("content")?.jsonObject
+            ?.get("sectionListRenderer")?.jsonObject?.get("contents")?.jsonArray
+            ?.firstNotNullOfOrNull { (it as? JsonObject)?.get("musicResponsiveHeaderRenderer") as? JsonObject }
+        val header = tabHeader
+            ?: json["header"]?.jsonObject?.get("musicDetailHeaderRenderer")?.jsonObject
             ?: json["header"]?.jsonObject?.get("musicResponsiveHeaderRenderer")?.jsonObject
 
         val title = YouTubeJsonHelper.runsText(header?.get("title")).ifBlank { "Álbum" }
         val subtitle = YouTubeJsonHelper.runsText(header?.get("subtitle"))
+        val strapline = YouTubeJsonHelper.runsText(header?.get("straplineTextOne"))
+        val artist = strapline.ifBlank { subtitle }
+        val year = Regex("[12][0-9]{3}").find(subtitle)?.value
         val thumbnail = YouTubeJsonHelper.pickThumb(header?.get("thumbnail"))
+        val related = mutableListOf<MusicSection>()
 
         val tracks = mutableListOf<Track>()
         val tabs = twoColumn?.get("secondaryContents")?.jsonObject
@@ -369,12 +379,18 @@ object YouTubeParsers {
         val sectionList = tabs?.get("sectionListRenderer")?.jsonObject?.get("contents")?.jsonArray
         if (sectionList != null) {
             for (section in sectionList) {
-                val shelf = (section as? JsonObject)?.get("musicShelfRenderer")?.jsonObject ?: continue
+                val sectionObj = section as? JsonObject ?: continue
+                if (sectionObj["musicCarouselShelfRenderer"] != null) {
+                    parseCarouselShelf(sectionObj)?.takeIf { it.items.isNotEmpty() }?.let { related.add(it) }
+                    continue
+                }
+                val shelf = sectionObj["musicShelfRenderer"]?.jsonObject ?: continue
                 val contents = shelf["contents"]?.jsonArray ?: continue
                 for (item in contents) {
                     val itemObj = item as? JsonObject ?: continue
                     parseTrack(itemObj, fallbackThumb = thumbnail, fallbackAlbum = title)?.let {
-                        tracks.add(it)
+                        // Las pistas del álbum no traen artista: se usa el del álbum.
+                        tracks.add(if (it.artists.isBlank()) it.copy(artists = artist) else it)
                     }
                 }
             }
@@ -383,10 +399,12 @@ object YouTubeParsers {
         return Album(
             id = albumId,
             title = title,
-            artist = subtitle,
+            artist = artist,
+            year = year,
             thumbnail = thumbnail,
             trackCount = tracks.size,
-            tracks = tracks
+            tracks = tracks,
+            related = related,
         )
     }
 
