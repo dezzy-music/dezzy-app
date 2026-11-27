@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -61,6 +62,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -115,7 +118,7 @@ fun LibraryScreen(ctx: ScreenContext) {
     val pills = listOf(
         LibraryPill("Favorito", Icons.Rounded.Favorite, colors.primaryContainer, colors.onPrimaryContainer) { ctx.navigator.push(Screen.Liked) },
         LibraryPill("Descargado", Icons.Rounded.SaveAlt, colors.tertiaryContainer, colors.onTertiaryContainer) { ctx.navigator.push(Screen.Downloads) },
-        LibraryPill("Mi top", Icons.Outlined.QueryStats, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
+        LibraryPill("Mi top", Icons.AutoMirrored.Rounded.TrendingUp, colors.surfaceContainerHighest, colors.onSurfaceVariant) { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Stats) },
     )
     // Orden y vista de la rejilla (de momento sólo en memoria de la sesión).
     var sort by rememberSaveable { mutableStateOf(0) }
@@ -153,7 +156,7 @@ fun LibraryScreen(ctx: ScreenContext) {
                             if (t == LibraryTab.GENRES) ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.LibraryGenres)
                             else tab = t
                         },
-                        text = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        text = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = if (t == tab) FontWeight.Bold else FontWeight.SemiBold) },
                     )
                 }
             }
@@ -169,9 +172,9 @@ fun LibraryScreen(ctx: ScreenContext) {
                         Box {
                             Text(
                                 sortLabels[sort],
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.clickable { sortMenu = true }.padding(vertical = 8.dp),
+                                modifier = Modifier.widthIn(max = 110.dp).clickable { sortMenu = true }.padding(vertical = 8.dp),
                             )
                             DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
                                 sortLabels.forEachIndexed { i, l ->
@@ -181,13 +184,16 @@ fun LibraryScreen(ctx: ScreenContext) {
                         }
                         Text(
                             "${playlists.size} listas de reproducción",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
                             modifier = Modifier.weight(1f).padding(start = 12.dp),
                         )
-                        IconButton(onClick = { creating = true }) { Icon(Icons.Rounded.Add, "Crear lista") }
+                        // Como en la app actual: el icono muestra la vista en uso.
                         IconButton(onClick = { gridView = !gridView }) {
-                            Icon(if (gridView) Icons.Rounded.ViewList else Icons.Rounded.GridView, if (gridView) "Ver como lista" else "Ver como rejilla")
+                            Icon(if (gridView) Icons.Outlined.GridView else Icons.Rounded.ViewList, if (gridView) "Ver como lista" else "Ver como rejilla")
                         }
                     }
                 }
@@ -215,6 +221,14 @@ fun LibraryScreen(ctx: ScreenContext) {
                         rowCards.forEach { it(Modifier.weight(1f)) }
                         if (gridView && rowCards.size == 1) Spacer(Modifier.weight(1f))
                     }
+                }
+                item {
+                    Text(
+                        "Nueva lista de reproducción",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth().clickable { creating = true }.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    )
                 }
                 item {
                     Text(
@@ -295,13 +309,14 @@ private fun LibraryPillButton(pill: LibraryPill) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.heightIn(min = 40.dp).padding(start = 6.dp, end = 16.dp),
         ) {
-            Surface(shape = CircleShape, color = pill.container, modifier = Modifier.size(28.dp)) {
+            // Círculo claro con el icono oscuro, como en la app actual.
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.88f), modifier = Modifier.size(28.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(pill.icon, null, tint = pill.content, modifier = Modifier.size(16.dp))
+                    Icon(pill.icon, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(16.dp))
                 }
             }
             Spacer(Modifier.width(8.dp))
-            Text(pill.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+            Text(pill.title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
         }
     }
 }
