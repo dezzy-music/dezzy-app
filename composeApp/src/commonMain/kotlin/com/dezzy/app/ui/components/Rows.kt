@@ -125,6 +125,7 @@ fun TrackRow(
             Text(
                 track.title,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 color = if (playing) colors.primary else colors.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -144,7 +145,7 @@ fun TrackRow(
                         Icon(Icons.Rounded.DownloadDone, "Descargada", Modifier.size(14.dp), tint = colors.primary)
                         Spacer(Modifier.width(4.dp))
                     }
-                    Text(meta, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(meta, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = colors.onSurface.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

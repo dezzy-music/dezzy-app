@@ -37,7 +37,8 @@ import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Sensors
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
@@ -322,7 +323,16 @@ fun ArtistScreen(id: String, ctx: ScreenContext) {
                     androidx.compose.material3.IconButton(onClick = { ctx.navigator.back() }) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás", tint = Color.White)
                     }
-                    Text(name, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge)
+                    Text(name, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    val clipboard = LocalClipboardManager.current
+                    val shareText = rememberShareText()
+                    val link = "https://music.youtube.com/channel/$id"
+                    androidx.compose.material3.IconButton(onClick = { clipboard.setText(AnnotatedString(link)); ctx.toast("Enlace copiado") }) {
+                        Icon(Icons.Rounded.Link, "Copiar enlace", tint = Color.White)
+                    }
+                    androidx.compose.material3.IconButton(onClick = { shareText(link) }) {
+                        Icon(Icons.Rounded.Share, "Compartir", tint = Color.White)
+                    }
                 }
             }
         }
@@ -378,20 +388,22 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             a.listeners?.takeIf { it.isNotBlank() }?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f))
+                Spacer(Modifier.height(6.dp))
             }
             a.description?.takeIf { it.isNotBlank() }?.let { about ->
                 Text(
                     about,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (about.length > 120) {
                     Text(
                         if (expanded) "Menos" else "Más",
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable { expanded = !expanded }.padding(vertical = 4.dp),
                     )
@@ -410,7 +422,7 @@ private fun ArtistHeader(a: Artist, id: String, ctx: ScreenContext) {
                     }
                     if (a.songs.isNotEmpty()) {
                         androidx.compose.material3.IconButton(onClick = { ctx.player.playRadio(a.songs.first(), "radio:${a.name}") }) {
-                            Icon(Icons.Rounded.Radio, "Radio")
+                            Icon(Icons.Rounded.Sensors, "Radio")
                         }
                     }
                     androidx.compose.material3.IconButton(onClick = {
@@ -435,8 +447,29 @@ private fun LazyListScope.artistShelf(section: MusicSection, ctx: ScreenContext)
     item(key = "h:artist:${section.title}") { ArrowSectionHeader(section.title) }
     item(key = "r:artist:${section.title}") {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(section.items, key = { it.type.name + it.id }) { ItemCard(it, onClick = { ctx.open(it) }) }
+            items(section.items, key = { it.type.name + it.id }) {
+                if (it.type == com.dezzy.app.core.model.MusicItemType.ALBUM) ArtistAlbumCard(it, onClick = { ctx.open(it) })
+                else ItemCard(it, onClick = { ctx.open(it) })
+            }
         }
+    }
+}
+
+/** Tarjeta de álbum o sencillo en la ficha de artista: portada con ▶ encima, título y sólo el año, en negrita. */
+@Composable
+private fun ArtistAlbumCard(item: com.dezzy.app.core.model.MusicItem, onClick: () -> Unit) {
+    val year = Regex("[12][0-9]{3}").findAll(item.subtitle).lastOrNull()?.value ?: item.subtitle
+    Column(Modifier.width(128.dp).clickable(onClick = onClick)) {
+        Box(Modifier.size(128.dp)) {
+            CoverImage(item.thumbnail, Modifier.fillMaxSize(), RoundedCornerShape(10.dp), sizePx = 360)
+            Box(
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp).size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(22.dp)) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(item.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(year, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 1)
     }
 }
 

@@ -77,6 +77,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.heading
@@ -130,6 +136,7 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
     val keyboard = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    var fieldFocused by remember { mutableStateOf(false) }
     val historyRaw by remember { ctx.prefs.value(SearchHistoryKey, "") }.collectAsState("")
     val history = remember(historyRaw) { parseSearchHistory(historyRaw) }
 
@@ -137,6 +144,8 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
         query = text
         submitted = text.trim()
         keyboard?.hide()
+        // Sin foco la barra pasa a la píldora compacta de resultados.
+        if (submitted.isNotEmpty()) focusManager.clearFocus()
         if (submitted.isNotEmpty()) ctx.scope.launch { addSearchHistory(ctx.prefs, submitted) }
     }
 
@@ -157,6 +166,7 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
 
     Column(Modifier.fillMaxSize()) {
         TopSpacer()
+        val compact = submitted.isNotEmpty() && query == submitted && !topVideos && !fieldFocused
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -168,11 +178,13 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
                     else { keyboard?.hide(); focusManager.clearFocus() }
                 }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Atrás") }
             },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = ""; submitted = "" }) { Icon(Icons.Rounded.Clear, "Borrar") }
-                } else {
-                    Icon(Icons.Rounded.Language, null)
+            trailingIcon = if (compact) null else {
+                {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = ""; submitted = "" }) { Icon(Icons.Rounded.Clear, "Borrar") }
+                    } else {
+                        Icon(Icons.Rounded.Language, null)
+                    }
                 }
             },
             // Barra plana como en la app actual: sin caja ni borde, con una línea debajo.
@@ -183,19 +195,26 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
             textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { submit(query) }),
-            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+            modifier = (
+                if (compact) {
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth().height(52.dp)
+                        .clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                } else Modifier.fillMaxWidth()
+                ).focusRequester(focusRequester).onFocusChanged { fieldFocused = it.isFocused },
         )
-        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Spacer(Modifier.size(8.dp))
-        SearchSourceChips(
-            current = source,
-            onSelect = {
-                when (it) {
-                    SearchSourceOption.LOSSLESS -> ctx.navigator.push(Screen.Lossless)
-                    else -> source = it
-                }
-            },
-        )
+        if (!compact) {
+            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.size(8.dp))
+            SearchSourceChips(
+                current = source,
+                onSelect = {
+                    when (it) {
+                        SearchSourceOption.LOSSLESS -> ctx.navigator.push(Screen.Lossless)
+                        else -> source = it
+                    }
+                },
+            )
+        }
         when {
             query.isBlank() && topVideos -> TopVideosScreen(ctx, onBack = { topVideos = false })
             query.isBlank() -> SearchHome(
@@ -228,11 +247,25 @@ private fun SearchFilterChips(current: SearchFilter, onSelect: (SearchFilter) ->
             FilterChip(
                 selected = selected,
                 onClick = { onSelect(f) },
-                label = { Text(f.label, maxLines = 1) },
-                leadingIcon = if (selected) {
-                    { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
-                } else null,
-                colors = com.dezzy.app.ui.components.dezzyFilterChipColors(),
+                label = { Text(f.label, maxLines = 1, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                leadingIcon = {
+                    val icon = when (f) {
+                        SearchFilter.ALL -> if (selected) Icons.Rounded.Check else null
+                        SearchFilter.SONGS -> Icons.Rounded.MusicNote
+                        SearchFilter.VIDEOS -> Icons.Rounded.PlayCircleOutline
+                        SearchFilter.ALBUMS -> Icons.Rounded.Album
+                        SearchFilter.ARTISTS -> Icons.Rounded.Person
+                        SearchFilter.PLAYLISTS -> Icons.AutoMirrored.Rounded.QueueMusic
+                    }
+                    if (icon != null) Icon(icon, null, Modifier.size(18.dp))
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                border = null,
             )
         }
     }
@@ -527,7 +560,14 @@ private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: 
                 thumbnail = artist.thumbnail,
                 isArtist = true,
                 onOpen = { ctx.open(artist) },
-                onPlay = null,
+                // «Reproducir» del artista: carga su ficha y suena desde sus canciones más escuchadas.
+                onPlay = {
+                    ctx.scope.launch {
+                        ctx.client.getArtist(artist.id).getOrNull()?.songs
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { ctx.player.playTracks(it, 0, "artist:${artist.title}") }
+                    }
+                },
                 onShuffle = null,
             )
         }
@@ -548,7 +588,8 @@ private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: 
     }
     if (filter == SearchFilter.ALL || filter == SearchFilter.SONGS) {
         if (result.songs.isNotEmpty()) {
-            item(key = "songs_h") { SearchResultSectionHeader("Canciones") }
+            // Con «Todos» la lista va seguida, sin encabezados, como en la app actual.
+            if (filter != SearchFilter.ALL) item(key = "songs_h") { SearchResultSectionHeader("Canciones") }
             items(result.songs.size, key = { "song:$it:${result.songs[it].videoId}" }) { i ->
                 val t = result.songs[i]
                 TrackRow(
@@ -560,9 +601,10 @@ private fun LazyListScope.resultItems(result: SearchResult, query: String, ctx: 
         }
     }
     if (filter == SearchFilter.ALL) {
-        if (result.artists.isNotEmpty()) carousel(MusicSection("Artistas", items = result.artists), ctx, "s:")
-        if (result.albums.isNotEmpty()) carousel(MusicSection("Álbumes", items = result.albums), ctx, "s:")
-        if (result.playlists.isNotEmpty()) carousel(MusicSection("Listas", items = result.playlists), ctx, "s:")
+        val rest = result.artists.filter { it != artist } + result.albums + result.playlists
+        items(rest.size, key = { "all:$it:${rest[it].type.name}:${rest[it].id}" }) { i ->
+            ItemRow(rest[i]) { ctx.open(rest[i]) }
+        }
     } else {
         val filtered = when (filter) {
             SearchFilter.ALBUMS -> result.albums
@@ -650,7 +692,8 @@ private fun SearchResultSectionHeader(title: String, modifier: Modifier = Modifi
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
@@ -693,10 +736,11 @@ private fun SearchTopResultCard(
             )
             Spacer(Modifier.size(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -705,10 +749,14 @@ private fun SearchTopResultCard(
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (onPlay != null) {
-                            Button(onClick = onPlay, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+                            Button(
+                                onClick = onPlay,
+                                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
+                            ) {
                                 Icon(Icons.Rounded.PlayArrow, null, Modifier.size(ButtonDefaults.IconSize))
                                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                                Text("Reproducir", maxLines = 1)
+                                Text("Reproducir", maxLines = 1, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
                         }
                         if (onShuffle != null) {

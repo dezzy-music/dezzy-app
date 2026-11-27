@@ -39,7 +39,8 @@ fun ArtistCanvas(topSong: Track?, modifier: Modifier = Modifier) {
         canvas = resolver.forTrack(topSong, ARTIST_CANVAS_QUALITY)
     }
     val ready = canvas ?: return
-    val url = ready.animated ?: ready.videoUrl ?: return
+    // Sólo el videoclip: la portada animada de una canción no sirve de foto de artista.
+    val url = ready.videoUrl ?: return
     CanvasVideo(
         url = url,
         loopStartMs = ready.loopStartMs,
