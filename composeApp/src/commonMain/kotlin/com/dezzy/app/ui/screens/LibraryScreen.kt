@@ -462,15 +462,17 @@ fun LocalPlaylistScreen(id: String, ctx: ScreenContext) {
                             t,
                             onClick = { ctx.player.playTracks(tracks, i, "playlist:${p.id}") },
                             playing = t.videoId == ctx.playingId,
-                            onMore = t.videoId?.let { vid ->
-                                {
-                                    ctx.scope.launch {
-                                        ctx.repository.removeTrackFromPlaylist(id, vid)
-                                        version++
-                                    }
-                                    ctx.toast("Quitada de la lista")
-                                }
-                            },
+                            extraMenu = t.videoId?.let { vid ->
+                                listOf<Pair<String, () -> Unit>>(
+                                    "Quitar de la lista" to {
+                                        ctx.scope.launch {
+                                            ctx.repository.removeTrackFromPlaylist(id, vid)
+                                            version++
+                                        }
+                                        ctx.toast("Quitada de la lista")
+                                    },
+                                )
+                            } ?: emptyList(),
                         )
                     }
                 }

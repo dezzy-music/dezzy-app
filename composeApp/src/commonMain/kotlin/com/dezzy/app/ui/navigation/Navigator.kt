@@ -75,6 +75,10 @@ sealed interface Screen {
     data class SongStats(val videoId: String) : Screen
     data object NewReleases : Screen
     data object LibraryGenres : Screen
+
+    /** Mosaico «Experiencias» y chat con Dezzy IA. */
+    data object Experiences : Screen
+    data object DezzyIA : Screen
 }
 
 enum class SettingsPage {

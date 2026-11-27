@@ -94,6 +94,7 @@ fun TrackRow(
     number: Int? = null,
     showCover: Boolean = true,
     onMore: (() -> Unit)? = null,
+    extraMenu: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     val colors = MaterialTheme.colorScheme
     val songMods: SongMods = koinInject()
@@ -158,6 +159,9 @@ fun TrackRow(
             Box {
                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Más opciones", tint = colors.onSurfaceVariant) }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    extraMenu.forEach { (label, action) ->
+                        DropdownMenuItem(text = { Text(label) }, onClick = { menuOpen = false; action() })
+                    }
                     val vid = original.videoId
                     if (vid != null) {
                         val manager = koinInject<DownloadManager>()

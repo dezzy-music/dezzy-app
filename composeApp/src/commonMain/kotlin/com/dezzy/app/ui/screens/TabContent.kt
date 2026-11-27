@@ -122,6 +122,8 @@ fun TabContent(
         is Screen.SongStats -> com.dezzy.app.ui.screens.musicmap.SongStatsScreen(ctx, top.videoId)
         Screen.NewReleases -> com.dezzy.app.ui.screens.musicmap.NewReleasesScreen(ctx)
         Screen.LibraryGenres -> com.dezzy.app.ui.screens.musicmap.LibraryGenresScreen(ctx)
+        Screen.Experiences -> com.dezzy.app.ui.screens.experiences.ExperiencesScreen(ctx)
+        Screen.DezzyIA -> com.dezzy.app.ui.screens.ai.DezzyIAScreen(ctx)
         null -> when (navigator.tab) {
             Tab.HOME -> HomeScreen(ctx, state)
             Tab.SEARCH -> SearchScreen(ctx, "")

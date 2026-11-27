@@ -580,6 +580,8 @@ private fun MoreFromDezzySheet(ctx: ScreenContext, onDismiss: () -> Unit) {
             MenuRow(Icons.Rounded.Download, "Mis Descargas") { go { ctx.navigator.push(Screen.Downloads) } }
             MenuGroup("Descubrimiento y Más")
             MenuRow(Icons.Rounded.AutoAwesome, "DJ Dezzy AI") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Dj) } }
+            MenuRow(Icons.Rounded.AutoAwesome, "Dezzy IA") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.DezzyIA) } }
+            MenuRow(Icons.Rounded.Leaderboard, "Experiencias") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Experiences) } }
             MenuRow(Icons.Rounded.Groups, "Escuchar Juntos") { go { ctx.navigator.select(Tab.TOGETHER) } }
             MenuRow(Icons.Rounded.Leaderboard, "Listas de Éxitos") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.Charts()) } }
             MenuRow(Icons.Rounded.Map, "Mapa Musical") { go { ctx.navigator.push(com.dezzy.app.ui.navigation.Screen.MusicMap) } }

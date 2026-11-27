@@ -191,10 +191,12 @@ private fun androidx.compose.foundation.lazy.LazyListScope.trackList(
             playing = t.videoId != null && t.videoId == ctx.playingId,
             number = if (numbered) i + 1 else null,
             showCover = !numbered,
-            onMore = {
-                ctx.player.addToQueue(t)
-                ctx.toast("Añadida a la cola")
-            },
+            extraMenu = listOf(
+                "Añadir a la cola" to {
+                    ctx.player.addToQueue(t)
+                    ctx.toast("Añadida a la cola")
+                },
+            ),
         )
     }
 }
