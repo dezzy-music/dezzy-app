@@ -71,7 +71,10 @@ import com.dezzy.app.ui.player.kit.LyricsBgDimKey
 import com.dezzy.app.ui.player.kit.LyricsBgImageUriKey
 import com.dezzy.app.ui.player.kit.rememberPreference
 import com.dezzy.app.ui.player.kit.Player
+import com.dezzy.app.ui.player.kit.PlayerBackgroundLayer
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
+import com.dezzy.app.ui.player.kit.PlayerDesignStyle
+import com.dezzy.app.ui.player.kit.PlayerDesignStyleKey
 import com.dezzy.app.ui.player.kit.PlayerBackgroundStyleKey
 import com.dezzy.app.ui.player.kit.PlayerConnection
 import com.dezzy.app.ui.player.kit.SliderStyle
@@ -94,6 +97,9 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     val manager: LyricsManager = koinInject()
     val meta by playerConnection.mediaMetadata.collectAsState()
     val bgStyle by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
+    val designStyle by rememberEnumPreference(PlayerDesignStyleKey, PlayerDesignStyle.V1)
+    // «Fondo del reproductor» sólo aplica con el estilo Clásico.
+    val customPlayerBg = designStyle == PlayerDesignStyle.V1 && bgStyle != PlayerBackgroundStyle.DEFAULT
     var showCanvas by remember { mutableStateOf(false) }
     var shareLines by remember { mutableStateOf<List<String>?>(null) }
     var showMenu by remember { mutableStateOf(false) }
@@ -145,10 +151,12 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(background)
+            .then(if (customPlayerBg) Modifier.background(Color.Black) else Modifier.background(background))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
-        if (standardBlur && !useImage && meta?.thumbnailUrl != null) {
+        if (customPlayerBg) {
+            PlayerBackgroundLayer(meta?.thumbnailUrl, emptyList())
+        } else if (standardBlur && !useImage && meta?.thumbnailUrl != null) {
             // Portada desenfocada a pantalla completa detrás de la letra.
             AsyncImage(
                 model = meta?.thumbnailUrl,
@@ -158,7 +166,7 @@ fun LyricsScreen(playerConnection: PlayerConnection, onClose: () -> Unit) {
             )
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
         }
-        if (useImage) {
+        if (useImage && !customPlayerBg) {
             AsyncImage(
                 model = bgImageUri,
                 contentDescription = null,

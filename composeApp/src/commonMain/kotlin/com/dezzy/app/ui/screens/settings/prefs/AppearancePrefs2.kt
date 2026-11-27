@@ -20,6 +20,8 @@ val ThemeRandomAtStartKey = booleanPreferencesKey("theme_random_at_start")
 val PinterestPinKey = stringPreferencesKey("pinterestPin")
 val WallpaperImageEnabledKey = booleanPreferencesKey("wallpaper_image_enabled")
 val WallpaperVideoEnabledKey = booleanPreferencesKey("wallpaper_video_enabled")
+/** Desenfoque del fondo de la app, en dp (0 = nítido). */
+val WallpaperBlurKey = floatPreferencesKey("wallpaper_blur")
 val WallpaperIdleFadeKey = booleanPreferencesKey("wallpaper_idle_fade")
 
 // ── Reproductor ──────────────────────────────────────────────────────────────────────────────

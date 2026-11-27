@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -47,11 +49,13 @@ fun AppWallpaper(modifier: Modifier = Modifier) {
     if (state.isEmpty) return
     val density = LocalDensity.current
     val platformContext = coil3.compose.LocalPlatformContext.current
+    val blur by com.dezzy.app.ui.player.kit.rememberPreference(com.dezzy.app.ui.screens.settings.prefs.WallpaperBlurKey, 0f)
+    val blurMod = if (blur >= 1f) Modifier.blur(blur.dp) else Modifier
     BoxWithConstraints(modifier) {
         val slot = state.slot(landscape = maxWidth > maxHeight) ?: return@BoxWithConstraints
         var imageLuminance by remember(slot.uri) { mutableStateOf<Float?>(null) }
         if (slot.isVideo) {
-            WallpaperVideo(slot.uri, Modifier.fillMaxSize())
+            WallpaperVideo(slot.uri, Modifier.fillMaxSize().then(blurMod))
         } else {
             AsyncImage(
                 model = remember(slot.uri, platformContext) {
@@ -59,7 +63,7 @@ fun AppWallpaper(modifier: Modifier = Modifier) {
                 },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().then(blurMod),
                 onSuccess = { st -> imageLuminance = averageLuminance(st.painter, density) },
             )
         }

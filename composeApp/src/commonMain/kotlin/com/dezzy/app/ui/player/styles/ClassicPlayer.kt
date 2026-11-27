@@ -102,6 +102,10 @@ import com.dezzy.app.ui.player.kit.ConnectState
 import com.dezzy.app.ui.player.kit.LocalPlayerConnection
 import com.dezzy.app.ui.player.kit.NavController
 import com.dezzy.app.ui.player.kit.Player
+import com.dezzy.app.ui.player.kit.PlayerBackgroundLayer
+import com.dezzy.app.ui.player.kit.PlayerBackgroundStyle
+import com.dezzy.app.ui.player.kit.PlayerBackgroundStyleKey
+import com.dezzy.app.ui.player.kit.rememberEnumPreference
 import com.dezzy.app.ui.player.kit.isLandscape
 import com.dezzy.app.ui.player.kit.loadArtPalette
 import com.dezzy.app.ui.player.kit.makeTimeString
@@ -186,6 +190,7 @@ fun ClassicPlayer(
         animationSpec = tween(600),
         label = "classicAccent",
     )
+    val customBg by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
     val isDarkSurface = colorScheme.surface.luminance() < 0.5f
     val topTint = if (isDarkSurface) 0.30f else 0.34f
     val background = Brush.verticalGradient(
@@ -560,8 +565,10 @@ fun ClassicPlayer(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(background),
+            .then(if (customBg == PlayerBackgroundStyle.DEFAULT) Modifier.background(background) else Modifier),
     ) {
+        // «Fondo del reproductor» (no DEFAULT): capa detrás de todo el contenido.
+        PlayerBackgroundLayer(mediaMetadata?.thumbnailUrl, listOf(accent, colorScheme.secondary))
         if (isLandscape) {
             Row(
                 modifier = Modifier

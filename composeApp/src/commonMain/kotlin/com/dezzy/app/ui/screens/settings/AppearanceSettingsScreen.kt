@@ -130,6 +130,7 @@ import com.dezzy.app.ui.screens.settings.prefs.ShowTopAutoPlaylistKey
 import com.dezzy.app.ui.screens.settings.prefs.SpinningThumbnailKey
 import com.dezzy.app.ui.screens.settings.prefs.SwipeSongActionsKey
 import com.dezzy.app.ui.screens.settings.prefs.ThemeRandomAtStartKey
+import com.dezzy.app.ui.screens.settings.prefs.WallpaperBlurKey
 import com.dezzy.app.ui.screens.settings.prefs.WallpaperIdleFadeKey
 import com.dezzy.app.ui.screens.settings.prefs.WallpaperImageEnabledKey
 import com.dezzy.app.ui.screens.settings.prefs.WallpaperVideoEnabledKey
@@ -191,6 +192,7 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
     val lyricsV2 by rememberPreference(LyricsV2Key, false)
     val wallpaperImage by rememberPreference(WallpaperImageEnabledKey, false)
     val wallpaperVideo by rememberPreference(WallpaperVideoEnabledKey, false)
+    var wallpaperBlur by rememberPreference(WallpaperBlurKey, 0f)
     var canvasArtist by rememberPreference(CanvasArtistEnabledKey, CANVAS_ARTIST_DEFAULT)
     var canvasMode by rememberEnumPreference(CanvasModeKey, CanvasMode.APPLE_WITH_FALLBACK)
 
@@ -270,32 +272,6 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 )
                 }
                 SettingsDivider()
-                SettingsRow(
-                    title = "Icono de la app",
-                    subtitle = "Forma y colores del icono, en la app y en el launcher",
-                    icon = Icons.Rounded.Apps,
-                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.APP_ICON)) },
-                )
-            }
-        }
-
-        // ── Visualizador ────────────────────────────────────────────────────────────────────
-        item(key = "visualizer") {
-            SettingsGroup(label = "Visualizador") {
-                VisualizerCarousel(
-                    selected = VisualizerStyle.entries.firstOrNull { it.name == visualizerName } ?: VisualizerStyle.ESFERA,
-                    onSelect = { visualizerName = it.name },
-                    modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Deslizar para cambiar",
-                    subtitle = "En la pantalla del visualizador",
-                    icon = Icons.Rounded.Swipe,
-                    checked = visualizerSwipe,
-                    onCheckedChange = { visualizerSwipe = it },
-                )
-                SettingsDivider()
                 SettingsChoiceRow(
                     title = "Tema oscuro",
                     icon = Icons.Rounded.DarkMode,
@@ -321,14 +297,6 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 )
                 }
                 SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Desactivar efectos de desenfoque",
-                    subtitle = "Desactivar los efectos de desenfoque en toda la aplicación",
-                    icon = Icons.Rounded.BlurOn,
-                    checked = disableBlur,
-                    onCheckedChange = { disableBlur = it },
-                )
-                SettingsDivider()
                 SettingsChoiceRow(
                     title = "Fuente de la aplicación",
                     icon = Icons.Rounded.TextFields,
@@ -337,6 +305,26 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     label = { it.label },
                     onSelect = { appFont = it },
                     optionFont = { it.fontFamily() },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = "Icono de la app",
+                    subtitle = "Forma y colores del icono, en la app y en el launcher",
+                    icon = Icons.Rounded.Apps,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.APP_ICON)) },
+                )
+            }
+        }
+
+        // ── Desenfoque ──────────────────────────────────────────────────────────────────────────
+        item(key = "effects") {
+            SettingsGroup(label = "Desenfoque") {
+                SettingsSwitchRow(
+                    title = "Desactivar efectos de desenfoque",
+                    subtitle = "Desactivar los efectos de desenfoque en toda la aplicación",
+                    icon = Icons.Rounded.BlurOn,
+                    checked = disableBlur,
+                    onCheckedChange = { disableBlur = it },
                 )
                 if (!disableBlur) {
                 SettingsDivider()
@@ -363,6 +351,16 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 PrefSwitchRow("Fondo con video", null, WallpaperVideoEnabledKey, false, Icons.Rounded.Videocam)
                 if (wallpaperImage || wallpaperVideo) {
                 SettingsDivider()
+                SettingsSliderRow(
+                    title = "Desenfoque del fondo",
+                    icon = Icons.Rounded.BlurOn,
+                    value = wallpaperBlur,
+                    valueRange = 0f..40f,
+                    steps = 7,
+                    valueLabel = { if (it < 1f) "Nítido" else "${it.toInt()}" },
+                    onValueChangeFinished = { wallpaperBlur = it },
+                )
+                SettingsDivider()
                 PrefSwitchRow(
                     "Desvanecimiento por inactividad",
                     "Desvanece la pantalla de inicio tras 2 minutos de inactividad si hay un fondo activo",
@@ -381,47 +379,54 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
             }
         }
 
-        // ── Reproductor ─────────────────────────────────────────────────────────────────────
+        // ── Reproductor ─────────────────────────────────────────────────────────────────────────
         item(key = "player") {
             SettingsGroup(label = "Reproductor") {
-                PrefSwitchRow(
-                    "Mantener pantalla encendida",
-                    "Evita que la pantalla se apague cuando el reproductor está expandido",
-                    KeepScreenOnPlayerKey,
-                    false,
-                    Icons.Rounded.PlayCircle,
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Nuevo diseño de mini reproductor",
-                    icon = Icons.Rounded.PlayCircle,
-                    checked = miniStyle == MiniPlayerStyle.BAR,
-                    onCheckedChange = { miniStyle = if (it) MiniPlayerStyle.BAR else MiniPlayerStyle.PILL },
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Color dinámico en mini reproductor",
-                    subtitle = "Usa el color dominante de la carátula como fondo",
-                    icon = Icons.Rounded.Palette,
-                    checked = miniDynamic,
-                    onCheckedChange = { miniDynamic = it },
-                )
-                SettingsDivider()
                 SettingsRow(title = "Estilo del diseño del reproductor", icon = Icons.Rounded.PlayCircle)
                 PlayerStyleInlineCarousel(
                     current = playerStyle,
                     onApply = { playerStyle = it },
                     onOpenFull = { showStyleSelector = true },
                 )
-                SettingsDivider()
-                SettingsChoiceRow(
-                    title = "Estilo de fondo del mini reproductor",
-                    icon = Icons.Rounded.Gradient,
-                    options = com.dezzy.app.ui.player.kit.MiniBackgroundStyle.entries.toList(),
-                    selected = miniBgStyle,
-                    label = { it.label() },
-                    onSelect = { miniBgStyle = it },
-                )
+                // «Fondo del reproductor»: sólo lo admite el estilo Clásico (también lo usan sus letras).
+                if (playerStyle == PlayerDesignStyle.V1) {
+                    SettingsDivider()
+                    SettingsChoiceRow(
+                        title = "Fondo del reproductor",
+                        icon = Icons.Rounded.Gradient,
+                        options = PlayerBackgroundStyle.entries.toList(),
+                        selected = playerBackground,
+                        label = {
+                            when (it) {
+                                PlayerBackgroundStyle.DEFAULT -> "Seguir el tema"
+                                PlayerBackgroundStyle.GRADIENT -> "Degradado"
+                                PlayerBackgroundStyle.GLOW -> "Resplandor"
+                                PlayerBackgroundStyle.COLORING -> "Coloreado"
+                                PlayerBackgroundStyle.CUSTOM -> "Personalizado"
+                            }
+                        },
+                        onSelect = { playerBackground = it },
+                    )
+                    if (playerBackground == PlayerBackgroundStyle.CUSTOM) {
+                        SettingsDivider()
+                        SettingsRow(
+                            title = "Fondo personalizado",
+                            subtitle = if (customImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
+                            icon = Icons.Rounded.Image,
+                            onClick = { pickPlayerImage() },
+                        )
+                        SettingsDivider()
+                        SettingsSliderRow(
+                            title = "Atenuación de la imagen",
+                            icon = Icons.Rounded.Contrast,
+                            value = customBrightness,
+                            valueRange = 0.2f..1f,
+                            steps = 7,
+                            valueLabel = { "${((1f - it) * 100).toInt()} %" },
+                            onValueChangeFinished = { customBrightness = it },
+                        )
+                    }
+                }
                 SettingsDivider()
                 PrefSwitchRow(
                     "Ocultar miniatura del reproductor",
@@ -431,63 +436,12 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     Icons.Rounded.Image,
                 )
                 SettingsDivider()
-                SettingsChoiceRow(
-                    title = "Canvas de Canciones",
-                    icon = Icons.Rounded.Videocam,
-                    options = CanvasMode.entries.toList(),
-                    selected = if (!canvasSong) CanvasMode.NONE else canvasMode,
-                    label = {
-                        when (it) {
-                            CanvasMode.NONE -> "Desactivado"
-                            CanvasMode.SPOTIFY -> "Spotify"
-                            CanvasMode.SPOTIFY_WITH_FALLBACK -> "Spotify + Fallback de Video"
-                            CanvasMode.APPLE -> "Apple Music"
-                            CanvasMode.APPLE_WITH_FALLBACK -> "Apple Music + Fallback de Video"
-                        }
-                    },
-                    onSelect = {
-                        canvasSong = it != CanvasMode.NONE
-                        if (it != CanvasMode.NONE) canvasMode = it
-                    },
-                )
-                if (canvasSong && (canvasMode == CanvasMode.SPOTIFY || canvasMode == CanvasMode.SPOTIFY_WITH_FALLBACK)) Text(
-                    "El Canvas de Spotify solo funciona si has iniciado sesión en Spotify.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp),
-                )
-                SettingsDivider()
-                SettingsChoiceRow(
-                    title = "Canvas de Artistas",
-                    icon = Icons.Rounded.Videocam,
-                    options = listOf(false, true),
-                    selected = canvasArtist,
-                    label = { if (it) "Apple Music" else "Desactivado" },
-                    onSelect = { canvasArtist = it },
-                )
-                SettingsDivider()
                 PrefSwitchRow(
                     "Miniatura giratoria",
                     "Habilitar un efecto de animación de miniatura giratoria",
                     SpinningThumbnailKey,
                     false,
                     Icons.Rounded.Image,
-                )
-                SettingsDivider()
-                PrefSwitchRow(
-                    "Mostrar botón de comentarios",
-                    "Mostrar un botón para ver los comentarios en la cola del reproductor",
-                    ShowCommentsButtonKey,
-                    true,
-                    Icons.Rounded.TextFields,
-                )
-                SettingsDivider()
-                SettingsSwitchRow(
-                    title = "Mostrar códec en el reproductor",
-                    subtitle = "Mostrar información del códec de audio debajo de la barra de tiempo",
-                    icon = Icons.Rounded.GraphicEq,
-                    checked = showCodec,
-                    onCheckedChange = { showCodec = it },
                 )
                 SettingsDivider()
                 SettingsRow(
@@ -550,6 +504,59 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 PrefSwitchRow("Activar deslizar para cambiar de canción", null, PlayerSwipeToChangeKey, true, Icons.Rounded.Swipe)
                 SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Mostrar códec en el reproductor",
+                    subtitle = "Mostrar información del códec de audio debajo de la barra de tiempo",
+                    icon = Icons.Rounded.GraphicEq,
+                    checked = showCodec,
+                    onCheckedChange = { showCodec = it },
+                )
+                SettingsDivider()
+                PrefSwitchRow(
+                    "Mostrar botón de comentarios",
+                    "Mostrar un botón para ver los comentarios en la cola del reproductor",
+                    ShowCommentsButtonKey,
+                    true,
+                    Icons.Rounded.TextFields,
+                )
+                SettingsDivider()
+                PrefSwitchRow(
+                    "Mantener pantalla encendida",
+                    "Evita que la pantalla se apague cuando el reproductor está expandido",
+                    KeepScreenOnPlayerKey,
+                    false,
+                    Icons.Rounded.PlayCircle,
+                )
+            }
+        }
+
+        // ── Mini reproductor ────────────────────────────────────────────────────────────────────
+        item(key = "mini_player") {
+            SettingsGroup(label = "Mini reproductor") {
+                SettingsSwitchRow(
+                    title = "Nuevo diseño de mini reproductor",
+                    icon = Icons.Rounded.PlayCircle,
+                    checked = miniStyle == MiniPlayerStyle.BAR,
+                    onCheckedChange = { miniStyle = if (it) MiniPlayerStyle.BAR else MiniPlayerStyle.PILL },
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    title = "Color dinámico en mini reproductor",
+                    subtitle = "Usa el color dominante de la carátula como fondo",
+                    icon = Icons.Rounded.Palette,
+                    checked = miniDynamic,
+                    onCheckedChange = { miniDynamic = it },
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Estilo de fondo del mini reproductor",
+                    icon = Icons.Rounded.Gradient,
+                    options = com.dezzy.app.ui.player.kit.MiniBackgroundStyle.entries.toList(),
+                    selected = miniBgStyle,
+                    label = { it.label() },
+                    onSelect = { miniBgStyle = it },
+                )
+                SettingsDivider()
                 SettingsSliderRow(
                     title = "Sensibilidad del deslizamiento del mini reproductor",
                     icon = Icons.Rounded.Swipe,
@@ -559,46 +566,46 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     valueLabel = { "${it.toInt()}%" },
                     onValueChangeFinished = { swipeSensitivity = it },
                 )
-                // Lo que ya había en Apariencia y no está en la app actual: al final del grupo.
-                // Siempre visible: lo usan el estilo «Dezzy» y la pantalla de letras.
-                run {
-                    SettingsDivider()
-                    SettingsChoiceRow(
-                        title = "Fondo del reproductor",
-                        icon = Icons.Rounded.Gradient,
-                        options = PlayerBackgroundStyle.entries.toList(),
-                        selected = playerBackground,
-                        label = {
-                            when (it) {
-                                PlayerBackgroundStyle.DEFAULT -> "Seguir el tema"
-                                PlayerBackgroundStyle.GRADIENT -> "Degradado"
-                                PlayerBackgroundStyle.GLOW -> "Resplandor"
-                                PlayerBackgroundStyle.COLORING -> "Coloreado"
-                                PlayerBackgroundStyle.CUSTOM -> "Personalizado"
-                            }
-                        },
-                        onSelect = { playerBackground = it },
-                    )
-                    if (playerBackground == PlayerBackgroundStyle.CUSTOM) {
-                        SettingsDivider()
-                        SettingsRow(
-                            title = "Fondo personalizado",
-                            subtitle = if (customImageUri.isBlank()) "Elegir una imagen de la galería" else "Cambiar la imagen",
-                            icon = Icons.Rounded.Image,
-                            onClick = { pickPlayerImage() },
-                        )
-                        SettingsDivider()
-                        SettingsSliderRow(
-                            title = "Atenuación de la imagen",
-                            icon = Icons.Rounded.Contrast,
-                            value = customBrightness,
-                            valueRange = 0.2f..1f,
-                            steps = 7,
-                            valueLabel = { "${((1f - it) * 100).toInt()} %" },
-                            onValueChangeFinished = { customBrightness = it },
-                        )
-                    }
-                }
+            }
+        }
+
+        // ── Canvas ──────────────────────────────────────────────────────────────────────────────
+        item(key = "canvas") {
+            SettingsGroup(label = "Canvas") {
+                SettingsChoiceRow(
+                    title = "Canvas de Canciones",
+                    icon = Icons.Rounded.Videocam,
+                    options = CanvasMode.entries.toList(),
+                    selected = if (!canvasSong) CanvasMode.NONE else canvasMode,
+                    label = {
+                        when (it) {
+                            CanvasMode.NONE -> "Desactivado"
+                            CanvasMode.SPOTIFY -> "Spotify"
+                            CanvasMode.SPOTIFY_WITH_FALLBACK -> "Spotify + Fallback de Video"
+                            CanvasMode.APPLE -> "Apple Music"
+                            CanvasMode.APPLE_WITH_FALLBACK -> "Apple Music + Fallback de Video"
+                        }
+                    },
+                    onSelect = {
+                        canvasSong = it != CanvasMode.NONE
+                        if (it != CanvasMode.NONE) canvasMode = it
+                    },
+                )
+                if (canvasSong && (canvasMode == CanvasMode.SPOTIFY || canvasMode == CanvasMode.SPOTIFY_WITH_FALLBACK)) Text(
+                    "El Canvas de Spotify solo funciona si has iniciado sesión en Spotify.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp),
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Canvas de Artistas",
+                    icon = Icons.Rounded.Videocam,
+                    options = listOf(false, true),
+                    selected = canvasArtist,
+                    label = { if (it) "Apple Music" else "Desactivado" },
+                    onSelect = { canvasArtist = it },
+                )
             }
         }
 
@@ -704,103 +711,34 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
             }
         }
 
-        // ── Varios ──────────────────────────────────────────────────────────────────────────
-        item(key = "misc") {
-            SettingsGroup(label = "Varios") {
-                TextPrefRow(
-                    title = "Nombre del DJ",
-                    value = djName,
-                    placeholder = "DJ Dezzy",
-                    icon = Icons.Rounded.GraphicEq,
-                    onSave = { scope.launch { dj.setName(it) } },
+        // ── Visualizador ────────────────────────────────────────────────────────────────────────
+        item(key = "visualizer") {
+            SettingsGroup(label = "Visualizador") {
+                VisualizerCarousel(
+                    selected = VisualizerStyle.entries.firstOrNull { it.name == visualizerName } ?: VisualizerStyle.ESFERA,
+                    onSelect = { visualizerName = it.name },
+                    modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
                 )
                 SettingsDivider()
-                TextPrefRow(
-                    title = "Tu Nombre (Usuario)",
-                    value = userName,
-                    placeholder = "Sin nombre",
-                    icon = Icons.Rounded.TextFields,
-                    onSave = { userName = it.take(40) },
+                SettingsSwitchRow(
+                    title = "Deslizar para cambiar",
+                    subtitle = "En la pantalla del visualizador",
+                    icon = Icons.Rounded.Swipe,
+                    checked = visualizerSwipe,
+                    onCheckedChange = { visualizerSwipe = it },
                 )
-                SettingsDivider()
-                SettingsChoiceRow(
-                    title = "Idioma del DJ",
-                    icon = Icons.Rounded.TextFields,
-                    options = listOf("auto", "es", "en"),
-                    selected = djLanguage,
-                    label = {
-                        when (it) {
-                            "es" -> "Español"
-                            "en" -> "English"
-                            else -> "Automático"
-                        }
-                    },
-                    onSelect = { scope.launch { dj.setLanguage(it) } },
-                )
-                SettingsDivider()
+            }
+        }
+
+        // ── Navegación y biblioteca ─────────────────────────────────────────────────────────────
+        item(key = "navigation") {
+            SettingsGroup(label = "Navegación y biblioteca") {
                 PrefStringChoiceRow(
                     title = "Pestaña abierta por defecto",
                     key = DefaultTabKey,
                     default = "HOME",
                     options = listOf("HOME" to "Inicio", "SEARCH" to "Buscar", "LIBRARY" to "Tu biblioteca", "ROOMS" to "Salas"),
                     icon = Icons.Rounded.Apps,
-                )
-                SettingsDivider()
-                PrefStringChoiceRow(
-                    title = "Cambiar pestaña predeterminada de la biblioteca",
-                    key = DefaultLibraryTabKey,
-                    default = "PLAYLISTS",
-                    options = listOf(
-                        "PLAYLISTS" to "Listas de reproducción",
-                        "ALBUMS" to "Álbumes",
-                        "ARTISTS" to "Artistas",
-                        "SONGS" to "Canciones",
-                        "GENRES" to "Géneros",
-                    ),
-                    icon = Icons.Rounded.Apps,
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = "Always On Display",
-                    subtitle = "Estilos, formas y opciones de personalización",
-                    icon = Icons.Rounded.DarkMode,
-                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.AOD)) },
-                )
-                SettingsDivider()
-                var bubble by rememberPreference(FloatingBubbleKey, false)
-                SettingsSwitchRow(
-                    title = "Burbuja Flotante",
-                    subtitle = "Habilitar un reproductor de burbuja flotante en pantalla",
-                    icon = Icons.Rounded.PlayCircle,
-                    checked = bubble,
-                    onCheckedChange = {
-                        bubble = it
-                        if (it) com.dezzy.app.feature.bubble.OverlayPermission.request?.invoke()
-                    },
-                )
-                SettingsDivider()
-                PrefSwitchRow(
-                    "Show home category chips",
-                    "Show category filter chips on the home screen",
-                    HomeCategoryChipsKey,
-                    true,
-                    Icons.Rounded.Apps,
-                )
-                SettingsDivider()
-                PrefSwitchRow(
-                    "Mostrar etiquetas en la biblioteca",
-                    "Mostrar el filtro de etiquetas en la pestaña de la biblioteca",
-                    LibraryTagsKey,
-                    true,
-                    Icons.Rounded.Apps,
-                )
-                SettingsDivider()
-                PrefSwitchRow(
-                    "Desliza a la izquierda la canción para añadirla a la cola, o a la derecha para reproducirla a continuación",
-                    null,
-                    SwipeSongActionsKey,
-                    true,
-                    Icons.Rounded.Swipe,
                 )
                 SettingsDivider()
                 var navPicker by remember { mutableStateOf(false) }
@@ -830,12 +768,110 @@ internal fun AppearanceSettingsScreen(ctx: ScreenContext) {
                     )
                 }
                 SettingsDivider()
+                PrefSwitchRow(
+                    "Show home category chips",
+                    "Show category filter chips on the home screen",
+                    HomeCategoryChipsKey,
+                    true,
+                    Icons.Rounded.Apps,
+                )
+                SettingsDivider()
+                PrefStringChoiceRow(
+                    title = "Cambiar pestaña predeterminada de la biblioteca",
+                    key = DefaultLibraryTabKey,
+                    default = "PLAYLISTS",
+                    options = listOf(
+                        "PLAYLISTS" to "Listas de reproducción",
+                        "ALBUMS" to "Álbumes",
+                        "ARTISTS" to "Artistas",
+                        "SONGS" to "Canciones",
+                        "GENRES" to "Géneros",
+                    ),
+                    icon = Icons.Rounded.Apps,
+                )
+                SettingsDivider()
                 PrefStringChoiceRow(
                     title = "Tamaño de celda de la cuadrícula",
                     key = GridCellSizeKey,
                     default = "SMALL",
                     options = listOf("SMALL" to "Pequeña", "LARGE" to "Grande"),
                     icon = Icons.Rounded.Apps,
+                )
+                SettingsDivider()
+                PrefSwitchRow(
+                    "Mostrar etiquetas en la biblioteca",
+                    "Mostrar el filtro de etiquetas en la pestaña de la biblioteca",
+                    LibraryTagsKey,
+                    true,
+                    Icons.Rounded.Apps,
+                )
+                SettingsDivider()
+                PrefSwitchRow(
+                    "Desliza a la izquierda la canción para añadirla a la cola, o a la derecha para reproducirla a continuación",
+                    null,
+                    SwipeSongActionsKey,
+                    true,
+                    Icons.Rounded.Swipe,
+                )
+            }
+        }
+
+        // ── DJ ──────────────────────────────────────────────────────────────────────────────────
+        item(key = "dj") {
+            SettingsGroup(label = "DJ") {
+                TextPrefRow(
+                    title = "Nombre del DJ",
+                    value = djName,
+                    placeholder = "DJ Dezzy",
+                    icon = Icons.Rounded.GraphicEq,
+                    onSave = { scope.launch { dj.setName(it) } },
+                )
+                SettingsDivider()
+                SettingsChoiceRow(
+                    title = "Idioma del DJ",
+                    icon = Icons.Rounded.TextFields,
+                    options = listOf("auto", "es", "en"),
+                    selected = djLanguage,
+                    label = {
+                        when (it) {
+                            "es" -> "Español"
+                            "en" -> "English"
+                            else -> "Automático"
+                        }
+                    },
+                    onSelect = { scope.launch { dj.setLanguage(it) } },
+                )
+                SettingsDivider()
+                TextPrefRow(
+                    title = "Tu Nombre (Usuario)",
+                    value = userName,
+                    placeholder = "Sin nombre",
+                    icon = Icons.Rounded.TextFields,
+                    onSave = { userName = it.take(40) },
+                )
+            }
+        }
+
+        // ── Más ─────────────────────────────────────────────────────────────────────────────────
+        item(key = "misc") {
+            SettingsGroup(label = "Más") {
+                SettingsRow(
+                    title = "Always On Display",
+                    subtitle = "Estilos, formas y opciones de personalización",
+                    icon = Icons.Rounded.DarkMode,
+                    onClick = { ctx.navigator.push(Screen.Settings(SettingsPageId.AOD)) },
+                )
+                SettingsDivider()
+                var bubble by rememberPreference(FloatingBubbleKey, false)
+                SettingsSwitchRow(
+                    title = "Burbuja Flotante",
+                    subtitle = "Habilitar un reproductor de burbuja flotante en pantalla",
+                    icon = Icons.Rounded.PlayCircle,
+                    checked = bubble,
+                    onCheckedChange = {
+                        bubble = it
+                        if (it) com.dezzy.app.feature.bubble.OverlayPermission.request?.invoke()
+                    },
                 )
             }
         }

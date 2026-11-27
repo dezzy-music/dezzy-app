@@ -183,7 +183,8 @@ fun DezzyPlayer(
     val videoModeActive by playerConnection.videoModeActive.collectAsState()
     val videoPlayer by playerConnection.videoPlayerInstance.collectAsState()
 
-    val playerBackground by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.DEFAULT)
+    // «Fondo del reproductor» ya sólo aplica al estilo Clásico (PlayerBackgroundLayer); aquí el mesh usa la portada.
+    val playerBackground = PlayerBackgroundStyle.DEFAULT
     val (playerCustomImageUri) = rememberPreference(PlayerCustomImageUriKey, "")
     val (playerCustomBlur) = rememberPreference(PlayerCustomBlurKey, 0f)
     val (playerCustomContrast) = rememberPreference(PlayerCustomContrastKey, 1f)
@@ -499,10 +500,8 @@ fun DezzyPlayer(
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 1. Fondo: la portada muy desenfocada, o el «Fondo del reproductor» elegido.
-                if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
-                    meshBackground()
-                } else AsyncImage(
+                // 1. Fondo: la portada muy desenfocada.
+                AsyncImage(
                     model = ImageRequest.Builder(platformContext)
                         .data(mediaMetadata?.thumbnailUrl)
                         .size(128, 128)
@@ -574,7 +573,7 @@ fun DezzyPlayer(
                         )
                 )
             }
-        } else if (playerStyle == PlayerDesignStyle.LIVE_MESH || playerBackground != PlayerBackgroundStyle.DEFAULT) {
+        } else if (playerStyle == PlayerDesignStyle.LIVE_MESH) {
             meshBackground()
         } else if (isLandscape) {
             // Landscape background: Highly blurred backdrop
