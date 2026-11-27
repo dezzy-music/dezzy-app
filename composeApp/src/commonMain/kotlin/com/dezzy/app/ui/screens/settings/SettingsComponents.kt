@@ -153,7 +153,7 @@ private fun SettingsIconCircle(icon: ImageVector) {
 @Composable
 private fun RowTexts(title: String, subtitle: String?, modifier: Modifier) {
     Column(modifier) {
-        Text(title, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold, maxLines = 4, overflow = TextOverflow.Ellipsis)
         if (subtitle != null) {
             Text(
                 subtitle,
@@ -161,7 +161,7 @@ private fun RowTexts(title: String, subtitle: String?, modifier: Modifier) {
                 lineHeight = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                maxLines = 2,
+                maxLines = 12,
                 overflow = TextOverflow.Ellipsis,
             )
         }

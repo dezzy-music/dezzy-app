@@ -6,15 +6,24 @@
 package com.dezzy.app.ui.screens.settings
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Cast
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.HighQuality
-import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.Queue
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.PictureInPictureAlt
+import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.RecordVoiceOver
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.SignalCellularAlt
+import androidx.compose.material.icons.rounded.SlowMotionVideo
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.Subject
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.foundation.layout.Spacer
@@ -105,7 +114,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
             SettingsGroup("Reproductor") {
                 SettingsChoiceRow(
                     title = "Calidad de audio",
-                    icon = Icons.Rounded.HighQuality,
+                    icon = Icons.Rounded.GraphicEq,
                     options = listOf(AudioQuality.AUTO, AudioQuality.HIGH, AudioQuality.LOW),
                     selected = AudioQuality.entries.firstOrNull { it.name.equals(quality, ignoreCase = true) } ?: AudioQuality.AUTO,
                     label = ::audioQualityLabel,
@@ -114,6 +123,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Motor de audio Hi-Res (32-bit float)",
+                    icon = Icons.Rounded.GraphicEq,
                     subtitle = if (!audioFx.processingSupported) {
                         "El procesado de audio sólo funciona en Android"
                     } else {
@@ -126,6 +136,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Cliente de reproducción",
+                    icon = Icons.Rounded.Extension,
                     options = listOf("Android VR", "Web Remix", "iOS", "TV"),
                     selected = client,
                     label = { it },
@@ -134,6 +145,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Tratar la red como de uso medido",
+                    icon = Icons.Rounded.SignalCellularAlt,
                     subtitle = "Si esta activada, la aplicación preferirá las transmisiones de baja calidad en redes de uso medido",
                     checked = metered,
                     onCheckedChange = { metered = it },
@@ -141,6 +153,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Duración del historial",
+                    icon = Icons.Rounded.Schedule,
                     options = listOf(7, 30, 60, 90, 365),
                     selected = historyDays,
                     label = { "$it" },
@@ -149,7 +162,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSliderRow(
                     title = "Fundido cruzado",
-                    icon = Icons.Rounded.Tune,
+                    icon = Icons.Rounded.GraphicEq,
                     value = crossfade.toFloat(),
                     valueRange = 0f..12f,
                     steps = 11,
@@ -173,6 +186,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Offload de audio",
+                    icon = Icons.Rounded.Speed,
                     subtitle = "Permite que los dispositivos compatibles reproduzcan audio utilizando decodificación de hardware de bajo consumo. Algunas funciones de procesamiento de audio están desactivadas.",
                     checked = offload,
                     onCheckedChange = { offload = it },
@@ -180,6 +194,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Búsqueda progresiva",
+                    icon = Icons.Rounded.ArrowForward,
                     subtitle = "Si esta habilitado, añade 5 segundos extra de forma incremental en cada salto de búsqueda",
                     checked = progressiveSeek,
                     onCheckedChange = { progressiveSeek = it },
@@ -203,6 +218,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Calidad con datos móviles",
+                    icon = Icons.Rounded.SignalCellularAlt,
                     options = listOf("auto", "high", "low"),
                     selected = mobileQuality,
                     label = { qualityLabel(it) },
@@ -214,7 +230,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
             SettingsGroup("Reproducción de video") {
                 SettingsChoiceRow(
                     title = "Calidad máxima de video",
-                    icon = Icons.Rounded.Movie,
+                    icon = Icons.Rounded.SlowMotionVideo,
                     options = VideoQuality.entries.toList(),
                     selected = videoQuality,
                     label = { "${it.maxHeight}p" },
@@ -223,7 +239,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Ajuste del video",
-                    icon = Icons.Rounded.Crop,
+                    icon = Icons.Rounded.Fullscreen,
                     options = VideoResizeMode.entries.toList(),
                     selected = resizeMode,
                     label = {
@@ -238,6 +254,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Mantener modo video",
+                    icon = Icons.Rounded.FastForward,
                     subtitle = "Seguir en modo video al cambiar de canción",
                     checked = keepMode,
                     onCheckedChange = { keepMode = it },
@@ -245,6 +262,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Imagen en imagen",
+                    icon = Icons.Rounded.PictureInPictureAlt,
                     subtitle = "Seguir viendo el video en una ventana pequeña al salir de la app",
                     checked = pip,
                     onCheckedChange = { pip = it },
@@ -252,6 +270,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Castear video",
+                    icon = Icons.Rounded.Cast,
                     subtitle = "Enviar el video musical (no solo el audio) al castear",
                     checked = castVideo,
                     onCheckedChange = { castVideo = it },
@@ -263,13 +282,14 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsSwitchRow(
                     title = "Cola persistente",
                     subtitle = "Restaura tú ultima cola cuando se inicia la aplicación",
-                    icon = Icons.Rounded.Queue,
+                    icon = Icons.Rounded.QueueMusic,
                     checked = persistentQueue,
                     onCheckedChange = { scope.launch { prefs.setPersistentQueue(it) } },
                 )
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "Auto descargar al dar me gusta",
+                    icon = Icons.Rounded.Download,
                     subtitle = "Descargar las canciones automáticamente al darle me gusta",
                     checked = autoDownloadLike,
                     onCheckedChange = { autoDownloadLike = it },
@@ -278,7 +298,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsSwitchRow(
                     title = "Omitir automáticamente la siguiente canción cuando ocurran errores",
                     subtitle = "Asegúrate de que la reproducción no se interrumpa",
-                    icon = Icons.Rounded.SkipNext,
+                    icon = Icons.Rounded.FastForward,
                     checked = autoSkip,
                     onCheckedChange = { scope.launch { prefs.setAutoSkip(it) } },
                 )
@@ -288,6 +308,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
             SettingsGroup("Varios") {
                 SettingsSwitchRow(
                     title = "Detener la música al finalizar la tarea",
+                    icon = Icons.Rounded.Subject,
                     checked = stopOnTask,
                     onCheckedChange = { stopOnTask = it },
                 )
@@ -295,12 +316,14 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsSwitchRow(
                     title = "Keep CPU awake during playback",
                     subtitle = "Prevents the system from interrupting music by holding a CPU wake lock",
+                    icon = Icons.Rounded.Bolt,
                     checked = cpuAwake,
                     onCheckedChange = { cpuAwake = it },
                 )
                 SettingsDivider()
                 SettingsChoiceRow(
                     title = "Símbolos para separar artistas",
+                    icon = Icons.Rounded.RecordVoiceOver,
                     options = listOf(",;/&", ",", ";", "/", "&"),
                     selected = separators,
                     label = { s -> s.map { "\"$it\"" }.joinToString(" ") },
@@ -310,11 +333,13 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsRow(
                     title = "Etiquetas de lista de reproducción",
                     subtitle = "Crea y administra etiquetas para organizar las listas de reproducción",
+                    icon = Icons.Rounded.Style,
                     onClick = { ctx.toast("Las etiquetas de listas llegan en una próxima versión") },
                 )
                 SettingsDivider()
                 SettingsSwitchRow(
                     title = "External Downloader",
+                    icon = Icons.Rounded.Download,
                     subtitle = "Download songs through an external app by package name",
                     checked = externalDl,
                     onCheckedChange = { externalDl = it },
@@ -322,6 +347,7 @@ internal fun PlayerSettingsScreen(ctx: ScreenContext) {
                 SettingsDivider()
                 SettingsRow(
                     title = "Downloader App Package",
+                    icon = Icons.Rounded.Extension,
                     subtitle = dlPackage.ifBlank { "Package name of the external downloader app (e.g. com.deniscerri.ytdl)" },
                     onClick = if (externalDl) ({ packageDialog = true }) else null,
                     trailing = { Spacer(Modifier.size(0.dp)) },
