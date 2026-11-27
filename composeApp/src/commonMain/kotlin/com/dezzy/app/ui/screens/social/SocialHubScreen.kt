@@ -103,18 +103,29 @@ fun SocialHubScreen(ctx: ScreenContext) {
     LaunchedEffect(Unit) { runCatching { identity.load() } }
     when {
         !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        !state.ready || welcoming -> P2PWelcomeScreen(
-            ctx,
-            embedded = true,
-            onBusy = { welcoming = true },
-            onDone = { welcoming = false },
-        )
-        else -> SocialHome(ctx)
+        // Como en la app actual, «Juntos» se abre sin cuenta; el alta sólo aparece en las secciones sociales.
+        else -> SocialHome(ctx) { modifier ->
+            if (!state.ready || welcoming) {
+                Box(modifier) {
+                    P2PWelcomeScreen(
+                        ctx,
+                        embedded = true,
+                        onBusy = { welcoming = true },
+                        onDone = { welcoming = false },
+                    )
+                }
+                true
+            } else false
+        }
     }
 }
 
 @Composable
-private fun SocialHome(ctx: ScreenContext) {
+private fun SocialHome(
+    ctx: ScreenContext,
+    /** Si hace falta cuenta, dibuja el alta en [Modifier] y devuelve true. */
+    accountGate: @Composable (Modifier) -> Boolean,
+) {
     val social: P2PSocial = koinInject()
     var tab by remember { mutableStateOf(SocialTab.ROOMS) }
     var roomsVersion by remember { mutableStateOf(0) }
@@ -128,7 +139,7 @@ private fun SocialHome(ctx: ScreenContext) {
         Column(Modifier.fillMaxSize()) {
             com.dezzy.app.ui.components.DezzyTopBar(ctx)
             ScreenTitle(if (tab == SocialTab.ROOMS) "Juntos" else "Social", onBack = if (tab == SocialTab.ROOMS) null else ({ tab = SocialTab.ROOMS }), actions = {
-                IconButton(onClick = { addFriend = true }) { Icon(Icons.Rounded.Search, "Buscar personas") }
+                IconButton(onClick = { if (mine != null) addFriend = true else tab = SocialTab.FRIENDS }) { Icon(Icons.Rounded.Search, "Buscar personas") }
                 IconButton(onClick = { roomsVersion++ }) { Icon(Icons.Rounded.Refresh, "Actualizar") }
                 IconButton(onClick = { ctx.navigator.push(Screen.Settings(SettingsPage.SOCIAL)) }) {
                     Icon(Icons.Rounded.Settings, "Ajustes de la red social")
@@ -155,6 +166,7 @@ private fun SocialHome(ctx: ScreenContext) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
             Box(Modifier.weight(1f).fillMaxWidth()) {
+                if (tab != SocialTab.ROOMS && accountGate(Modifier.fillMaxSize())) return@Box
                 when (tab) {
                     SocialTab.ROOMS -> RoomsTab(ctx, roomsVersion)
                     SocialTab.FRIENDS -> FriendsTab(ctx) { addFriend = true }
@@ -164,7 +176,7 @@ private fun SocialHome(ctx: ScreenContext) {
                 }
             }
         }
-        when (tab) {
+        if (mine != null) when (tab) {
             SocialTab.FRIENDS -> DezzyExtendedFloatingActionButton(
                 text = { Text("Añadir amigo") },
                 icon = { Icon(Icons.Rounded.PersonAdd, null) },

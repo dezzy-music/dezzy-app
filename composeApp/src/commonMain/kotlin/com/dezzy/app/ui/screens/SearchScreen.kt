@@ -161,7 +161,7 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            placeholder = { Text("¿Qué quieres escuchar?") },
+            placeholder = { Text("¿Qué quieres escuchar?", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
             leadingIcon = {
                 IconButton(onClick = {
                     if (query.isNotEmpty() || topVideos) { query = ""; submitted = ""; topVideos = false }
@@ -175,11 +175,18 @@ fun SearchScreen(ctx: ScreenContext, initial: String) {
                     Icon(Icons.Rounded.Language, null)
                 }
             },
-            shape = RoundedCornerShape(28.dp),
+            // Barra plana como en la app actual: sin caja ni borde, con una línea debajo.
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+            ),
+            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { submit(query) }),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focusRequester),
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
         )
+        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(Modifier.size(8.dp))
         SearchSourceChips(
             current = source,
             onSelect = {
