@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
 import com.dezzy.app.core.AppVersionName
 import com.dezzy.app.ui.screens.ScreenContext
@@ -386,11 +388,31 @@ internal fun AboutScreen(ctx: ScreenContext) {
 
         item(key = "about:updates") {
             SettingsGroup {
-                SettingsPendingRow(
+                val http: io.ktor.client.HttpClient = org.koin.compose.koinInject()
+                val uri = LocalUriHandler.current
+                var checking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                SettingsRow(
                     title = "Buscar actualizaciones",
-                    phase = "11",
-                    ctx = ctx,
+                    subtitle = if (checking) "Buscando…" else "Versión instalada: ${com.dezzy.app.core.AppVersionName}",
                     icon = Icons.Rounded.ArrowOutward,
+                    onClick = {
+                        if (!checking) {
+                            checking = true
+                            ctx.scope.launch {
+                                runCatching { com.dezzy.app.core.fetchLatestRelease(http) }
+                                    .onSuccess { latest ->
+                                        if (com.dezzy.app.core.isNewerVersion(latest.version, com.dezzy.app.core.AppVersionName)) {
+                                            ctx.toast("Hay una versión nueva: ${latest.version}")
+                                            runCatching { uri.openUri(latest.url) }
+                                        } else {
+                                            ctx.toast("Ya tienes la última versión")
+                                        }
+                                    }
+                                    .onFailure { ctx.toast("No se pudo comprobar si hay actualizaciones") }
+                                checking = false
+                            }
+                        }
+                    },
                 )
             }
         }
